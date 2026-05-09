@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  # vLLM Embedding 服务
+  vllm-embedding:
+    image: quay.io/ascend/vllm-ascend:latest
+    container_name: memsys-vllm-embedding
+    restart: unless-stopped
+    shm_size: 1g
+    ipc: host
+    privileged: true
+    stdin_open: true
+    tty: true
+    devices:
+      - /dev/davinci2
+      - /dev/davinci_manager
+      - /dev/devmm_svm
+      - /dev/hisi_hdc
+    ports:
+      - "8000:8000"
+    volumes:
+      - /usr/local/dcmi:/usr/local/dcmi
+      - /usr/local/bin/npu-smi:/usr/local/bin/npu-smi
+      - /usr/local/Ascend/driver/lib64/:/usr/local/Ascend/driver/lib64/
+      - /usr/local/Ascend/driver/version.info:/usr/local/Ascend/driver/version.info
+      - /etc/ascend_install.info:/etc/ascend_install.info
+      - /root/.cache:/root/.cache
+    environment:
+      - VLLM_USE_MODELSCOPE=True
+      - PYTORCH_NPU_ALLOC_CONF=max_split_size_mb:256
+      - HF_ENDPOINT=https://www.hf-mirror.com
+    command: >
+      bash -lc "vllm serve Qwen/Qwen3-Embedding-4B --task embed --host 0.0.0.0 --port 8000 --gpu-memory-utilization 0.8"
+    networks:
+      - memsys-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # vLLM Reranker 服务
+  vllm-reranker:
+    image: quay.io/ascend/vllm-ascend:latest
+    container_name: memsys-vllm-reranker
+    restart: unless-stopped
+    shm_size: 1g
+    ipc: host
+    privileged: true
+    stdin_open: true
+    tty: true
+    devices:
+      - /dev/davinci2
+      - /dev/davinci_manager
+      - /dev/devmm_svm
+      - /dev/hisi_hdc
+    ports:
+      - "12000:12000"
+    volumes:
+      - /usr/local/dcmi:/usr/local/dcmi
+      - /usr/local/bin/npu-smi:/usr/local/bin/npu-smi
+      - /usr/local/Ascend/driver/lib64/:/usr/local/Ascend/driver/lib64/
+      - /usr/local/Ascend/driver/version.info:/usr/local/Ascend/driver/version.info
+      - /etc/ascend_install.info:/etc/ascend_install.info
+      - /root/.cache:/root/.cache
+    environment:
+      - VLLM_USE_MODELSCOPE=True
+      - PYTORCH_NPU_ALLOC_CONF=max_split_size_mb:256
+      - HF_ENDPOINT=https://www.hf-mirror.com
+    command: >
+      bash -lc "vllm serve Qwen/Qwen3-Reranker-4B --task score --host 0.0.0.0 --port 12000"
+    networks:
+      - memsys-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:12000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+networks:
+  memsys-network:
+    driver: bridge
+
+# nohup docker pull quay.io/ascend/vllm-ascend:latest > logs/docker/pull_vllm_ascend.log 2>&1 &
+# docker compose -f docker-compose.vllm.yaml up -d vllm-embedding

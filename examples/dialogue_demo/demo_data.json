@@ -1,0 +1,72 @@
+[
+  {
+    "dia_id": "D1:1",
+    "speaker": "Alice",
+    "text": "I just moved to Shanghai last week for a new job at a tech startup.",
+    "session_number": 1,
+    "session_datetime": "2024-03-15T09:00:00"
+  },
+  {
+    "dia_id": "D1:2",
+    "speaker": "Bob",
+    "text": "That's exciting! Which area of Shanghai are you living in?",
+    "session_number": 1,
+    "session_datetime": "2024-03-15T09:01:00"
+  },
+  {
+    "dia_id": "D1:3",
+    "speaker": "Alice",
+    "text": "I'm in Pudong, near Zhangjiang Hi-Tech Park. The company is called DataFlow AI.",
+    "session_number": 1,
+    "session_datetime": "2024-03-15T09:02:00"
+  },
+  {
+    "dia_id": "D1:4",
+    "speaker": "Bob",
+    "text": "Oh, I've heard of DataFlow AI! They work on natural language processing, right?",
+    "session_number": 1,
+    "session_datetime": "2024-03-15T09:03:00"
+  },
+  {
+    "dia_id": "D1:5",
+    "speaker": "Alice",
+    "text": "Yes, exactly. I'm joining the memory systems team. We're building long-term memory for AI agents.",
+    "session_number": 1,
+    "session_datetime": "2024-03-15T09:04:00"
+  },
+  {
+    "dia_id": "D2:1",
+    "speaker": "Alice",
+    "text": "I visited the Bund yesterday evening. The skyline was absolutely stunning!",
+    "session_number": 2,
+    "session_datetime": "2024-03-20T18:30:00"
+  },
+  {
+    "dia_id": "D2:2",
+    "speaker": "Bob",
+    "text": "The Bund is beautiful at night. Did you go to any restaurants there?",
+    "session_number": 2,
+    "session_datetime": "2024-03-20T18:31:00"
+  },
+  {
+    "dia_id": "D2:3",
+    "speaker": "Alice",
+    "text": "Yes, I tried a place called 'Old Shanghai' - amazing xiaolongbao! I'm definitely going back.",
+    "session_number": 2,
+    "session_datetime": "2024-03-20T18:32:00"
+  },
+  {
+    "dia_id": "D2:4",
+    "speaker": "Bob",
+    "text": "How is your work at DataFlow AI going? Still enjoying the memory systems team?",
+    "session_number": 2,
+    "session_datetime": "2024-03-20T18:33:00"
+  },
+  {
+    "dia_id": "D2:5",
+    "speaker": "Alice",
+    "text": "It's great! We just finished a prototype for cross-session entity merging. My colleague Li Wei helped a lot with the graph algorithms.",
+    "session_number": 2,
+    "session_datetime": "2024-03-20T18:34:00"
+  }
+]
