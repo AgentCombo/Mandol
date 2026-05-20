@@ -1,7 +1,7 @@
 5 分钟快速开始
 =================
 
-两种模式，选一个复制即可运行。
+两种模式，选择适合的运行方式。
 
 模式一：远程 API（推荐）
 ------------------------
@@ -115,7 +115,7 @@
    * - ``system.add(unit)``
      - 添加一段记忆
    * - ``system.build_high_level(mode="auto")``
-     - 让系统消化整理
+     - 构建高阶记忆
    * - ``system.holistic_retrieve(query)``
      - 检索相关记忆（返回 SearchHit 列表）
    * - ``system.ask(query)``
@@ -128,7 +128,7 @@
 快速健康检查
 ------------
 
-随时可以用一行代码查看系统状态：
+使用 ``system.monitor`` 查看系统状态：
 
 .. code-block:: python
 
@@ -148,4 +148,4 @@
 ------
 
 - :doc:`your-first-memory` — 完整的端到端流程（包含保存和加载）
-- :doc:`configuration-simple` — 你只需要知道的 4 个配置
+- :doc:`configuration-simple` — 最常用的 4 个配置项

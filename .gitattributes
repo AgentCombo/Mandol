@@ -1,0 +1,8 @@
+* text=auto eol=lf
+*.py text diff=python
+*.rst text diff=rst
+*.md text diff=markdown
+*.yaml text
+*.yml text
+*.toml text
+Makefile text eol=lf

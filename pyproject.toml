@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Memory-native hierarchical memory system for long-conversation agents"
 readme = "README.md"
 license = {text = "Apache-2.0"}
-requires-python = ">=3.9"
+requires-python = ">=3.9,<3.14"
 authors = [
     {name = "Mandol Team"},
 ]
@@ -41,10 +41,18 @@ sentence-transformers = ["sentence-transformers>=2.2"]
 openai = ["openai>=1.0"]
 monitoring = ["psutil>=5.9"]
 all = ["mandol[faiss,milvus,neo4j,sentence-transformers,openai]"]
-dev = ["pytest>=7.0", "pytest-asyncio", "pre-commit", "ruff"]
+dev = ["pytest>=7.0", "pytest-asyncio", "pre-commit", "ruff", "mypy>=1.0"]
 docs = ["sphinx>=7.0", "furo", "myst-parser", "sphinxcontrib-mermaid"]
 
+[project.urls]
+Homepage = "https://github.com/AgentCombo/Mandol"
+Documentation = "https://mandol.readthedocs.io"
+Repository = "https://github.com/AgentCombo/Mandol.git"
+Issues = "https://github.com/AgentCombo/Mandol/issues"
+Changelog = "https://github.com/AgentCombo/Mandol/blob/main/CHANGELOG.md"
+
 [tool.setuptools.packages.find]
+where = ["src"]
 include = ["mandol*"]
 
 [tool.pytest.ini_options]
@@ -54,3 +62,27 @@ asyncio_mode = "auto"
 [tool.ruff]
 line-length = 100
 target-version = "py39"
+
+[tool.ruff.lint]
+select = [
+    "E",     # pycodestyle errors
+    "F",     # pyflakes
+    "I",     # isort
+    "W",     # pycodestyle warnings
+    "UP",    # pyupgrade
+    "B",     # flake8-bugbear
+    "C4",    # flake8-comprehensions
+    "SIM",   # flake8-simplify
+]
+ignore = ["E501"]  # line-length handled by formatter
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.9"
+ignore_missing_imports = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false

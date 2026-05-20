@@ -1,7 +1,7 @@
 超越基础：高级用户可以做什么
 ===============================
 
-作为高级用户，你需要的不再只是「添加→构建→检索」三步。你需要的是一套完整的记忆管理工具箱。
+高级用户在「添加→构建→检索」三步之外，还需要更精细的记忆管理能力。
 
 公开接口总览
 ------------
@@ -52,7 +52,7 @@ MemorySystem 除了 ``add/build_high_level/holistic_retrieve`` 外，还提供�
      - 基础/高级
      - BASE+ENTITY+EVENT+SUMMARY
      - Dense+BM25+Sparse+Graph+Reranker
-     - 一行调用全记忆检索
+     - 单次调用检索全部记忆层级
    * - ``retrieve_by_view``
      - 公开
      - 高级
@@ -144,7 +144,7 @@ retrieve_by_view 视图映射
 预想检索接口
 ------------
 
-以下接口已设计但尚未实现，当前可通过组合现有接口达到类似效果。完整设计见 :doc:`/shared/retrieval-reference` 。
+.. warning:: ⚠️ Planned — 以下接口已设计但尚未实现，签名可能变更。当前可通过组合现有接口达到类似效果。完整设计见 :doc:`/shared/retrieval-reference` 。
 
 .. list-table::
    :header-rows: 1

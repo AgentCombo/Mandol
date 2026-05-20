@@ -146,10 +146,15 @@ Planned Interfaces
 
 **retrieve_event_causal_chain** — Event causal chain retrieval
 
+.. warning::
+
+   This interface is planned and not yet implemented. The signature below is subject to change.
+
 Traces causal chains along CAUSES / CAUSED_BY edges, returning complete causes and effects.
 
 .. code-block:: python
 
+   # Planned — not yet available
    result = system.retrieve_event_causal_chain(
        "project delay",
        max_hops=3,
@@ -159,10 +164,15 @@ Traces causal chains along CAUSES / CAUSED_BY edges, returning complete causes a
 
 **smart_quantized_query** — Smart quantized query
 
+.. warning::
+
+   This interface is planned and not yet implemented. The signature below is subject to change.
+
 Produces optimally compact context under token budget constraints through three stages: query routing → smart denoising → cascade bin packing.
 
 .. code-block:: python
 
+   # Planned — not yet available
    result = system.smart_quantized_query(
        "Zhang San's recent business trip plans",
        max_context_tokens=2000,
@@ -174,13 +184,25 @@ Produces optimally compact context under token budget constraints through three 
 
 **retrieve_with_reasoning_path** — Retrieval with reasoning path
 
+.. warning::
+
+   This interface is planned and not yet implemented. The signature below is subject to change.
+
 Weighted multi-hop graph expansion based on SubgraphHopRetriever, returning results with complete reasoning paths.
 
 **retrieve_entity_timeline** — Entity timeline retrieval
 
+.. warning::
+
+   This interface is planned and not yet implemented. The signature below is subject to change.
+
 Returns all events and conversations related to a specified entity, sorted by time.
 
 **retrieve_session_context** — Session context retrieval
+
+.. warning::
+
+   This interface is planned and not yet implemented. The signature below is subject to change.
 
 Retrieves the complete context of a specified session, supporting expansion to adjacent sessions.
 
@@ -330,7 +352,7 @@ Recommendations by User Level
      - Description
    * - Basic
      - ``system.search(query)``
-     - One-line call, automatically searches all memory levels
+     - Single-call retrieval across all memory levels
    * - Advanced
      - ``system.retrieve_by_view(query, view="...")``
      - Retrieve specific category of memories by semantic view name

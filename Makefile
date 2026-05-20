@@ -16,10 +16,10 @@ test-integration:
 	pytest tests/integration/ -v
 
 lint:
-	ruff check mandol/ tests/
+	ruff check src/mandol/ tests/
 
 lint-fix:
-	ruff check --fix mandol/ tests/
+	ruff check --fix src/mandol/ tests/
 
 docs:
 	cd docs && make html-all

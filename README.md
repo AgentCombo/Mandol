@@ -2,24 +2,18 @@
 
 # Mandol
 
-> Memory-native hierarchical memory system for long-conversation agents
+> General-purpose in-memory hierarchical memory system for AI agents
 
+[![CI](https://github.com/AgentCombo/Mandol/actions/workflows/ci.yml/badge.svg)](https://github.com/AgentCombo/Mandol/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.9--3.13-blue.svg)](https://www.python.org/)
+[![PyPI version](https://badge.fury.io/py/mandol.svg)](https://badge.fury.io/py/mandol)
 [![Docs](https://img.shields.io/badge/docs-Sphinx-green.svg)](docs/)
-
-<!--
-AI-Readability Metadata:
-- project_type: library
-- domain: ai/agent/memory-system
-- architecture: ports-adapters (hexagonal)
-- key_capabilities: session-management, multi-dimension-memory-construction, hybrid-retrieval, semantic-graph
-- retrieval_strategy: dense + bm25 + sparse → RRF fusion → BFS expansion → cross-encoder reranking
--->
+[![codecov](https://codecov.io/gh/AgentCombo/Mandol/branch/main/graph/badge.svg)](https://codecov.io/gh/AgentCombo/Mandol)
 
 ## What is Mandol?
 
-Mandol is a memory-native, lightweight memory system built on in-memory data structures. It provides unified storage and hybrid retrieval through SemanticMap and SemanticGraph, fusing key-value, vector, and graph at the memory level with zero IPC. For now, Mandol has been primarily implemented and validated on conversational datasets, demonstrating strong performance on long-term conversational memory benchmarks such as LoCoMo and LongMemEval.
+Mandol is a general-purpose agent memory system built on in-memory data structures. It fuses key-value, vector, and graph indices through SemanticMap and SemanticGraph, providing unified storage and hybrid retrieval without inter-process communication. Evaluation on conversational memory benchmarks (LoCoMo: 92.21 F1, LongMemEval: 88.40 F1) is complete; assessment on code generation and image storage scenarios is underway.
 
 ## Environment Preparation
 
@@ -63,7 +57,7 @@ pip install mandol
 | `Qwen/Qwen3-Embedding-4B` | Text embedding | ~4 GB | Auto-downloads to `~/.cache/huggingface/` on first run |
 | `Qwen/Qwen3-Reranker-4B` | Retrieval reranking | ~4 GB | Auto-downloads to `~/.cache/huggingface/` on first run |
 
-> **Tip**: If using remote API mode, no local model download is needed — just configure the API endpoint.
+> **Tip**: If using remote API mode, no local model download is needed. Just configure the API endpoint.
 
 ## Installation
 
@@ -109,7 +103,7 @@ python -c "from mandol import MemorySystem, MemoryUnit, Uid; print('Mandol insta
 
 ## Quick Start
 
-### Mode 1: Remote API (Recommended for beginners — zero local models)
+### Mode 1: Remote API (Quick Start, no local models required)
 
 ```python
 from mandol import MemorySystem, MemoryUnit, Uid
@@ -135,7 +129,12 @@ system.save("./memory_snapshot")
 system2 = MemorySystem.load("./memory_snapshot")
 ```
 
-### Mode 2: Local Models (No API key needed — requires model download)
+> **About ``build_high_level()``**: The system asynchronously detects session boundaries during ``add()`` and automatically triggers high-level memory construction.
+> - Retrieving raw data (BASE group): available immediately after ``add()``
+> - Retrieving entities/events/summaries (ENTITY / EVENT / SUMMARY groups): wait for automatic construction to complete, or call ``build_high_level()`` manually
+> - Retrieving immediately after inserting a small amount of data: call ``build_high_level()`` manually to ensure high-level memory is available
+
+### Mode 2: Local Models (No API key required, model download needed)
 
 ```python
 from mandol import MemorySystem, MemoryUnit, Uid
@@ -164,23 +163,29 @@ system.save("./memory_snapshot")
 
 ### What is a Memory System?
 
-Imagine you have a smart assistant that remembers everything you've said and can precisely recall it when needed. Mandol is that "memory brain" — it doesn't just store conversations, it also:
+Mandol provides memory infrastructure for AI agents:
 
-- 🧠 **Automatically extracts key information** — names, places, events
-- 🔗 **Builds connections between information** — who did what where, cause and effect
-- 🔍 **Retrieves precisely** — not just keyword matching, but semantic understanding
+- Extracts entities, events, and summaries from text automatically
+- Builds cross-session entity relation graphs and event causal chains
+- Supports hybrid retrieval combining dense, sparse, and graph-based search
 
 ### Key Terms
 
-| Term | Plain Explanation | Analogy |
-|------|-------------------|---------|
-| MemoryUnit | A single memory record | A sticky note |
-| MemorySpace | A categorized folder for memories | A drawer in a filing cabinet |
-| SemanticMap | The index system for memories | A library's card catalog |
-| SemanticGraph | The network of connections between memories | A mind map |
-| Session | A coherent conversation | A meeting |
-| Entity | A person, place, or thing mentioned | A business card |
-| Event | Something that happened in conversation | A diary entry |
+| Term | Definition |
+|------|------------|
+| MemoryUnit | The smallest memory unit in the system, encapsulating text content, vector representation, and metadata |
+| MemorySpace | A logical grouping container for memories, supporting organization by dimension (entity, event, summary, etc.) |
+| SemanticMap | Semantic mapping table providing vector indexing and hybrid retrieval engine |
+| SemanticGraph | Semantic relation graph storing associations between entities and events, supporting graph-based retrieval expansion |
+| Session | A coherent interaction sequence, automatically segmented by the system based on time gaps or semantic boundaries |
+| Entity | A named element (person, place, thing) extracted from text, deduplicated and linked across sessions |
+| Event | An occurrence extracted from text, including causal chains and temporal relations |
+
+> **About MemoryUnit insertion mode**: The fields in ``raw_data`` that the system automatically vectorizes are:
+> - ``text_content``: plain text content → dense vector
+> - ``image_path``: image file path → image vector
+>
+> Other fields (e.g., ``speaker``, ``source``) are stored as metadata but not automatically vectorized.
 
 ### How It Works
 
@@ -252,6 +257,8 @@ The system also provides lower-level interfaces such as semantic retrieval and g
 | `USE_REMOTE_EMBEDDER` | Use remote Embedder | `false` |
 | `USE_REMOTE_RERANKER` | Use remote Reranker | `false` |
 
+> **Note**: These environment variables must be passed to the system via a YAML configuration file (``config.yaml``) or the ``MemorySystemConfig`` dataclass. Setting ``os.environ`` directly does not take effect. See the YAML configuration example below.
+
 ### YAML Configuration
 
 ```yaml
@@ -310,13 +317,13 @@ storage:
 │                         Memory Hierarchy Layer                       │
 │  ┌──────────────────┐  ┌──────────────────────────────────────────┐ │
 │  │  Base Memory      │  │         High-Level Memory               │ │
-│  │  Raw dialogue     │  │  Episodic │ Knowledge │ Emotional │ Proc │ │
+│  │  Raw data         │  │  Episodic │ Knowledge │ Emotional │ Proc │ │
 │  │  segments         │  │  Summary  │ Entity    │ Event     │ Ins  │ │
 │  └──────────────────┘  └──────────────────────────────────────────┘ │
 ├──────────────────────────────────────────────────────────────────────┤
 │                      Core Data Structure Layer                       │
 │  MemoryUnit ←→ MemorySpace ←→ SemanticMap ←→ SemanticGraph          │
-│  (Memory Unit)  (Logic Space)  (Semantic Index)  (Relation Graph)   │
+│  (Memory Unit)  (Logic Space)  (Semantic Map)    (Relation Graph)   │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -384,7 +391,7 @@ mandol/
 
 ## Performance
 
-Mandol is comprehensively evaluated on the LoCoMo (Long Conversational Memory) and LongMemEval benchmarks. Evaluation uses LLM-as-judge to determine whether generated answers are consistent with ground truth answers.
+Mandol is evaluated on the LoCoMo (Long Conversational Memory) and LongMemEval benchmarks. Evaluation uses LLM-as-judge to determine whether generated answers are consistent with ground truth answers.
 
 ### Key Metrics
 
@@ -413,7 +420,7 @@ Mandol is comprehensively evaluated on the LoCoMo (Long Conversational Memory) a
 | EverMemOS | 2.8k | 93.33 | 85.71 | 77.44 | 73.68 | 89.74 | 97.14 | 83.00 |
 | **Mandol (Ours)** | 2.3k | **96.67** | **98.21** | **87.22** | **77.44** | **89.74** | **98.57** | **88.40** |
 
-> **Note**: The overall metric excludes adversarial queries. † denotes results reproduced using the official EverMemOS implementation. Best results are in **bold**.
+> Overall metric excludes adversarial queries. † denotes results reproduced using the official EverMemOS implementation.
 
 ### Quick Reproduce
 
@@ -433,7 +440,7 @@ python generate.py --config configs/base.yaml --input output/ --output output/
 python evaluate.py --input output/ --output output/
 ```
 
-📖 For complete test environment configuration, dataset details, ablation experiments, and full performance comparison tables, see [LoCoMo Benchmark](benchmarks/locomo/README.md) and [LongMemEval Benchmark](benchmarks/longmemeval/README.md).
+For complete test environment configuration, dataset details, ablation experiments, and full performance comparison tables, see [LoCoMo Benchmark](benchmarks/locomo/README.md) and [LongMemEval Benchmark](benchmarks/longmemeval/README.md).
 
 ## FAQ
 
@@ -458,14 +465,14 @@ A: Verify `OPENAI_API_KEY` is correct and the API endpoint is reachable. You can
 
 ### Performance Optimization
 
-**Q: Retrieval is slow — how to optimize?**
+**Q: Retrieval is slow. How to optimize?**
 A:
 1. Use FAISS index acceleration: `pip install mandol[faiss]`
 2. Reduce `bfs_expansion_hops` (default 1 → 0)
 3. Disable reranking: `holistic_retrieve(query, use_rerank=False)`
 4. Use GPU for embedding: `MANDOL_EMBEDDER_DEVICE=cuda`
 
-**Q: Memory usage is too high — how to optimize?**
+**Q: Memory usage is too high. How to optimize?**
 A:
 1. Use remote Embedding/Reranker instead of local models
 2. Reduce `similarity_recent_window`

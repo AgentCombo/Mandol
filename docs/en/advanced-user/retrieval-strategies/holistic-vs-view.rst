@@ -34,11 +34,16 @@ retrieve_in_space — By Space Scope
 
 Only retrieves within the specified space. Suitable for precise queries when you know where the data is.
 
-search() (Planned) — Most Flexible
-------------------------------------
+search() (Planned) — Customizable Pipeline
+--------------------------------------------
+
+.. warning::
+
+   This interface is not yet implemented. The code below shows the planned API signature.
 
 .. code-block:: python
 
+   # Planned — not yet available
    hits = system.search("refund policy", retriever_types=["dense"], use_graph_expansion=True)
 
 Customizable retriever combinations and graph expansion. Suitable when you need to control the retrieval pipeline.

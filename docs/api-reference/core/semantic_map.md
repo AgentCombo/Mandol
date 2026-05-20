@@ -1,4 +1,4 @@
-# SemanticMapService (语义索引 / Semantic Index) API Reference
+# SemanticMapService (语义映射表 / Semantic Map) API Reference
 
 ## Overview
 

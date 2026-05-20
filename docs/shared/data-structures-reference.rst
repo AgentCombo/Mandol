@@ -215,7 +215,7 @@
 
 .. _dsref-semantic-map:
 
-语义索引 (SemanticMap)
+语义映射表 (SemanticMap)
 ----------------------
 
 ``SemanticMapService``（位于 ``mandol.application.semantic_map``）是管理记忆存储与向量索引的核心服务。

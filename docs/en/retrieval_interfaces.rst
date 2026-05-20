@@ -244,7 +244,7 @@ Unified Full-Memory Retrieval Interface
 holistic_retrieve
 ^^^^^^^^^^^^^^^^^
 
-Full-memory retrieval interface, the most versatile and powerful retrieval method in the system.
+Full-memory retrieval interface, the most comprehensive retrieval method in the system.
 
 .. code-block:: python
 

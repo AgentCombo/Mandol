@@ -6,7 +6,7 @@
 
 这是最常见的问题。
 
-**最常见的原因：没有手动构建高阶记忆**
+**最常见的原因：未手动构建高阶记忆**
 
 系统在 ``add()`` 时会异步检测话题边界并自动触发高阶记忆构建，但这个过程需要时间。如果你在添加少量数据后立即检索，高阶记忆可能还未构建完成。
 
@@ -25,7 +25,7 @@
 
    仅检索原始对话（BASE 组）时无需等待 ``build_high_level``，``add()`` 后即可检索。但检索实体/事件/摘要（ENTITY/EVENT/SUMMARY 组）时需要高阶记忆已构建完成。
 
-**调了 build_high_level 还是空？**
+**已调用 build_high_level 仍返回空？**
 
 1. 确认你添加的记忆中有 ``text_content`` 字段（不是 ``text``、``content``、``body`` 等）
 2. 确认 ``text_content`` 的值是**纯文本**，不是 PDF 内容、Markdown 源码、HTML 标签等
@@ -63,7 +63,7 @@
 运行时问题
 ----------
 
-**CUDA out of memory（显存爆炸）**
+**CUDA out of memory**
 
 本地模型模式下，Embedding 和 Reranker 模型各需约 4GB 显存。解决方案：
 
@@ -102,7 +102,7 @@
 
 .. code-block:: python
 
-   # 一行代码查看内存、单元数、图状态等
+   # 使用 monitor 属性查看内存、单元数、图状态等
    print(system.monitor)
 
    # 或获取详细指标

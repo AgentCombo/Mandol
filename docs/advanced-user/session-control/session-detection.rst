@@ -15,7 +15,7 @@ Mandol 使用双重策略进行会话分割。
    # system:
    #   session_time_gap_seconds: 1800  # 30分钟
 
-策略二：LLM 智能分割
+策略二：LLM 语义分割
 --------------------
 
 累积 ``session_check_interval`` 条记忆 → 调用 LLM 判断会话边界。

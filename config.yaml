@@ -14,10 +14,10 @@ llm:
 
 # Embedding Configuration
 embedder:
-  # Local mode (default): uses sentence-transformers
-  model: "sentence-transformers/all-MiniLM-L6-v2"
+  # Local mode (default): uses sentence-transformers or vLLM remote API
+  model: "Qwen/Qwen3-Embedding-4B"
   device: "cpu"  # "cpu" or "cuda"
-  dimension: 384
+  dimension: 2560
 
   # Remote mode: set use_remote to true and configure base_url
   use_remote: false
@@ -28,8 +28,8 @@ embedder:
 
 # Reranker Configuration
 reranker:
-  # Local mode: uses sentence-transformers CrossEncoder
-  model: "cross-encoder/ms-marco-MiniLM-L-6-v2"
+  # Local mode: uses sentence-transformers CrossEncoder or vLLM remote API
+  model: "Qwen/Qwen3-Reranker-4B"
   device: "cpu"  # "cpu" or "cuda"
 
   # Remote mode: set use_remote to true and configure base_url

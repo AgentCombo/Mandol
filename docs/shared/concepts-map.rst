@@ -3,76 +3,59 @@
 
 Mandol 的核心概念之间如何关联？下图给出全局视图。
 
-.. mermaid::
+.. _diagram-placeholder-concepts-1:
 
-   graph TB
-       U[用户] -->|创建| MU[MemoryUnit 记忆单元]
-       MU -->|存储在| SMAP[SemanticMap 语义索引]
-       SMAP -->|组织到| MS[MemorySpace 记忆空间]
-       MS -->|层级嵌套| MS2[MemorySpace 子空间]
+.. admonition:: 占位：核心概念关系全景图
+   :class: hint
 
-       U -->|调用| ADD[add 添加]
-       ADD -->|写入| SMAP
-       ADD -->|向量化| EMB[EmbeddingProvider]
-       EMB -->|写入| VI[VectorIndex 向量索引]
+   **此图需要展示的内容：**
 
-       U -->|调用| BHL[build_high_level 构建高阶记忆]
-       BHL -->|触发| SM[SessionManager 会话管理]
-       SM -->|分割| SESS[Session 会话]
-       SESS -->|驱动| MDG[MultiDimSemanticGraph 多维度构建]
-       MDG -->|提取| ENT[Entity 实体]
-       MDG -->|提取| EVT[Event 事件]
-       MDG -->|生成| SUMM[Summary 摘要]
-       MDG -->|建立| REL[Relationship 关系]
+   从 **用户** 出发的三条主线：
 
-       ENT -->|写入| SGPH[SemanticGraph 语义图]
-       EVT -->|写入| SGPH
-       SUMM -->|写入| SMAP
-       REL -->|写入| SGPH
+   1. **写入线（add）**：用户 → MemoryUnit → SemanticMap → MemorySpace（层级嵌套），同时 MemoryUnit → EmbeddingProvider → VectorIndex
+   2. **构建线（build_high_level）**：触发 SessionManager 进行会话分割 → 每 Session 内：SummaryMapReducer（四类摘要）、UnifiedFactPipeline（实体/事件/关系提取）、InsightMapReducer（洞察提炼）→ CrossSessionCorefManager（跨会话实体/事件合并）→ GlobalInsightManager（全局洞察累积）
+   3. **检索线（holistic_retrieve）**：查询 → 四组召回（BASE/ENTITY/EVENT/SUMMARY）→ 每组三路检索（Dense/BM25/Sparse）→ RRF 融合 → BFS 图扩展 ← SemanticGraph → Reranker 重排 → SearchHit
 
-       U -->|调用| HR[holistic_retrieve 全记忆检索]
-       HR -->|召回| DENSE[Dense 稠密检索]
-       HR -->|召回| BM25[BM25 关键词检索]
-       HR -->|召回| SPARSE[Sparse 稀疏检索]
-       DENSE -->|融合| RRF[RRF 融合]
-       BM25 -->|融合| RRF
-       SPARSE -->|融合| RRF
-       RRF -->|扩展| BFS[BFS 图扩展]
-       SGPH --> BFS
-       BFS -->|精排| RR[Reranker 重排]
-       RR -->|返回| HIT[SearchHit 检索命中]
-
-   style MU fill:#e1f5fe
-   style SMAP fill:#e1f5fe
-   style MS fill:#e1f5fe
-   style SGPH fill:#e8f5e9
-   style HR fill:#fff3e0
-   style HIT fill:#fce4ec
+   建议将三条主线用不同颜色区分，垂直排列，从左到右展示"写入 → 构建 → 检索"的时间顺序。
 
 核心概念一句话解释
 ------------------
 
-- **MemoryUnit**：你要记住的最小事，一条消息 / 一个知识点 / 一个事件
-- **MemorySpace**：分类盒，把记忆按主题或层次分组
-- **SemanticMap**：档案室管理员，管存放和查找
-- **SemanticGraph**：关系网络，记录「谁和谁有什么关系」
-- **SessionManager**：书记员，判断什么时候开始新话题
-- **build_high_level**：消化指令，把原始笔记变成结构化卡片
-- **holistic_retrieve**：提问指令，系统自动找到最相关的内容
+- **MemoryUnit**：最小记忆载体，一条消息 / 一个知识点 / 一个事件
+- **MemorySpace**：逻辑容器，按主题或层次组织记忆单元
+- **SemanticMap**：存储与检索服务，管理单元的存放和查找
+- **SemanticGraph**：关系图，记录记忆单元间的关系
+- **SessionManager**：会话管理器，检测话题边界并分割会话
+- **DocumentChunker**：文档分块器，将过长记忆按句子边界切分
+- **SummaryMapReducer**：摘要 Map-Reduce 处理器，分块提取四种摘要后归约合并
+- **UnifiedFactPipeline**：统一事实管线，从对话中提取实体、事件及其关系
+- **CrossSessionCorefManager**：跨会话共指消解，合并不同 Session 中相同指代的实体/事件
+- **GlobalInsightManager**：全局洞察管理器，跨 Session 累积合并深层洞察
+- **build_high_level**：处理指令，将原始数据构建为结构化记忆
+- **holistic_retrieve**：检索指令，从全记忆中返回最相关的内容
 
-数据流简图
-----------
+高阶记忆构建流程简图
+--------------------
 
 ::
 
-   原始对话 → add() → 向量化 + 索引
-                              ↓
-              build_high_level()
-                              ↓
-        会话分割 → 实体 / 事件 / 摘要 / 关系
-                              ↓
-              holistic_retrieve()
-                              ↓
-      三路召回 → RRF 融合 → BFS 扩展 → Rerank
-                              ↓
-                        SearchHit[]
+   原始对话 → add()
+       │
+       ├── 1. 分块（过长文本按句子边界切分）
+       ├── 2. 向量化 + 存储 + 相似度建边
+       └── 3. 进入待处理队列
+              ↓
+       build_high_level()
+       │
+       ├── 4. 会话分割（LLM 语义分析，检测话题边界）
+       ├── 5. 空间创建（每 Session 独立空间，全局空间层级幂等创建）
+       ├── 6. 四类摘要 Map-Reduce（情景/知识/情感/程序）
+       ├── 7. 实体/事件/关系统一提取 + 跨会话共指消解
+       ├── 8. Session 洞察提炼
+       └── 9. 全局洞察增量合并
+              ↓
+       holistic_retrieve()
+       │
+       ├── 10. 四组三路召回
+       ├── 11. RRF 融合 + BFS 图扩展
+       └── 12. Cross-Encoder 重排 → SearchHit[]

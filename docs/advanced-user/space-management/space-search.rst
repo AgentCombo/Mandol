@@ -25,6 +25,7 @@
    results = system.semantic_map.search_by_text_with_rerank(
        "退货流程", top_k=10
    )
+   <!-- TODO: 验证 API 签名 -->
    results = system.semantic_map.search_in_space(
        query_embedding, space_name="客服-用户A", top_k=10
    )

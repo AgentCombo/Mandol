@@ -27,6 +27,8 @@ env/
 
 # IDE / Editor tooling caches
 .trae/
+.cursor/
+.claude/
 .ruff_cache/
 
 # Environment variables

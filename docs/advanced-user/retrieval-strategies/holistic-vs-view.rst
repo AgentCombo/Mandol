@@ -3,7 +3,7 @@
 
 三种检索方式对比。
 
-holistic_retrieve — 最省心
+holistic_retrieve — 全记忆检索
 ---------------------------
 
 .. code-block:: python
@@ -34,12 +34,14 @@ retrieve_in_space — 按空间范围
 
 只检索指定空间。适合已知数据在哪里的精确查询。
 
-search()（预想）— 最灵活
+search()（预想）— 可定制管线
 -------------------------
 
 .. code-block:: python
 
    hits = system.search("退款政策", retriever_types=["dense"], use_graph_expansion=True)
+
+.. warning:: ⚠️ Planned — 此接口尚未实现，签名可能变更
 
 可定制检索器组合和图扩展。适合需要控制检索管线的场景。
 

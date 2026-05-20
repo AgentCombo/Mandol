@@ -4,26 +4,23 @@ What is Mandol?
 One-Sentence Version
 --------------------
 
-Mandol is a system that gives AI "memory." You feed it conversations, it automatically understands and organizes them, and later you can query it using natural language as if asking a person.
+Mandol provides memory capabilities for AI agents. Add text data to the system, and it automatically extracts structured information and builds indexes for later retrieval via natural language queries.
 
 A Slightly Longer Version
 -------------------------
 
-Imagine you have a super assistant:
+Mandol receives your conversation records, automatically identifies topic boundaries, extracts key entities and events, and lets you retrieve information later using natural language queries.
 
-- You chat, meet, and discuss work with different people every day
-- The assistant silently takes notes, and after each meeting automatically organizes key points into structured notes
-- Key people, important events, knowledge points — all categorized and stored
-- When you need to look something up, just ask "What was the quote the client mentioned last Wednesday?" and the assistant responds instantly
-
-Mandol is the AI version of this assistant.
+- Conversations are segmented by semantic topic changes
+- Key people, events, and knowledge points are extracted and categorized
+- You can query across multiple conversations, e.g., "What did the client mention last Wednesday?"
 
 What Can It Do?
 ---------------
 
-- Remember conversations, documents, any text information
-- Automatically extract people, places, events, knowledge points
-- Understand that "working from home" and "remote work" mean the same thing
+- Store conversations, documents, and other text-based information
+- Extract people, places, events, and knowledge points via LLM analysis
+- Match semantically equivalent expressions (e.g., queries and documents using different wording for the same concept)
 - Find related information across multiple conversations
 - Retrieve from different perspectives (knowledge perspective, event perspective, etc.)
 
@@ -37,4 +34,4 @@ What Can't It Do?
 How Do I Get Started?
 ---------------------
 
-The fastest way: head to :doc:`five-minute-start`, copy and paste the code, and have it running in 5 minutes.
+Head to :doc:`five-minute-start`, copy and paste the code, and have it running in 5 minutes.

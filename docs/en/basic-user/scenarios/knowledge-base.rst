@@ -79,13 +79,13 @@ Batch Import Tips
 -------------------
 
 - Use ``add_many`` for bulk document imports
-- Keep default ``chunk_max_tokens: 512`` for long documents (best results in practice)
+- Keep default ``chunk_max_tokens: 512`` for long documents (recommended default)
 - In knowledge base scenarios, the system still segments by semantic topic changes — "session" is not limited to conversations but is a semantically coherent topic unit
 
 Understanding "Sessions"
 -------------------------
 
-A "Session" in Mandol is not just a conversation concept. Its essence is a **semantic topic boundary**:
+In Mandol, a "Session" is a **semantic topic boundary**, not limited to conversations:
 
 - In conversation scenarios, one session = one coherent conversation
 - In knowledge base scenarios, one session = a group of topically related documents

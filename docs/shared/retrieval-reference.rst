@@ -27,7 +27,7 @@
      - 基础/高级
      - BASE+ENTITY+EVENT+SUMMARY
      - Dense+BM25+Sparse+Graph+Reranker
-     - 一行调用全记忆检索
+     - 单次调用检索全部记忆层级
    * - ``retrieve_by_view``
      - 公开
      - 高级
@@ -144,6 +144,8 @@ retrieve_in_space
 retrieve_event_causal_chain — 事件因果链检索
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+.. warning:: ⚠️ Planned — 此接口尚未实现，签名可能变更
+
 沿 CAUSES / CAUSED_BY 边追溯事件的因果链，返回完整的前因后果。
 
 .. code-block:: python
@@ -172,6 +174,8 @@ retrieve_event_causal_chain — 事件因果链检索
 
 smart_quantized_query — 智能量化查询
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. warning:: ⚠️ Planned — 此接口尚未实现，签名可能变更
 
 在 token 预算约束下，通过查询路由 → 智能去噪 → 级联装箱三阶段，产出信息密度最优的紧凑上下文。
 
@@ -218,6 +222,8 @@ smart_quantized_query — 智能量化查询
 retrieve_with_reasoning_path — 带推理路径的检索
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+.. warning:: ⚠️ Planned — 此接口尚未实现，签名可能变更
+
 基于 SubgraphHopRetriever 的加权多跳图扩展，返回结果包含完整的推理路径。
 
 .. code-block:: python
@@ -238,6 +244,8 @@ retrieve_with_reasoning_path — 带推理路径的检索
 retrieve_entity_timeline — 实体时间线检索
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+.. warning:: ⚠️ Planned — 此接口尚未实现，签名可能变更
+
 按时间排序返回与指定实体相关的所有事件和对话，形成时间线。
 
 .. code-block:: python
@@ -255,6 +263,8 @@ retrieve_entity_timeline — 实体时间线检索
 
 retrieve_session_context — 会话上下文检索
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. warning:: ⚠️ Planned — 此接口尚未实现，签名可能变更
 
 检索指定会话的完整上下文，支持跨相邻会话扩展。
 
@@ -452,6 +462,8 @@ SubgraphHopRetriever — 多跳推理检索
 retrieve_entity_subgraph — 实体子图检索
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+.. warning:: ⚠️ Planned — 此接口尚未实现，签名可能变更
+
 以指定实体为中心，沿 RELATED_TO / ALIAS_OF / LOCATED_IN 等边扩展，返回实体关系全景。
 
 .. code-block:: python
@@ -472,6 +484,8 @@ retrieve_entity_subgraph — 实体子图检索
 
 trace_evidence — 自顶向下溯源
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. warning:: ⚠️ Planned — 此接口尚未实现，签名可能变更
 
 从高阶记忆（实体/事件/摘要/洞察）出发，沿 EVIDENCED_BY 边向下追溯到原始对话证据。
 
@@ -503,6 +517,8 @@ trace_evidence — 自顶向下溯源
 
 trace_coref — 自底向上共指消解
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. warning:: ⚠️ Planned — 此接口尚未实现，签名可能变更
 
 从基础对话单元出发，沿 COREF 边向上追溯到规范实体/事件，再沿 EVIDENCED_BY 边回到其他引用同一实体的对话。
 
@@ -539,6 +555,8 @@ trace_coref — 自底向上共指消解
 retrieve_summary_evidence_chain — 摘要溯源链
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+.. warning:: ⚠️ Planned — 此接口尚未实现，签名可能变更
+
 从摘要出发，沿 EVIDENCED_BY 边追溯到原始对话，再沿 COREF 边向上到实体/事件，形成完整的溯源链。
 
 .. code-block:: python
@@ -562,6 +580,8 @@ retrieve_summary_evidence_chain — 摘要溯源链
 
 retrieve_entity_involvement — 实体参与事件检索
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. warning:: ⚠️ Planned — 此接口尚未实现，签名可能变更
 
 从实体出发，沿 INVOLVES 边（反向）找到涉及该实体的所有事件，支持按角色过滤。
 

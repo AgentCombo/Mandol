@@ -1,96 +1,268 @@
 高级深度：完整记忆构建与检索流程
 =====================================
 
-本节详细展示 Mandol 从接收原始对话到返回检索结果的完整技术流程，包含每个环节的内部机制和可调参数。
+本节以自然语言详细描述 Mandol 从接收原始对话到返回检索结果的完整技术流程。文中不再使用过于复杂的流程图，而是在关键节点提供流程描述，方便你理解每个环节的内部机制和可调参数。
+
+.. note::
+
+   如果你想快速了解流程概览，请先阅读 :doc:`basic-flow`，那里用三句话总结了核心过程。
 
 整体流程
 --------
 
-.. mermaid::
+一条记忆从调用 ``add()`` 到能够通过 ``holistic_retrieve()`` 被检索到，经历了三个大阶段：
 
-   sequenceDiagram
-       participant U as 用户
-       participant MS as MemorySystem
-       participant SM as SessionManager
-       participant MDG as MultiDimSemanticGraph
-       participant LLM as LLM / Embedder
+1. **写入阶段（add）**：原始数据入库，包括自动分块、向量化、相似度建边
+2. **构建阶段（build_high_level）**：对已入库的记忆进行结构化加工，包括会话分割、多类型摘要生成、实体/事件提取、洞察提炼、跨会话合并
+3. **检索阶段（holistic_retrieve）**：多组多路召回、融合、图扩展、重排序
 
-       U->>MS: add(unit)
-       Note over MS: 自动分块 + 向量化 + 相似度建边
+下面逐一展开每个阶段的内部细节。
 
-       U->>MS: build_high_level(mode="auto")
-       MS->>SM: 获取未处理记忆
-       SM->>LLM: 会话边界检测
-       LLM-->>SM: 会话分割结果
-
-       SM->>MDG: build_session(session)
-       Note over MDG: 五维度构建器依次执行
-
-       MDG->>LLM: 提取摘要 / 实体 / 事件 / 关系
-       LLM-->>MDG: 提取结果
-       MDG-->>MS: 构建完成 + 跨会话合并
-
-       U->>MS: holistic_retrieve(query)
-       Note over MS: 分组召回 → 三路检索 → RRF
-       Note over MS: BFS 扩展 → 全局 Rerank
-       MS-->>U: SearchHit 列表
+.. _pipeline-stage1:
 
 阶段一：add() — 原始数据入库
 -----------------------------
 
-1. **自动分块**：如果文本超过 ``chunk_max_tokens``（默认 512），系统自动拆分为多个子单元
-2. **自动向量化**：对 ``raw_data`` 中的 ``text_content`` 字段生成 Dense Embedding；对 BM25 和 TF-IDF 生成稀疏索引
-3. **会话排队**：记忆进入待处理队列，当累积数量达到 ``session_check_interval``（默认 20）时触发会话检测
-4. **相似度建边**：新记忆与最近 ``similarity_recent_window``（默认 20）条记忆计算语义相似度，超过 ``similarity_threshold``（默认 0.7）时建立 ``SEMANTIC_SIMILAR`` 边
+当你调用 ``system.add(unit)`` 时，系统依次执行以下步骤：
+
+**1. 自动分块（Chunking）**
+
+系统首先检查记忆单元的文本长度。如果超过 ``chunk_max_tokens``（默认 512 token），则按句子边界将文本切分为多个子单元。每个子单元保留对父单元的引用（``parent_uid``），并携带 ``chunk_index`` 标记分块序号。
+
+分块策略：
+  - 使用 ``tiktoken``（cl100k_base 编码）或启发式算法估算 token 数
+  - 按句末标点（``. ! ? 。！？``）切分句子，逐句累积直到接近上限
+  - 可配置 ``overlap_tokens`` 在相邻分块间保留上下文重叠
+
+如果文本较短，不满足分块条件，则直接作为单个单元进入下一步。
+
+**2. 向量化与存储**
+
+对每个单元（或分块后的子单元）的文本内容，调用 EmbeddingProvider 生成稠密向量（Dense Embedding），同时为 BM25 和 TF-IDF 构建稀疏索引。随后将单元持久化到 UnitStore，并将向量写入 VectorIndex。
+
+**3. 即时相似度建边**
+
+新单元入库后，系统立即计算它与最近 ``similarity_recent_window``（默认 20）条已有记忆的余弦相似度。相似度超过 ``similarity_threshold``（默认 0.7）的单元对之间建立 ``SEMANTIC_SIMILAR`` 图边。已处理过的单元对会被跳过，避免重复计算。
+
+**4. 进入待处理队列**
+
+单元被追加到待处理队列 ``_pending_units`` 中。系统支持两种会话检测模式：
+
+- **同步模式**：你显式调用 ``build_high_level()`` 时，批量处理队列中的所有待处理单元
+- **异步模式**（默认开启）：系统在后台自动检测队列长度，当累积单元数达到阈值时触发会话检测，无需等待显式调用
+
+异步模式下，会话检测在独立线程池中运行，不会阻塞 ``add()`` 的返回。当待处理单元超过 ``SESSION_MAX_PENDING``（默认 100）时，会触发强制刷新保护。
+
+.. _pipeline-stage2:
 
 阶段二：build_high_level() — 高阶语义构建
 ------------------------------------------
 
-``mode="auto"`` 仅处理增量，``mode="force"`` 全量重建。
+这是 Mandol 最核心的阶段。``mode="auto"`` 仅处理增量（新的待处理单元），``mode="force"`` 则执行导出-重建策略：导出所有基础单元和时序边，清空存储/索引/图，从头重新执行全部构建步骤。
 
-子流程：
+.. _diagram-placeholder-1:
 
-**1. 会话分割**
-   - 系统通过 LLM 语义分析检测话题边界，将记忆按语义主题分组
-   - 时间间隔仅作为 LLM 判断的参考信息，不单独触发分割
-   - 每累积 ``session_check_interval``（默认 20）条记忆触发一次 LLM 分析
-   - LLM Prompt 明确要求：「时间间隔仅作参考，不能单独作为分割理由」
+.. admonition:: 占位：高阶记忆构建流程全景图
+   :class: hint
 
-**2. 空间布局 (LayoutNormalization)**
-   - 为每个会话创建多维度空间层级
-   - 空间命名基于会话起始消息索引（如 ``msg_0_25``）
+   **此图需要展示的内容：**
 
-**3. 维度构建 (五个构建器)**
+   从 ``add()`` 写入的原始记忆单元出发，依次经过 **分块 → 会话分割 → 空间创建 → 摘要生成（四类并行）→ 实体/事件提取 → 洞察提炼 → 跨会话合并 → 全局洞察更新** 的完整流程。用横向流程箭头连接各阶段，每个阶段下方标注关键配置参数和产物。
 
-   每个维度构建器负责一类记忆的提取和关系建模：
+   建议采用横向分栏或纵向分层布局，突出"一条原始对话如何逐步变成结构化记忆"的叙事。
 
-   .. list-table::
-      :header-rows: 1
-      :widths: 30 40 30
+下面按流程顺序逐一说明每个子阶段。
 
-      * - 构建器
-        - 产出
-        - 边类型
-      * - HighLevelSummary
-        - 情景 / 知识 / 情感 / 程序摘要
-        - ``EVIDENCED_BY``
-      * - EntityRelation
-        - 实体节点
-        - ``RELATED_TO`` / ``COREF`` / ``EVIDENCED_BY``
-      * - EventCausal
-        - 事件节点
-        - ``CAUSES`` / ``CAUSED_BY`` / ``INVOLVES``
-      * - SemanticSimilarity
-        - 无新节点
-        - ``SEMANTIC_SIMILAR``
-      * - LayoutNormalization
-        - 空间层级
-        - 父子空间关系
+.. _pipeline-sessioning:
 
-**4. 跨会话合并**
-   - 在 ``build_high_level()`` 内部自动触发
-   - ``merge_cross_session_entities()``：合并不同会话中相同指代的实体
-   - ``merge_cross_session_events()``：合并不同会话中相同的事件
+2.1 会话分割（Sessioning）
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+系统将相邻的记忆单元内容送入 LLM 进行语义主题划分。
+
+**工作原理**：
+
+- SessionManager 取待处理队列中最近 ``MAX_CONTEXT_UNITS``（默认 20）条单元，按时间戳排序后格式化为带编号和时间的文本行
+- 将这些文本连同系统提示词一起发送给 LLM，LLM 根据语义/情景边界判断哪些位置应该分割
+- LLM 返回分割点列表（1-based 行号索引），以及一个 ``should_wait`` 标志，表示是否需要等待更多上下文再做判断
+- 从右向左处理分割点（保持左侧索引有效），每个分割段独立成为一个 Session
+
+**异步自调度机制**：
+
+在异步模式下，单次 LLM 调用完成后会检查是否有新单元进入队列。如果有，自动再次调度检测，形成"有数据就检测、没数据就停"的自适应节奏。这确保了实时对话场景下，会话边界能在后台被持续发现，无需人工周期性调用。
+
+**兜底保护**：
+
+- 当待处理单元超过 ``SESSION_MAX_PENDING``（默认 100）时，直接强制全部 flush 为一个会话
+- LLM 调用重试耗尽后，返回"不分割"的兜底结果，避免流程卡死
+
+.. _pipeline-space-layout:
+
+2.2 空间布局（Space Layout）
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+每个新检测到的 Session 会获得唯一的 session ID（格式：``sess_YYYYMMDD_NNN``），并创建对应的记忆空间：
+
+.. code-block::
+
+   {root}_session_{session_id}    # 例如 default_session_sess_20260519_001
+
+该空间作为 ``base_memory`` 的子空间，本 Session 内所有单元（包括原始对话和后续提取的高阶单元）都会被归属到这个空间下，方便按 Session 粒度检索和追溯。
+
+同时，系统确保如下全局空间层级存在（按需创建，幂等）：
+
+.. code-block::
+
+   {root}_base_memory              # 基础记忆
+   {root}_high_level_memory        # 高阶记忆根
+   ├── {root}_episodic             # 情景记忆
+   │   ├── {root}_episodic_summary #   情景摘要
+   │   └── {root}_episodic_event   #   情景事件
+   ├── {root}_knowledge            # 知识记忆
+   │   ├── {root}_knowledge_summary#   知识摘要
+   │   └── {root}_knowledge_entity #   知识实体
+   ├── {root}_emotional            # 情感记忆
+   ├── {root}_procedural           # 程序记忆
+   └── {root}_insights             # 洞察记忆
+
+.. _pipeline-summary:
+
+2.3 多类型摘要生成（Summary Map-Reduce）
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+对每个 Session 内的原始对话单元，系统采用 **Map-Reduce 模式** 生成四类摘要，避免单次 LLM 调用超出上下文窗口。
+
+**Map 阶段**：
+  - 将 Session 内单元按 token 预算分块（每块默认最多 2560 token，30 条单元）
+  - 对每个分块，**并行**调用 LLM 进行四类提取（各类型独立 prompt，共 4 次并行调用）：
+
+    * **情景摘要（Episodic）**：时间线、关键人物、主要事件、地点信息
+    * **知识摘要（Knowledge）**：核心概念、关键事实、技术方法、前置知识
+    * **情感摘要（Emotional）**：用户偏好、情感反应、行为模式
+    * **程序摘要（Procedural）**：操作流程、关键步骤、决策点、前置条件
+
+**Reduce 阶段**：
+  - 对每类摘要的分块结果，两两合并送入 LLM 进行归约
+  - 多轮归约后，每类最终收敛为一个 Session 级摘要
+  - 每类归约相互独立，四类并行执行
+
+**结果落盘**：
+  - 每类摘要被封装为 MemoryUnit，存储到对应空间
+  - 与原始对话单元之间建立 ``EVIDENCED_BY`` 图边，保证可追溯
+
+.. _pipeline-entity-event:
+
+2.4 实体与事件提取（Unified Fact Pipeline）
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+系统使用统一事实管线（``UnifiedFactPipeline``）从 Session 对话中提取实体和事件。这一管线取代了旧版的五维度构建器架构。
+
+**实体提取**：
+  - 拼接 Session 内所有对话文本
+  - 通过多信号检索（名称别名匹配 + BM25 关键词 + 向量相似度）召回已有实体作为上下文
+  - 调用 LLM 从对话中识别新实体，并自动与已有实体关联（``linked_id``）
+  - 提取的实体包含：名称、类型（Person/Place/Organization 等）、描述、别名
+
+**事件提取**：
+  - 基于已提取的实体和现有事件上下文，调用 LLM 从对话中识别事件
+  - 提取的事件包含：事件类型、参与者、时间、地点、描述
+
+**关系与因果提取**（与事件提取并行）：
+  - **实体关系**：调用 LLM 判断实体间语义关系，类型包括 ``located_in``、``works_at``、``part_of``、``hometown`` 等
+  - **事件因果**：调用 LLM 判断事件间的因果关系（``CAUSES`` / ``CAUSED_BY``）和时序关系
+
+.. _pipeline-insight:
+
+2.5 洞察提炼（Insight Extraction）
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+四类摘要生成完毕后，系统调用 InsightMapReducer 将摘要文本送入 LLM，提炼更深层的洞察：
+
+- **模式识别**：跨类别的行为模式和偏好
+- **因果关系**：从表层事件中发现的深层因果链
+- **预测性洞察**：对未来行为的推断和建议
+- **行为特征**：深层的行为和思维特征
+- **优化建议**：具体的可操作建议
+- **风险提示**：潜在问题和警告
+
+洞察单元同样被存储到对应空间，并与支撑它的四类摘要之间建立 ``EVIDENCED_BY`` 边。
+
+.. _pipeline-cross-session:
+
+2.6 跨会话合并与全局洞察
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+单个 Session 处理完成后，系统自动执行跨会话级别的合并与累积。
+
+**实体/事件跨会话合并（CrossSessionCorefManager）**：
+  - 对于新提取的实体，通过多信号检索找到跨 Session 的候选匹配
+  - 调用 LLM 裁判判断两个实体是否为同一指代（共指消解）
+  - 合并后的规范实体跨多个 Session 共享，从各对话单元建立 ``COREF`` 边指向它
+  - 事件合并遵循相同模式：高相似度 + 时间接近 → 合并为同一事件
+
+**全局洞察累积（GlobalInsightManager）**：
+  - 首个 Session 的洞察直接成为全局洞察的初始值
+  - 后续 Session 的洞察通过 LLM 与现有全局洞察进行增量合并
+  - LLM 合并策略：重叠内容融合、独有内容追加、保持多样性
+  - 全局洞察作为单一 MemoryUnit（``global_insight_v1``）持久化，每次合并后重新生成向量
+  - LLM 合并失败时，退化为简单的并集拼接
+
+.. _pipeline-stage3:
+
+阶段三：holistic_retrieve() — 统一检索
+----------------------------------------
+
+构建完成后的检索管线：
+
+**1. 查询向量化**：对查询文本生成 Dense Embedding
+
+**2. 分组召回**：检索请求分发到四个检索组，各组独立执行
+
+   - **BASE**：原始对话 + 程序总结
+   - **ENTITY**：知识实体
+   - **EVENT**：情景事件
+   - **SUMMARY**：情景/知识/情感/洞察总结
+
+**3. 三路召回**：每组内部独立执行稠密向量、BM25 关键词、稀疏向量三路检索
+
+**4. RRF 融合**：使用倒数排名融合（Reciprocal Rank Fusion）合并三路结果
+
+**5. BFS 图扩展**：以融合结果 Top-K 为种子，沿图关系扩展候选集（参数：``bfs_expansion_per_seed`` / ``bfs_expansion_hops``）
+
+**6. 全局 Rerank**：通过 Cross-Encoder 对所有候选重排序，返回最终 ``SearchHit`` 列表
+
+.. note::
+
+   如果 ``holistic_retrieve()`` 发现高阶记忆为空（尚未执行过 ``build_high_level()``），
+   并且参数 ``auto_build_if_empty=True``（默认），系统会自动触发一次 ``build_high_level("auto")``，
+   确保检索不会返回空结果。
+
+.. _diagram-placeholder-2:
+
+.. admonition:: 占位：三阶段检索管线全景图
+   :class: hint
+
+   **此图需要展示的内容：**
+
+   展示阶段三的检索管线：**查询输入 → 向量化 → 四组并行召回（BASE/ENTITY/EVENT/SUMMARY）→ 每组三路检索（Dense/BM25/Sparse）→ RRF 融合 → BFS 图扩展 → Cross-Encoder 重排 → SearchHit 输出**。
+
+   建议采用从左到右的管线布局，各组召回和融合步骤用不同颜色区分。
+
+构建报告（BuildReport）
+------------------------
+
+``build_high_level()`` 返回一个 ``BuildReport`` 对象，包含以下字段供你了解构建结果：
+
+- ``status``：构建状态（success / partial / failed）
+- ``mode``：本次构建模式（auto / force）
+- ``sessions_processed``：处理的会话数
+- ``units_processed``：处理的单元数
+- ``duration_seconds``：总耗时
+- ``token_usage``：LLM token 消耗统计（prompt_tokens / completion_tokens / total_tokens）
+- ``warnings``：构建过程中的警告信息列表
+- ``error_message``：失败时的错误信息
+
+你也可以随时通过 ``system.get_token_usage()`` 查询累计 token 消耗。
 
 多视角记忆表示
 --------------
@@ -136,16 +308,14 @@
 - ``FOLLOWS``：时序边（后一条对话指向前一条）
 - ``SEMANTIC_SIMILAR``：语义相似边（基于向量相似度阈值）
 
-**图结构示例**：
+.. _diagram-placeholder-3:
 
-.. mermaid::
+.. admonition:: 占位：基础记忆图结构示例
+   :class: hint
 
-   graph LR
-       D1["dialogue_001<br>我去北京出差"] -->|PRECEDES| D2["dialogue_002<br>参观了故宫"]
-       D2 -->|PRECEDES| D3["dialogue_003<br>还去了长城"]
-       D2 -->|FOLLOWS| D1
-       D3 -->|FOLLOWS| D2
-       D1 -.->|SEMANTIC_SIMILAR| D2
+   **此图需要展示的内容：**
+
+   三条对话单元（dialogue_001/002/003）之间的 PRECEDES/FOLLOWS 时序边和 SEMANTIC_SIMILAR 语义相似边。简单有向图，节点标出文本摘要。
 
 .. _representation-entity-relation:
 
@@ -176,27 +346,10 @@
        embedding=[...],
    )
 
-   MemoryUnit(
-       uid="entity_gugong_001",
-       raw_data={
-           "text_content": "故宫",
-           "entity_name": "故宫",
-           "entity_type": "Place",
-           "description": "明清两代皇家宫殿，位于北京中轴线",
-       },
-       metadata={
-           "space_name": "root_knowledge_entity_msg_0_25",
-           "entity_type": "Place",
-           "entity_id": "gugong_001",
-           "mentions": ["dialogue_msg_002"],
-       },
-       embedding=[...],
-   )
-
 **边类型**：
 
 - ``RELATED_TO``：通用关系边（含子类型：hometown、lives_in、works_at、located_in、part_of）
-- ``COREF``：**共指边（建立在基础对话记忆单元→实体之间）**，表示对话单元对实体的提及指代关系
+- ``COREF``：共指边（建立在基础对话记忆单元 → 实体之间），表示对话单元对实体的提及指代关系
 - ``ALIAS_OF``：别名边（实体别名关系）
 - ``EVIDENCED_BY``：溯源边（实体指向提及它的原始对话）
 
@@ -213,21 +366,14 @@
 
    这种设计使得跨会话的同一指代可以通过图遍历快速定位所有相关对话单元。
 
-**图结构示例**：
+.. _diagram-placeholder-4:
 
-.. mermaid::
+.. admonition:: 占位：实体关系图结构示例
+   :class: hint
 
-   graph LR
-       E1["北京<br>Place"] -->|RELATED_TO<br>located_in| E2["故宫<br>Place"]
-       E2 -->|RELATED_TO<br>part_of| E1
-       E1 -->|RELATED_TO<br>located_in| E3["长城<br>Place"]
+   **此图需要展示的内容：**
 
-       D1["dialogue_001"] -->|COREF<br>提及| E1
-       D2["dialogue_002"] -->|COREF<br>提及| E2
-       D3["dialogue_003"] -->|COREF<br>提及| E1
-
-       D1 -.->|EVIDENCED_BY| E1
-       D2 -.->|EVIDENCED_BY| E2
+   实体节点（北京/故宫/长城）之间 RELATED_TO 边，以及对话单元到实体的 COREF 边和 EVIDENCED_BY 边。突出实体间空间关系（located_in/part_of）和指代消解链路。
 
 .. _representation-event-causal:
 
@@ -258,22 +404,6 @@
        embedding=[...],
    )
 
-   MemoryUnit(
-       uid="event_visit_gugong_001",
-       raw_data={
-           "text_content": "用户参观了故宫",
-           "event_type": "action_event",
-           "participants": ["user", "故宫"],
-       },
-       metadata={
-           "space_name": "root_episodic_event_msg_0_25",
-           "event_type": "action_event",
-           "event_id": "visit_gugong_001",
-           "evidence_uids": ["dialogue_msg_002"],
-       },
-       embedding=[...],
-   )
-
 **边类型**：
 
 - ``CAUSES``：因果关系（事件A导致事件B）
@@ -282,19 +412,14 @@
 - ``PRECEDES`` / ``FOLLOWS``：时序边（事件发生的先后顺序）
 - ``EVIDENCED_BY``：溯源边（事件指向支撑它的原始对话）
 
-**图结构示例**：
+.. _diagram-placeholder-5:
 
-.. mermaid::
+.. admonition:: 占位：事件因果图结构示例
+   :class: hint
 
-   graph LR
-       EV1["出差北京"] -->|CAUSES| EV2["参观故宫"]
-       EV2 -->|CAUSES| EV3["了解历史文化"]
-       EV1 -->|PRECEDES| EV2
-       EV2 -->|PRECEDES| EV3
-       EV1 -.->|INVOLVES<br>location| E1["北京"]
-       EV2 -.->|INVOLVES<br>location| E2["故宫"]
-       D1["dialogue_001"] -.->|EVIDENCED_BY| EV1
-       D2["dialogue_002"] -.->|EVIDENCED_BY| EV2
+   **此图需要展示的内容：**
+
+   事件节点（出差北京/参观故宫/了解历史文化）之间的 CAUSES 因果链和 PRECEDES 时序边，以及事件到实体（北京/故宫）的 INVOLVES 边。展示事件-实体-对话三层的完整追溯链路。
 
 .. _representation-emotional-summary:
 
@@ -326,15 +451,6 @@
 
 - ``EVIDENCED_BY``：溯源边（情感总结指向支撑它的原始对话）
 - ``SEMANTIC_SIMILAR``：与其他情感总结的语义相似边
-
-**图结构示例**：
-
-.. mermaid::
-
-   graph LR
-       EM["情感总结<br>兴奋、自豪"] -.->|EVIDENCED_BY| D1["dialogue_001"]
-       EM -.->|EVIDENCED_BY| D2["dialogue_002"]
-       EM -.->|EVIDENCED_BY| D3["dialogue_003"]
 
 .. _representation-episodic-summary:
 
@@ -368,15 +484,6 @@
 **边类型**：
 
 - ``EVIDENCED_BY``：溯源边（情景总结指向支撑它的事件/对话）
-
-**图结构示例**：
-
-.. mermaid::
-
-   graph LR
-       ES["情景总结<br>北京出差之行"] -.->|EVIDENCED_BY| EV1["出差北京"]
-       ES -.->|EVIDENCED_BY| EV2["参观故宫"]
-       ES -.->|EVIDENCED_BY| EV3["游览长城"]
 
 .. _representation-knowledge-summary:
 
@@ -412,15 +519,6 @@
 **边类型**：
 
 - ``EVIDENCED_BY``：溯源边（知识总结指向支撑它的原始对话/实体）
-
-**图结构示例**：
-
-.. mermaid::
-
-   graph LR
-       KS["知识总结<br>北京故宫长城知识"] -.->|EVIDENCED_BY| D1["dialogue_001"]
-       KS -.->|EVIDENCED_BY| E1["北京实体"]
-       KS -.->|EVIDENCED_BY| E2["故宫实体"]
 
 .. _representation-procedural-summary:
 
@@ -495,10 +593,8 @@
 - ``EVIDENCED_BY``：溯源边（洞见指向支撑它的原始对话/摘要）
 - ``SEMANTIC_SIMILAR``：与其他洞见的语义相似边
 
-全局图结构总览
-^^^^^^^^^^^^^^
-
-以下展示了完整的多视角记忆图结构：
+证据溯源体系
+^^^^^^^^^^^^
 
 .. note::
 
@@ -510,209 +606,24 @@
      表示洞见是综合多视角信息后提炼出的深层次洞察
    - 实体关系和事件因果也通过 ``EVIDENCED_BY`` 边从基础记忆中获得证据支撑
 
-.. mermaid::
+.. _diagram-placeholder-6:
 
-   graph TB
-       subgraph Base Memory["基础记忆 (Base Memory)"]
-           D1["dialogue_001<br>我去北京出差"]
-           D2["dialogue_002<br>参观了故宫"]
-           D3["dialogue_003<br>还去了长城"]
-           D1 -->|PRECEDES| D2
-           D2 -->|PRECEDES| D3
-       end
+.. admonition:: 占位：全局多视角记忆图结构总览
+   :class: hint
 
-       subgraph Entity Relation["实体关系 (Entity Relation)"]
-           E1["北京<br>Place"]
-           E2["故宫<br>Place"]
-           E3["长城<br>Place"]
-           E1 -->|RELATED_TO| E2
-           E1 -->|RELATED_TO| E3
-       end
+   **此图需要展示的内容：**
 
-       subgraph Event Causal["事件因果 (Event Causal)"]
-           EV1["出差北京"]
-           EV2["参观故宫"]
-           EV3["游览长城"]
-           EV1 -->|CAUSES| EV2
-           EV2 -->|CAUSES| EV3
-           EV1 -.->|INVOLVES| E1
-           EV2 -.->|INVOLVES| E2
-       end
+   将基础记忆、实体关系、事件因果、四类摘要（情感/情景/知识/程序）、洞察记忆的全景图结构汇总到一张图中。
+   用颜色或区域区分不同视角的子图，清晰展示各层之间的 EVIDENCED_BY 溯源边和 COREF 指代边的层级关系。
 
-       subgraph Summaries["高阶总结 (Summaries)"]
-           EM["情感总结<br>(Emotional)"]
-           ES["情景总结<br>(Episodic)"]
-           KS["知识总结<br>(Knowledge)"]
-           PS["程序总结<br>(Procedural)"]
-       end
+   核心信息层级（从底层到顶层）：
 
-       I1["洞见记忆<br>(Insights)<br>综合四类总结"]
+   1. **基础记忆层**：原始对话单元，PRECEDES/FOLLOWS 时序边
+   2. **实体/事件层**：从对话中提取，RELATED_TO/CAUSES/INVOLVES 关系边
+   3. **摘要层**：四类总结，EVIDENCED_BY 指向基础记忆
+   4. **洞察层**：深层洞察，EVIDENCED_BY 指向摘要层
 
-       D1 -.->|EVIDENCED_BY| EM
-       D2 -.->|EVIDENCED_BY| EM
-       D3 -.->|EVIDENCED_BY| EM
-
-       D1 -.->|EVIDENCED_BY| ES
-       D2 -.->|EVIDENCED_BY| ES
-       D3 -.->|EVIDENCED_BY| ES
-
-       D1 -.->|EVIDENCED_BY| KS
-       D2 -.->|EVIDENCED_BY| KS
-       D3 -.->|EVIDENCED_BY| KS
-
-       D2 -.->|EVIDENCED_BY| PS
-
-       D1 -.->|EVIDENCED_BY| E1
-       D2 -.->|EVIDENCED_BY| E2
-       D1 -.->|EVIDENCED_BY| EV1
-       D2 -.->|EVIDENCED_BY| EV2
-
-       D1 -->|COREF<br>提及| E1
-       D2 -->|COREF<br>提及| E2
-       D3 -->|COREF<br>提及| E1
-
-       EM -.->|EVIDENCED_BY| I1
-       ES -.->|EVIDENCED_BY| I1
-       KS -.->|EVIDENCED_BY| I1
-       PS -.->|EVIDENCED_BY| I1
-
-维度构建器详解
-^^^^^^^^^^^^^^
-
-系统通过 ``MultiDimSemanticGraph`` 编排五个维度构建器：
-
-LayoutNormalizationDimension
-""""""""""""""""""""""""""""
-
-负责创建所有空间层级并建立父子关系：
-
-1. 创建 ``base_memory`` 空间（包含原始单元）
-2. 创建 ``high_level_memory`` 空间
-3. 创建 ``episodic``、``knowledge``、``emotional``、``procedural`` 子空间
-4. 创建各子空间的摘要/实体/事件空间
-5. 建立 ``insights`` 空间
-
-SemanticSimilarityDimension
-"""""""""""""""""""""""""""
-
-计算单元间语义相似度并添加关系边：
-
-1. 获取空间内所有单元
-2. 计算单元对的余弦相似度
-3. 对相似度超过阈值的单元对添加 ``SEMANTIC_SIMILAR`` 关系
-
-HighLevelSummaryApplicatorDimension
-""""""""""""""""""""""""""""""""""""
-
-应用摘要单元到对应空间：
-
-1. 从 ``SummaryMapReducer`` 获取会话摘要
-2. 创建摘要单元并添加到对应空间
-3. 建立 ``EVIDENCED_BY`` 关系连接原始单元与摘要
-
-EventCausalApplicatorDimension
-""""""""""""""""""""""""""""""
-
-应用事件单元并建立因果链：
-
-1. 从 ``EventDeduper`` 获取去重后的事件
-2. 创建事件单元并添加到对应空间
-3. 基于 LLM 提取的因果关系添加 ``CAUSES`` / ``CAUSED_BY`` 关系
-
-EntityRelationApplicatorDimension
-"""""""""""""""""""""""""""""""""
-
-应用实体单元并建立实体关系：
-
-1. 从 ``EntityDeduper`` 获取去重后的实体
-2. 创建实体单元并添加到对应空间
-3. 基于 LLM 提取的关系添加实体关系边
-4. 建立 ``EVIDENCED_BY`` 关系连接原始单元与实体
-
-跨会话合并
-^^^^^^^^^^
-
-在构建完成后，系统自动执行跨会话合并：
-
-1. **实体合并**：使用 ``EntityDeduper`` 合并不同会话中相同指代的实体
-2. **事件合并**：使用 ``EventDeduper`` 合并不同会话中相同的事件
-
-这些操作在 ``build_high_level()`` 内部自动触发，对用户透明。
-
-阶段三：holistic_retrieve() — 统一检索
----------------------------------------
-
-这是 Mandol 最核心的检索管线：
-
-1. **分组召回**：检索请求分发到四个检索组
-   - BASE：原始对话 / 程序总结
-   - ENTITY：知识实体
-   - EVENT：事件总结
-   - SUMMARY：情景 / 知识 / 情感 / 洞察总结
-
-2. **三路召回**：每组内部独立执行
-   - Dense（稠密向量相似度）
-   - BM25（关键词匹配）
-   - Sparse（稀疏向量相似度）
-
-3. **RRF 融合**：使用倒数排名融合合并三路结果
-
-4. **BFS 扩展**：以融合结果 Top-K 为种子，沿图关系扩展（参数：``bfs_expansion_per_seed`` / ``bfs_expansion_hops``）
-
-5. **全局 Rerank**：通过 Cross-Encoder 对所有候选重排序，返回最终结果
-
-多视角记忆架构
---------------
-
-.. mermaid::
-
-   graph TB
-       subgraph 输入层
-           A[原始对话数据]
-       end
-
-       subgraph 索引层
-           B[MemoryUnit 存储]
-           C[Dense 向量索引]
-           D[BM25 关键词索引]
-           E[Sparse 稀疏索引]
-       end
-
-       subgraph 高阶记忆层
-           F[会话分割]
-           G[实体提取与去重]
-           H[事件提取与去重]
-           I[多类型摘要]
-           J[语义关系图]
-       end
-
-       subgraph 检索层
-           K[分组召回]
-           L[三路检索]
-           M[RRF 融合]
-           N[BFS 图扩展]
-           O[Cross-Encoder 重排]
-       end
-
-       A --> B
-       B --> C
-       B --> D
-       B --> E
-       A --> F
-       F --> G
-       F --> H
-       F --> I
-       G --> J
-       H --> J
-       I --> J
-       C --> K
-       D --> K
-       E --> K
-       K --> L
-       L --> M
-       M --> N
-       J --> N
-       N --> O
+   跨层边清晰展示从"原始数据 → 结构化事实 → 总结提炼 → 深度洞察"的逐层抽象过程。
 
 空间层级结构
 ------------
@@ -723,15 +634,16 @@ EntityRelationApplicatorDimension
 
    root
    ├── base_memory_{suffix}          # 基础记忆（原始单元）
+   │   └── session_{session_id}      # 各会话空间（动态创建）
    └── high_level_memory_{suffix}    # 高阶记忆
        ├── episodic_{suffix}         # 情景记忆
        │   ├── episodic_summary      # 情景摘要
-       │   └── episodic_event        # 情景事件
+       │   └── episodic_event        # 情景事件（规范事件）
        ├── knowledge_{suffix}        # 知识记忆
        │   ├── knowledge_summary     # 知识摘要
-       │   └── knowledge_entity      # 知识实体
+       │   └── knowledge_entity      # 知识实体（规范实体）
        ├── emotional_{suffix}        # 情感记忆
        ├── procedural_{suffix}       # 程序记忆
-       └── insights_{suffix}         # 洞察记忆
+       └── insights_{suffix}         # 洞察记忆（全局洞察持续更新）
 
-其中 ``{suffix}`` 是基于会话起始消息索引生成的唯一标识。
+其中 ``{suffix}`` 是基于会话起始消息索引生成的唯一标识。关于各空间对应的检索视图和检索方式，请参见 :doc:`/shared/retrieval-reference`。

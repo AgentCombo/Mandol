@@ -7,14 +7,18 @@ FOLLOWS edges into a :class:`SemanticGraphService`.
 from __future__ import annotations
 
 import json
+import logging
 import re
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
-from ...application.semantic_graph import SemanticGraphService
-from ...domain.memory_unit import MemoryUnit
-from ...domain.types import SpaceName, Uid
+from mandol.application.semantic_graph import SemanticGraphService
+from mandol.domain.memory_unit import MemoryUnit
+from mandol.domain.types import SpaceName, Uid
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
@@ -88,11 +92,50 @@ def _parse_dialogue_index(dia_id: str, fallback: int) -> int:
     return int(fallback)
 
 
+_LOCOMO_DATETIME_FORMATS = [
+    "%I:%M %p on %d %B, %Y",
+    "%I:%M%p on %d %B, %Y",
+    "%I:%M %p on %d %B %Y",
+    "%I:%M%p on %d %B %Y",
+    "%Y-%m-%d %H:%M:%S",
+    "%Y-%m-%dT%H:%M:%S",
+    "%Y-%m-%d %H:%M",
+    "%Y-%m-%dT%H:%M",
+]
+
+
+def _parse_locomo_datetime(dt_str: str) -> Optional[str]:
+    """Parse a LoCoMo session datetime string into ISO 8601 format.
+
+    LoCoMo datetimes look like ``"11:01 am on 17 December, 2022"``.
+    Returns an ISO-format string suitable for ``metadata["timestamp"]``,
+    or ``None`` when parsing fails.
+
+    Args:
+        dt_str: Raw datetime string from the LoCoMo dataset.
+
+    Returns:
+        ISO 8601 datetime string or ``None``.
+    """
+    if not dt_str or not dt_str.strip():
+        return None
+    dt_str = dt_str.strip()
+    for fmt in _LOCOMO_DATETIME_FORMATS:
+        try:
+            dt = datetime.strptime(dt_str, fmt)
+            return dt.replace(tzinfo=timezone.utc).isoformat()
+        except ValueError:
+            continue
+    logger.warning("Could not parse LoCoMo datetime: %r. All %d format(s) failed.", dt_str, len(_LOCOMO_DATETIME_FORMATS))
+    return None
+
+
 def write_sample_to_graph(
     *,
     graph: SemanticGraphService,
     sample: Dict[str, Any],
     base_space_name: Optional[str] = None,
+    batch_embed: bool = True,
 ) -> str:
     """Write a LoCoMo sample into *graph*.
 
@@ -104,11 +147,18 @@ def write_sample_to_graph(
     - Dialogue units: ``{sample_id}_dialogue_{dia_id}`` with
       ``PRECEDES`` / ``FOLLOWS`` edges between consecutive dialogues.
 
+    When *batch_embed* is True (default), units are first inserted without
+    embeddings and then a single batch call computes all embeddings at
+    once, which is significantly faster for remote embedding APIs.
+
     Args:
         graph: The :class:`SemanticGraphService` to populate.
         sample: A LoCoMo sample dict with ``sample_id`` and ``conversation``.
         base_space_name: Override for the root space name.  Defaults to
             ``sample_id``.
+        batch_embed: If True, defer embedding computation and batch-compute
+            at the end.  If False, compute embeddings one-by-one during
+            insertion (slower but simpler).
 
     Returns:
         The base root space name (usually ``sample_id``).
@@ -172,6 +222,7 @@ def write_sample_to_graph(
             unit = sm.get_unit(unit_uid)
             if unit is None:
                 blip_caption = d.get("blip_caption")
+                parsed_ts = _parse_locomo_datetime(sess_dt)
                 unit = MemoryUnit(
                     uid=Uid(unit_uid),
                     raw_data={
@@ -189,10 +240,13 @@ def write_sample_to_graph(
                     metadata={
                         "unit_type": "dialogue",
                         "session_number": sess_n,
+                        "dia_id": dia_id,
+                        "speaker": speaker,
+                        **({"timestamp": parsed_ts} if parsed_ts else {}),
                     },
                     embedding=None,
                 )
-                graph.add_unit(unit, space_names=[session_space.name], ensure_embedding=False)
+                graph.add_unit(unit, space_names=[session_space.name, base_space.name], ensure_embedding=not batch_embed)
             else:
                 sm.add_unit_to_space(unit.uid, session_space.name)
 
@@ -214,5 +268,9 @@ def write_sample_to_graph(
 
         if ordered:
             prev_last_uid = ordered[-1][1]
+
+    if batch_embed:
+        count = sm.batch_embed_unembedded()
+        logger.info("Batch-computed embeddings for %d units", count)
 
     return base_root

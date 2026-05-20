@@ -1,17 +1,9 @@
-llm:
-  model: "gpt-4o-mini"
-  base_url: "https://api.openai.com/v1"
-
+# Ablation: No Graph Expansion.
+# Disables BFS graph expansion (hops=0, per_seed=0) and skips all high-level
+# memory views (entity, event, summary). Only base memory retrieval is used.
+# This tests the contribution of graph-structured relationships.
 embedder:
-  model: "Qwen/Qwen3-Embedding-4B"
-  device: "cpu"
-  dimension: 2560
-  use_remote: false
-
-reranker:
-  model: "Qwen/Qwen3-Reranker-4B"
-  device: "cpu"
-  use_remote: false
+  dimension: 4096
 
 system:
   chunk_max_tokens: 512
@@ -32,3 +24,19 @@ storage:
   root: null
   enable_persistence: false
   auto_save_interval: 300
+
+experiment:
+  sample_ids: []
+  skip_categories: [5]
+  output_dir: "output"
+
+retrieval:
+  top_k: 10
+  skip_views: ["entity", "event", "summary"]
+
+generation:
+  max_tokens: 2048
+  temperature: 0.3
+
+evaluation:
+  llm_judge_runs: 1

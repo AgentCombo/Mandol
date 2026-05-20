@@ -19,7 +19,7 @@
    * - 记忆空间
      - MemorySpace
      - 记忆单元的逻辑容器，支持层级嵌套
-   * - 语义索引
+   * - 语义映射表
      - SemanticMap / SemanticMapService
      - 负责记忆单元的 CRUD、向量索引和空间管理
    * - 语义图

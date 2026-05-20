@@ -29,9 +29,11 @@
    # 跨会话实体合并（在 build_high_level 中自动调用）
    # 手动触发：
    system.semantic_graph._cross_session_entity_merge()
+   <!-- TODO: 验证 API 签名 -->
 
    # 事件合并
    system.semantic_graph._cross_session_event_merge()
+   <!-- TODO: 验证 API 签名 -->
 
 图状态导出
 ----------

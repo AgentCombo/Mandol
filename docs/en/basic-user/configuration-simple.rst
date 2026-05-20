@@ -43,7 +43,7 @@ Controls how long each text segment is before processing:
 .. code-block:: yaml
 
    system:
-     chunk_max_tokens: 512    # Default value, best results in practice
+     chunk_max_tokens: 512    # Default value
 
 Configuration 4: Remote API Toggle
 -----------------------------------

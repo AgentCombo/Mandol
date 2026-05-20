@@ -13,7 +13,7 @@
 安装方式
 --------
 
-**方式一：pip 安装（最简单）**
+**方式一：pip 安装**
 
 .. code-block:: bash
 
@@ -51,10 +51,10 @@
    pip install mandol[openai]                   # OpenAI API 支持
    pip install mandol[all]                      # 安装所有可选依赖
 
-选择你的运行模式
-----------------
+选择运行模式
+------------
 
-**模式 A：远程 API（最省事，无需下载模型）**
+**模式 A：远程 API（无需下载模型）**
 
 .. code-block:: bash
 
