@@ -27,11 +27,11 @@
            dense[DenseRetriever]
            bm25[Bm25Retriever]
            sparse[SparseRetriever]
-           hop_ret[SubgraphHopRetriever]
+           graph[SubgraphHopRetriever]
            fusion[RRFusion]
        end
 
-       subgraph StorePorts[Stores - ports]
+       subgraph Stores["Stores (ports)"]
            US[UnitStore]
            GS[GraphStore]
            VI[VectorIndex]
@@ -49,7 +49,7 @@
        HR --> dense
        HR --> bm25
        HR --> sparse
-       HR --> hop_ret
+       HR --> graph
        HR --> fusion
        SMAP --> VI
        SMAP --> US

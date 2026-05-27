@@ -9,7 +9,6 @@ from __future__ import annotations
 import json
 import logging
 import os
-import re
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
@@ -18,76 +17,6 @@ from typing import Any, Dict, List, Optional, Tuple
 import yaml
 
 logger = logging.getLogger(__name__)
-
-
-def _load_env_file(reference_path: str) -> None:
-    """Load .env from the nearest parent directory of *reference_path*."""
-    for candidate in Path(reference_path).resolve().parents:
-        env_path = candidate / ".env"
-        if env_path.exists():
-            try:
-                from dotenv import load_dotenv
-                load_dotenv(env_path, override=False)
-            except ImportError:
-                pass
-            break
-
-# Import LLMProvider for standalone use (without loading full MemorySystem)
-_LLM_PROVIDER_CLASS = None
-
-
-def _get_llm_provider_class():
-    """Lazy import OpenAICompatibleLLMProvider to avoid circular deps."""
-    global _LLM_PROVIDER_CLASS
-    if _LLM_PROVIDER_CLASS is None:
-        from mandol.infrastructure.openai_compatible_llm_provider import (
-            OpenAICompatibleLLMProvider,
-        )
-        _LLM_PROVIDER_CLASS = OpenAICompatibleLLMProvider
-    return _LLM_PROVIDER_CLASS
-
-
-def build_llm_provider_from_config(yaml_path: str):
-    """Build an LLMProvider from the benchmark YAML config and env vars.
-
-    Reads the ``llm`` section from the YAML config and environment variables
-    (``MANDOL_LLM_API_KEY``, ``MANDOL_LLM_BASE_URL``, ``MANDOL_LLM_MODEL``)
-    to construct an OpenAICompatibleLLMProvider.  No MemorySystem is loaded.
-
-    Args:
-        yaml_path: Path to the benchmark YAML configuration file.
-
-    Returns:
-        An OpenAICompatibleLLMProvider instance.
-    """
-    _load_env_file(yaml_path)
-    cls = _get_llm_provider_class()
-
-    model = os.getenv("MANDOL_LLM_MODEL", "gpt-4o-mini")
-    base_url = os.getenv("MANDOL_LLM_BASE_URL", "")
-    api_key = os.getenv("MANDOL_LLM_API_KEY", "")
-
-    try:
-        with open(yaml_path, encoding="utf-8") as f:
-            yaml_cfg = yaml.safe_load(f) or {}
-        llm_cfg = yaml_cfg.get("llm", {}) or {}
-        if isinstance(llm_cfg, dict):
-            if llm_cfg.get("model"):
-                model = str(llm_cfg["model"])
-            if llm_cfg.get("base_url"):
-                base_url = str(llm_cfg["base_url"])
-            if llm_cfg.get("api_key"):
-                api_key = str(llm_cfg["api_key"])
-    except Exception:
-        pass
-
-    kwargs: Dict[str, Any] = {"model": model}
-    if base_url:
-        kwargs["base_url"] = base_url
-    if api_key:
-        kwargs["api_key"] = api_key
-
-    return cls(**kwargs)
 
 GENERATION_PROMPT_TEMPLATE = """
 You are an intelligent memory assistant tasked with retrieving accurate information from episodic memories.
@@ -197,7 +126,8 @@ def load_config(yaml_path: str) -> Dict[str, Any]:
         cfg = yaml.safe_load(f) or {}
 
     experiment = cfg.setdefault("experiment", {})
-    experiment["config_name"] = Path(yaml_path).stem
+    if experiment.get("config_name") is None:
+        experiment["config_name"] = Path(yaml_path).stem
 
     return cfg
 
@@ -315,37 +245,12 @@ def parse_judge_label(response_text: str) -> str:
         pass
 
     upper = text.upper()
-    if "CORRECT" in upper:
+    if "CORRECT" in upper and "WRONG" not in upper:
         return "CORRECT"
     if "WRONG" in upper:
         return "WRONG"
 
     return "WRONG"
-
-
-def extract_final_answer(generated_text: str) -> str:
-    if not generated_text or not generated_text.strip():
-        return generated_text
-
-    patterns = [
-        r"##\s*FINAL\s+ANSWER\s*[:：]\s*",
-        r"\*\*\s*FINAL\s+ANSWER\s*\*\*\s*[:：]\s*",
-        r"\*\*FINAL\s+ANSWER\*\*\s*[:：]\s*",
-        r"FINAL\s+ANSWER\s*[:：]\s*",
-        r"##\s*最终答案\s*[:：]\s*",
-        r"最终答案\s*[:：]\s*",
-    ]
-
-    for pattern in patterns:
-        match = re.search(pattern, generated_text, re.IGNORECASE)
-        if match:
-            answer = generated_text[match.end():].strip()
-            answer = re.sub(r"^[\n\r]+", "", answer)
-            answer = answer.strip()
-            if answer:
-                return answer
-
-    return generated_text.strip()
 
 
 def aggregate_llm_judge_accuracy(

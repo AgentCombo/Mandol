@@ -5,14 +5,9 @@
 
 .. _diagram-placeholder-arch-1:
 
-.. admonition:: 占位：六边形架构分层图
-   :class: hint
-
-   **此图需要展示的内容：**
-
-   四层架构：**Domain（领域层：MemoryUnit / MemorySpace / Uid）→ Ports（端口层：EmbeddingProvider / LLMProvider / Reranker / VectorIndex / GraphStore / UnitStore）→ Application（应用层：MemorySystem / SemanticMapService / SemanticGraphService / SessionManager / UnifiedFactPipeline / SummaryMapReducer / GlobalInsightManager）→ Infrastructure（基础设施层：FAISS / BM25 / SentenceTransformers / OpenAI / InMemoryStore）**。
-
-   各层之间用箭头标注依赖方向（应用层依赖端口层，基础设施层实现端口层）。
+.. image:: /_static/images/hexagonal-architecture.png
+    :alt: 六边形架构分层图
+    :align: center
 
 开发者可介入的环节
 ------------------

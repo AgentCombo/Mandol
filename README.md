@@ -1,154 +1,102 @@
-[English](README.md) | [中文](README_CN.md)
-
 # Mandol
 
-> General-purpose in-memory hierarchical memory system for AI agents
+> Mandol: An In-Memory Layered Memory System for Long-Term Conversational Agents
 
-[![CI](https://github.com/AgentCombo/Mandol/actions/workflows/ci.yml/badge.svg)](https://github.com/AgentCombo/Mandol/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/Python-3.9--3.13-blue.svg)](https://www.python.org/)
-[![PyPI version](https://badge.fury.io/py/mandol.svg)](https://badge.fury.io/py/mandol)
-[![Docs](https://img.shields.io/badge/docs-Sphinx-green.svg)](docs/)
-[![codecov](https://codecov.io/gh/AgentCombo/Mandol/branch/main/graph/badge.svg)](https://codecov.io/gh/AgentCombo/Mandol)
+[![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://www.python.org/)
+[![Homepage](https://img.shields.io/badge/Homepage-agentcombo.github.io%2FMandol-blue)](https://agentcombo.github.io/Mandol)
+[![Docs](https://img.shields.io/badge/Docs-agentcombo.github.io%2FMandol%2Fdocs-green)](https://agentcombo.github.io/Mandol/docs)
+[![Paper](https://img.shields.io/badge/Paper-arXiv:260x.xxxxx-red.svg)](https://arxiv.org/abs/260x.xxxxx)
 
-## What is Mandol?
+[English](README.md) | [中文](README_CN.md)
 
-Mandol is a general-purpose agent memory system built on in-memory data structures. It fuses key-value, vector, and graph indices through SemanticMap and SemanticGraph, providing unified storage and hybrid retrieval without inter-process communication. Evaluation on conversational memory benchmarks (LoCoMo: 92.21 F1, LongMemEval: 88.40 F1) is complete; assessment on code generation and image storage scenarios is underway.
+![Mandol Overview](README.assets/Mandol-overview.png)
 
-## Environment Preparation
+---
 
-### Python Version
+## 📑 Table of Contents
 
-- Minimum requirement: Python 3.9+
-- Recommended: Python 3.10 or 3.11
+<details>
+<summary><b>Show/Hide</b></summary>
 
-### Package Manager
+- [📖 What is Mandol?](#-what-is-mandol)
+- [💡 Core Innovations](#-core-innovations)
+- [✨ Key Features](#-key-features)
+- [📊 Comparison with Mainstream Memory Systems](#-comparison-with-mainstream-memory-systems)
+- [🏆 Application Cases](#-application-cases)
+- [⚡ Quick Start](#-quick-start)
+- [📚 Documentation & Community](#-documentation--community)
+- [📄 Citation](#-citation)
+- [📄 License](#-license)
 
-Using pip:
+</details>
 
-```bash
-python -m venv .venv
-source .venv/bin/activate  # Linux/macOS
-# .venv\Scripts\activate   # Windows
-pip install mandol
-```
+---
 
-Using conda:
+## 📖 What is Mandol?
 
-```bash
-conda create -n mandol python=3.10
-conda activate mandol
-pip install mandol
-```
+Mandol is an in-memory, layered memory system for long-term conversational agents, with efficient and precise retrieval capabilities. It achieves unified representation, efficient storage, and accurate retrieval of complex memory information, providing theoretical foundations and technical solutions for next-generation agent cognitive architectures.
 
-### System Requirements
+The system is built on pure Python in-memory data structures, fusing key-value, vector, and graph indexing paradigms to provide a unified storage and hybrid retrieval interface with zero mandatory external dependencies. It can optionally integrate with external storage engines such as Milvus and Neo4j, while exposing a minimalist `add()` → `holistic_retrieve()` operational model. Its core innovation lies in transforming the traditional "passive recall–rerank" retrieval paradigm into a new proactive paradigm of "Query-Aware Routing → quantitative denoising → high-quality context generation."
 
-| Component | Minimum (Remote API) | Minimum (Local Embedding) | Minimum (Local Embedding + Reranker) | Recommended |
-|-----------|---------------------|--------------------------|-------------------------------------|-------------|
-| CPU | 4 cores | 4 cores | 8 cores | 8+ cores |
-| RAM | 8 GB | 16 GB | 32 GB | 16-64 GB |
-| GPU | None (CPU OK) | None (CPU OK, GPU faster) | NVIDIA 8GB+ VRAM recommended | NVIDIA 16GB+ VRAM |
-| Disk | 2 GB | 6 GB | 10 GB | 10+ GB |
+**On mainstream conversational memory benchmarks, Mandol achieves SOTA-level comprehensive performance with lower token consumption:**
 
-### Model Download
+| **Dimension** | **Mem0** | **Zep** | **MemOS** | **EverMemOS** | **Mandol** |
+|---|---|---|---|---|---|
+| **Memory Organization & Representation** | Text vectors + metadata | Text vectors + temporal knowledge graph | Text vectors + graph/tree summaries | Text vectors + high-level summaries | **Structured semantic graph + abstract high-level memory + hierarchical memory** |
+| **Storage Architecture** | Single relational database (with vector extension) | Relational DB + custom graph engine + graph DB | Graph DB + vector DB combination | Hybrid multi-component DB (document, retrieval, vector, cache) | **In-memory semantic data structures + in-process DB DuckDB/DuckPGQ** |
+| **Retrieval & Query Mechanism** | Vector semantic retrieval + keyword filtering | Multi-step graph traversal topology search + reranking | Vector retrieval + dynamic graph node recall | Multi-path routing + LLM multi-round query rewriting | **In-memory multi-path parallel recall + intelligent routing + quantitative denoising + context optimization** |
+| **I/O Overhead & Resource** | Medium: limited by row-level updates and single-path index of traditional databases | High: frequent fact extraction and cross-service communication cause high system latency | High: multiple databases lead to heavy IO overhead | Extremely high: extremely fragmented component stack causes severe cross-store network and serialization overhead | **Extremely low: core operators execute natively in-process, completely eliminating cross-store network and communication bottlenecks** |
+| | | | | | |
+| **LoCoMo Score** | 64.20 (1.0k Tokens) | 85.22 (1.4k Tokens) | 80.76 (2.5k Tokens) | 91.97 (2.7k Tokens) | **92.21 (1.9k Tokens)** |
+| **LongMemEval Score** | 66.40 (1.1k Tokens) | 63.80 (1.6k Tokens) | 77.80 (1.4k Tokens) | 83.00 (2.8k Tokens) | **88.40 (2.3k Tokens)** |
 
-| Model | Purpose | Size | Download Method |
-|-------|---------|------|----------------|
-| `Qwen/Qwen3-Embedding-4B` | Text embedding | ~4 GB | Auto-downloads to `~/.cache/huggingface/` on first run |
-| `Qwen/Qwen3-Reranker-4B` | Retrieval reranking | ~4 GB | Auto-downloads to `~/.cache/huggingface/` on first run |
+> Mandol achieves a LoCoMo score of 92.21 with only 1.9k tokens — 1.4× the token efficiency of EverMemOS (2.7k) at comparable accuracy, and 3.7× that of Mem0 v2.0 (7.0k). On LongMemEval, it scores 88.40 with 2.3k tokens, improving 5.4 points over EverMemOS (2.8k / 83.00) while using 18% fewer tokens.
 
-> **Tip**: If using remote API mode, no local model download is needed. Just configure the API endpoint.
+---
 
-## Installation
+## 💡 Core Innovations
 
-### Basic Install
+### (I) Theoretical Model Innovation: Layered Memory Model
 
-```bash
-pip install mandol
-```
+We present a layered theoretical memory model that divides the memory system into a base memory layer, a high-level memory layer, and an intelligent query layer. A structured semantic graph uniformly represents complex, multi-relational memory information; implicit semantic edges are generated on demand to balance structural precision with semantic flexibility; and a bidirectional traceability mechanism links base and high-level memories. This model achieves unified representation of complex memory information and provides a theoretical foundation for subsequent storage and intelligent quantitative retrieval. Unlike vector representations that struggle to capture structural relationships, or knowledge graphs that insufficiently support multimodal and semantic similarity, this model establishes a unified theoretical framework spanning raw information storage, abstract knowledge extraction, and query scheduling.
 
-Or install from source:
+![Layered Memory Model](README.assets/分层式理论记忆模型.png)
 
-```bash
-git clone https://github.com/your-org/mandol.git
-cd mandol
-pip install -e .
-```
+### (II) Storage Architecture Innovation: Unified In-Memory Semantic Data Structure
 
-### Optional Dependencies
+We present a unified storage architecture based on in-memory semantic data structures. The coordinated design of SemanticMap and SemanticGraph achieves native fusion of key-value storage, vector indexing, and graph structures at the physical level, eliminating the fragmentation problem of multi-database architectures. Atomic hybrid retrieval operators encapsulate vector matching, graph traversal, and other operations as in-memory atomic operations, effectively reducing query latency and providing standardized, composable execution units for upper-layer intelligent quantitative queries. A collaborative "in-memory active state – database persistent state" architecture achieves an effective balance between performance and storage capacity.
 
-```bash
-pip install mandol[faiss]                    # FAISS vector index acceleration
-pip install mandol[sentence-transformers]    # Local Embedding/Reranker models
-pip install mandol[openai]                   # OpenAI API support
-pip install mandol[milvus]                   # Milvus vector database
-pip install mandol[neo4j]                    # Neo4j graph database
-pip install mandol[all]                      # Install all optional dependencies
-pip install mandol[dev]                      # Development tools (pytest, ruff, etc.)
-```
+![Unified Storage Architecture](README.assets/基于内存语义数据结构的统一存储架构.png)
 
-### Environment Variables
+### (III) Retrieval Mechanism Innovation: Query-Aware Routing and Quantitative Retrieval
 
-```bash
-cp .env.example .env
-# Edit .env and fill in your API key:
-# OPENAI_API_KEY=sk-your-key-here
-```
+We present a Query-Aware Routing and quantitative retrieval method that transforms the retrieval process from a passive "recall–rerank" pattern into a new paradigm of "Query-Aware Routing → quantitative denoising → high-quality context generation." Through innovative designs including Query-Aware Routing driven by query intent, quantitative denoising and conflict resolution, and token-constrained high-quality context generation, efficient and precise retrieval of complex multi-source memories is achieved within limited computation and token budgets.
 
-### Verify Installation
+![Quantitative Retrieval Pipeline](README.assets/智能路由与量化检索.png)
 
-```bash
-python -c "from mandol import MemorySystem, MemoryUnit, Uid; print('Mandol installed successfully!')"
-```
+---
 
-## Quick Start
+## ✨ Key Features
 
-### Mode 1: Remote API (Quick Start, no local models required)
+### Lightweight Architecture
+
+Pure Python implementation with a hexagonal architecture (ports-adapters pattern) at its core. `MemorySystem()` starts a complete memory system with zero mandatory external dependencies via its no-arg constructor. External engines such as FAISS, Milvus, and Neo4j can be switched via YAML configuration without modifying business code.
+
+### Simple and Easy to Use
+
+A three-step operational model covers the core workflow: `add()` writes memories → `build_high_level()` constructs high-level structures → `holistic_retrieve()` performs hybrid retrieval. `save()` / `load()` enable one-click persistence and restoration. In remote API mode, no local model download is required — just configure the API endpoint to get started quickly.
 
 ```python
 from mandol import MemorySystem, MemoryUnit, Uid
 
 system = MemorySystem.from_yaml_config("config.yaml")
-# In config.yaml, set embedder.use_remote: true and reranker.use_remote: true,
-# then configure the API endpoints and keys.
 
-unit = MemoryUnit(
+system.add(MemoryUnit(
     uid=Uid("msg_001"),
     raw_data={"text_content": "Zhang San went to Beijing on a business trip today"},
     metadata={"timestamp": "2024-01-15T10:00:00"},
-)
-system.add(unit)
-
-system.build_high_level(mode="auto")
-
-hits = system.holistic_retrieve("Where did Zhang San go?", top_k=5)
-for hit in hits:
-    print(f"[{hit.final_score:.3f}] {hit.unit.raw_data['text_content']}")
-
-system.save("./memory_snapshot")
-system2 = MemorySystem.load("./memory_snapshot")
-```
-
-> **About ``build_high_level()``**: The system asynchronously detects session boundaries during ``add()`` and automatically triggers high-level memory construction.
-> - Retrieving raw data (BASE group): available immediately after ``add()``
-> - Retrieving entities/events/summaries (ENTITY / EVENT / SUMMARY groups): wait for automatic construction to complete, or call ``build_high_level()`` manually
-> - Retrieving immediately after inserting a small amount of data: call ``build_high_level()`` manually to ensure high-level memory is available
-
-### Mode 2: Local Models (No API key required, model download needed)
-
-```python
-from mandol import MemorySystem, MemoryUnit, Uid
-
-system = MemorySystem()
-# Default: uses local Qwen3-Embedding-4B and Qwen3-Reranker-4B
-# Models auto-download on first run (~8 GB total)
-
-unit = MemoryUnit(
-    uid=Uid("msg_001"),
-    raw_data={"text_content": "Zhang San went to Beijing on a business trip today"},
-    metadata={"timestamp": "2024-01-15T10:00:00"},
-)
-system.add(unit)
+))
 
 system.build_high_level(mode="auto")
 
@@ -159,107 +107,100 @@ for hit in hits:
 system.save("./memory_snapshot")
 ```
 
-## Core Concepts
+### Unified Memory Representation
 
-### What is a Memory System?
+A single `MemoryUnit` abstraction uniformly encapsulates heterogeneous information such as text (`text_content`) and images (`image_path`), with automatic vectorization. The `MemorySpace` tree hierarchy flexibly organizes memories along dimensions such as BASE / ENTITY / EVENT / SUMMARY. `SemanticGraph` explicitly models inter-entity relationships and event causal chains as a directed graph, supporting multi-hop graph traversal retrieval.
 
-Mandol provides memory infrastructure for AI agents:
+### Layered Memory Structure
 
-- Extracts entities, events, and summaries from text automatically
-- Builds cross-session entity relation graphs and event causal chains
-- Supports hybrid retrieval combining dense, sparse, and graph-based search
+- **Base Memory Layer**: Raw data segments, retrievable immediately after `add()`
+- **High-Level Memory Layer**: The system automatically performs session segmentation (LLM-driven), entity extraction and deduplication, event extraction and deduplication, entity relationship construction, event causal chain construction, multi-type summary generation (episodic / knowledge / emotional / procedural), and global insight extraction
+- **Cross-Session Coreference Resolution**: Automatically merges the same entities and events across sessions, maintaining a consistent knowledge representation
 
-### Key Terms
+### Multi-Backend Database Support
 
-| Term | Definition |
-|------|------------|
-| MemoryUnit | The smallest memory unit in the system, encapsulating text content, vector representation, and metadata |
-| MemorySpace | A logical grouping container for memories, supporting organization by dimension (entity, event, summary, etc.) |
-| SemanticMap | Semantic mapping table providing vector indexing and hybrid retrieval engine |
-| SemanticGraph | Semantic relation graph storing associations between entities and events, supporting graph-based retrieval expansion |
-| Session | A coherent interaction sequence, automatically segmented by the system based on time gaps or semantic boundaries |
-| Entity | A named element (person, place, thing) extracted from text, deduplicated and linked across sessions |
-| Event | An occurrence extracted from text, including causal chains and temporal relations |
+The hexagonal architecture fully decouples core logic from storage backends. The same API can switch between different underlying infrastructure: vector indexing (in-memory exact search → FAISS ANN adaptive switching), graph storage (in-memory → Neo4j), unit storage (in-memory → Milvus), Embedding / Reranker (local models → remote OpenAI-compatible API). All backend switches require only YAML configuration changes with zero business code modifications.
 
-> **About MemoryUnit insertion mode**: The fields in ``raw_data`` that the system automatically vectorizes are:
-> - ``text_content``: plain text content → dense vector
-> - ``image_path``: image file path → image vector
->
-> Other fields (e.g., ``speaker``, ``source``) are stored as metadata but not automatically vectorized.
+```yaml
+# Example: switch from local models to remote API
+embedder:
+  use_remote: true
+  base_url: "https://api.example.com/v1"
 
-### How It Works
-
-```
-[User Input] → [Chunking + Embedding] → [Session Segmentation]
-→ [Extract Entities/Events/Summaries] → [Build Relationship Graph]
-→ [Retrieve: 3-way Recall → RRF Fusion → BFS Expansion → Rerank]
-→ [Return Results]
+# Switch graph storage to Neo4j
+graph_store:
+  backend: neo4j
+  uri: "bolt://localhost:7687"
 ```
 
-## Core Features
+---
 
-### 1. Data Management
+## 📊 Comparison with Mainstream Memory Systems
 
-| Operation | Method | Description |
-|-----------|--------|-------------|
-| Add single memory | `add(unit)` | Auto-chunking, auto-embedding |
-| Batch add | `add_many(units)` | More efficient batch processing |
-| Save state | `save(directory)` | Export to a directory (multiple JSON files) |
-| Load state | `MemorySystem.load(directory)` | Restore state from directory (class method) |
+The fundamental difference between Mandol and existing memory systems lies in the retrieval paradigm: traditional systems treat retrieval as a unidirectional pipeline (embedding recall → rerank → top-K), where retrieval is passive and lacks noise control. Mandol restructures this paradigm into a three-stage proactive retrieval pipeline — first dynamically routing to the most relevant memory sources based on query intent, then performing multi-level quantitative filtering and conflict resolution within and across sources, and finally generating high-information-density context under token constraints. This paradigm shift upgrades retrieval from passive "match–return" to proactive "understand–filter–summarize."
 
-### 2. Memory Construction
+At the architectural level, Mandol adopts a hexagonal architecture (ports-adapters pattern), fully decoupling core retrieval logic from underlying storage engines and supporting flexible switching from pure in-memory mode to external engines such as FAISS, Milvus, and Neo4j (see "Multi-Backend Database Support" above).
 
-After adding memories, the system automatically builds high-level memories asynchronously. For manual intervention:
+> For detailed benchmark comparison data, see the performance table in the [What is Mandol?](#-what-is-mandol) section above.
 
-| Operation | Method | Description |
-|-----------|--------|-------------|
-| Force rebuild | `build_high_level(mode="force")` | Clear state, reprocess all sessions |
-| Async rebuild | `build_high_level_async()` | Execute construction in background |
+---
 
-**Automatic construction pipeline**:
-- Session segmentation (LLM-driven)
-- Episodic / Knowledge / Emotional / Procedural summary generation
-- Insight extraction and global merging
-- Entity extraction and deduplication
-- Event extraction and deduplication
-- Entity relation construction
-- Event causal chain construction
-- Cross-session entity/event merging
+## 🏆 Application Cases
 
-### 3. Retrieval
+### Long Conversational Memory Benchmark: LoCoMo
 
-#### Holistic Retrieval (Recommended)
+On the LoCoMo benchmark (10 long-term conversations × 200+ turns, covering single-hop / multi-hop / temporal / open-domain queries), Mandol achieves the highest **multi-hop reasoning** score (92.20) among all systems. This is attributed to `SemanticGraph`'s explicit entity-relation graph and BFS graph expansion mechanism, which traverses along relational edges across multiple hops to discover indirectly connected evidence.
 
-```python
-hits = system.holistic_retrieve("query", top_k=10)
+> When queried "How did Manager Zhang's decision last year affect the Q2 project delay this year?", Mandol traces along the event causal chain `Decision A → Team restructuring → Resource transfer → Project B delay → Q2 delivery postponed`, completing a 4-hop trace. In contrast, pure vector retrieval can only return isolated fragments containing keywords like "Manager Zhang" or "Q2."
+
+### Long Memory Evaluation Benchmark: LongMemEval
+
+LongMemEval emphasizes memory retention and knowledge update capabilities in multi-session scenarios. Mandol achieves near-perfect scores on assistant-side memory (SS-Asst 98.21) and user-side memory (SS-User 98.57), with a knowledge update score of 89.74 — when two versions of the same fact exist (old and new), the system accurately adopts the new information and resolves the conflict, validating the effectiveness of cross-session coreference resolution and the "prefer new information" strategy.
+
+### Intelligent Customer Service
+
+In multi-turn customer service dialogues, when a user asks "What can I do about the price drop on the blue shirt I bought yesterday?", the system must simultaneously correlate memories across three dimensions: **temporal events** (when the price drop occurred), **product attributes** (blue shirt SKU), and **user information** (purchase records, membership tier). Mandol directly pinpoints the specific order and applicable price protection policy through multi-dimensional associative queries, generating an accurate response such as "Your order qualifies for our price protection policy. A refund of ¥35 can be issued," thereby improving first-contact resolution rates.
+
+### Software Development
+
+When a developer requests "Analyze the correlation between payment module anomalies and features shipped this week," the relevant information is scattered across PR discussions, issue comments, changelogs, and design documents. Mandol performs parallel retrieval across four memory spaces (BASE / ENTITY / EVENT / SUMMARY), while `SemanticGraph` automatically constructs a module–function–developer–version association graph. The retrieval results encompass code changes, discussion context, and temporal associations, shortening root cause analysis from days to minutes.
+
+### Healthcare
+
+When a doctor requests "Provide emergency examination support for a patient with fever after taking aspirin," critical information is dispersed across cross-department medical records, medication histories, and examination reports. Mandol retrieves through entity relationship graphs, traces event causal chains, and acquires knowledge summaries, converging cross-department, cross-temporal scattered information into structured decision-support context within milliseconds, reducing the risk of cross-department information omission.
+
+---
+
+## ⚡ Quick Start
+
+### Installation
+
+```bash
+pip install mandol
 ```
 
-**Retrieval pipeline**:
-1. Group recall: BASE / ENTITY / EVENT / SUMMARY four independent retrieval groups
-2. Within each group: Dense + BM25 + Sparse three-way recall → RRF fusion → BFS expansion
-3. Global reranking: All candidates merged and reranked by Cross-Encoder Reranker
+Optional dependencies for additional backends:
 
-The system also provides lower-level interfaces such as semantic retrieval and graph relation retrieval. See the [developer documentation](docs/index.rst) for details.
+```bash
+pip install mandol[faiss]                 # FAISS vector index acceleration
+pip install mandol[sentence-transformers] # Local Embedding/Reranker models
+pip install mandol[openai]                # OpenAI API support
+pip install mandol[milvus]                # Milvus vector database
+pip install mandol[neo4j]                 # Neo4j graph database
+pip install mandol[all]                   # Install all optional dependencies
+```
 
-## Configuration
+> For complete installation guides, configuration details, and advanced usage, see the [online documentation](https://agentcombo.github.io/Mandol/docs).
 
-### Environment Variables
+### Configuration
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `MANDOL_EMBEDDER_MODEL` | Embedding model | `Qwen/Qwen3-Embedding-4B` |
-| `MANDOL_EMBEDDER_DEVICE` | Embedding device | `cpu` |
-| `MANDOL_RERANKER_MODEL` | Reranker model | `Qwen/Qwen3-Reranker-4B` |
-| `MANDOL_RERANKER_DEVICE` | Reranker device | `cpu` |
-| `MANDOL_LLM_MODEL` | LLM model | `gpt-4o-mini` |
-| `OPENAI_API_KEY` | OpenAI API Key | `""` |
-| `MANDOL_LLM_BASE_URL` | OpenAI API Base URL | `https://api.openai.com/v1` |
-| `USE_REMOTE_EMBEDDER` | Use remote Embedder | `false` |
-| `USE_REMOTE_RERANKER` | Use remote Reranker | `false` |
+Copy the environment variable template and fill in your API key:
 
-> **Note**: These environment variables must be passed to the system via a YAML configuration file (``config.yaml``) or the ``MemorySystemConfig`` dataclass. Setting ``os.environ`` directly does not take effect. See the YAML configuration example below.
+```bash
+cp .env.example .env
+```
 
-### YAML Configuration
+Or configure fully via a YAML configuration file:
 
 ```yaml
 llm:
@@ -269,219 +210,93 @@ llm:
 
 embedder:
   model: "Qwen/Qwen3-Embedding-4B"
-  device: "cuda"
-  dimension: 2560
+  device: "cpu"
   use_remote: false
-  base_url: "http://localhost:8000/v1"
-  api_path: "/embeddings"
-  api_key: ""
-  timeout: 30
 
 reranker:
   model: "Qwen/Qwen3-Reranker-4B"
-  device: "cuda"
+  device: "cpu"
   use_remote: false
-  base_url: ""
-  api_path: "/v1/rerank"
-  api_key: ""
-  timeout: 30
 
 system:
   chunk_max_tokens: 512
-  session_time_gap_seconds: 1800
-  session_check_interval: 20
-  session_max_pending: 100
-  similarity_top_k: 5
-  similarity_threshold: 0.7
-  similarity_recent_window: 20
-  bfs_expansion_per_seed: 3
   bfs_expansion_hops: 1
   max_context_units: 20
-  max_entities_per_llm: 50
-  max_events_per_llm: 50
-  promote_threshold: 100
-
-storage:
-  root: null
-  enable_persistence: false
-  auto_save_interval: 300
 ```
 
-## Architecture Overview
+In remote API mode, no local model download (~8 GB) is needed — just set `use_remote` to `true` and configure the API endpoint to get started quickly.
 
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│                        Retrieval API Layer                           │
-│  holistic_retrieve() → 4-group parallel → Cross-Encoder Rerank → Top-K │
-├──────────────────────────────────────────────────────────────────────┤
-│                         Memory Hierarchy Layer                       │
-│  ┌──────────────────┐  ┌──────────────────────────────────────────┐ │
-│  │  Base Memory      │  │         High-Level Memory               │ │
-│  │  Raw data         │  │  Episodic │ Knowledge │ Emotional │ Proc │ │
-│  │  segments         │  │  Summary  │ Entity    │ Event     │ Ins  │ │
-│  └──────────────────┘  └──────────────────────────────────────────┘ │
-├──────────────────────────────────────────────────────────────────────┤
-│                      Core Data Structure Layer                       │
-│  MemoryUnit ←→ MemorySpace ←→ SemanticMap ←→ SemanticGraph          │
-│  (Memory Unit)  (Logic Space)  (Semantic Map)    (Relation Graph)   │
-└──────────────────────────────────────────────────────────────────────┘
-```
+### Three-Step Usage
 
-See [Developer Documentation](docs/index.rst) for details.
+```python
+from mandol import MemorySystem, MemoryUnit, Uid
 
-## Project Structure
+system = MemorySystem.from_yaml_config("config.yaml")
 
-```
-mandol/
-├── domain/           # Core data structures
-│   ├── memory_unit.py
-│   ├── memory_space.py
-│   ├── types.py
-│   └── coref_graph_constants.py
-├── ports/            # Abstract interfaces
-│   ├── embedding_provider.py
-│   ├── llm_provider.py
-│   ├── reranker.py
-│   ├── vector_index.py
-│   ├── graph_store.py
-│   ├── unit_store.py
-│   ├── bm25_index.py
-│   └── sparse_index.py
-├── application/      # Application service layer
-│   ├── memory_system.py          # Main entry point
-│   ├── semantic_map.py           # Semantic map service
-│   ├── semantic_graph.py         # Semantic graph service
-│   ├── multidim_semantic_graph.py # Multi-dimension builder
-│   ├── session_manager.py        # Session management
-│   ├── chunker.py                # Chunker
-│   ├── entity_dedup.py           # Entity deduplication
-│   ├── event_dedup.py            # Event deduplication
-│   ├── entity_relation_extract.py # Entity relation extraction
-│   ├── event_causal_extract.py   # Event causal extraction
-│   ├── summary_map_reducer.py    # Summary MapReduce
-│   ├── insight_map_reducer.py    # Insight MapReduce
-│   ├── global_insight_manager.py # Global insight management
-│   ├── unified_fact_pipeline.py  # Unified fact pipeline
-│   ├── cross_session_coref_manager.py # Cross-session coref manager
-│   └── prompts/                  # LLM prompt templates
-├── infrastructure/   # Infrastructure implementations
-│   ├── in_memory_*.py
-│   ├── adaptive_vector_index.py
-│   ├── faiss_vector_index.py
-│   ├── config.py                 # Configuration management
-│   ├── json_persistence.py       # JSON persistence
-│   ├── persistence_manager.py    # Persistence manager
-│   ├── provider_factory.py       # Provider factory
-│   ├── rank_bm25_index.py        # BM25 index
-│   ├── tfidf_sparse_index.py     # TF-IDF sparse index
-│   ├── openai_compatible_*.py    # OpenAI-compatible implementations
-│   ├── sentence_transformers_*.py # SentenceTransformers implementations
-│   ├── milvus_unit_store.py      # Milvus storage
-│   ├── neo4j_graph_store.py      # Neo4j graph storage
-│   └── stub_llm_provider.py      # Test stub LLM
-└── retrieval/        # Retrieval module
-    ├── pipeline.py   # Hybrid retriever
-    ├── fusion.py     # RRF fusion
-    ├── bm25.py       # BM25 retriever
-    ├── sparse.py     # Sparse retriever
-    ├── subgraph_hop.py # Subgraph hop retriever
-    ├── text.py       # Text retrieval
-    └── types.py      # SearchHit and other types
+# 1. Write memories
+system.add(MemoryUnit(
+    uid=Uid("msg_001"),
+    raw_data={"text_content": "Zhang San went to Beijing on a business trip today"},
+    metadata={"timestamp": "2024-01-15T10:00:00"},
+))
+
+# 2. Build high-level memory structures
+system.build_high_level(mode="auto")
+
+# 3. Hybrid retrieval
+hits = system.holistic_retrieve("Where did Zhang San go?", top_k=5)
+
+system.save("./memory_snapshot")                        # Persist
+system2 = MemorySystem.load("./memory_snapshot")        # Restore
 ```
 
-## Performance
+> **Tip**: The system automatically detects session boundaries during `add()` and triggers high-level memory construction. After inserting a small amount of data, it is recommended to manually call `build_high_level()` to ensure high-level memories are available. For more configuration options and advanced usage, see the [online documentation](https://agentcombo.github.io/Mandol/docs).
 
-Mandol is evaluated on the LoCoMo (Long Conversational Memory) and LongMemEval benchmarks. Evaluation uses LLM-as-judge to determine whether generated answers are consistent with ground truth answers.
+---
 
-### Key Metrics
+## 📚 Documentation & Community
 
-| Metric | Description |
-|--------|-------------|
-| F1 Score | LLM-as-judge evaluates consistency between generated and ground truth answers |
-| Response Time | End-to-end latency from query submission to result return |
-| Memory Usage | Peak RSS (Resident Set Size) during system operation |
-| Index Build Time | Total wall-clock time for `build_high_level()` completion |
+### Documentation
 
-### LoCoMo Results (GPT-4.1-mini Backbone)
+Complete API reference, architecture design, and best practice guides are built with Sphinx, covering three entry points for basic users, advanced users, and developers:
 
-| System | Avg.\,Tok. | Single-hop | Multi-hop | Temporal | Open-domain | Overall |
-|--------|------------|------------|-----------|----------|-------------|---------|
-| Mem0 | 1.0k | 68.97 | 61.70 | 58.26 | 50.00 | 64.20 |
-| MemU | 4.0k | 74.91 | 72.34 | 43.61 | 54.17 | 66.67 |
-| MemOS | 2.5k | 85.37 | 79.43 | 75.08 | 64.58 | 80.76 |
-| Zep | 1.4k | 90.84 | 81.91 | 77.26 | 75.00 | 85.22 |
-| EverMemOS† | 2.3k | 95.32 | 89.01 | 90.13 | 77.43 | 91.97 |
-| **Mandol (Ours)** | **1.9k** | **95.36** | **92.20** | 87.85 | **79.17** | **92.21** |
+> 🔗 Online documentation: [https://agentcombo.github.io/Mandol/docs](https://agentcombo.github.io/Mandol/docs) (coming soon)
 
-### LongMemEval Results (GPT-4.1-mini Backbone)
-
-| System | Avg.Tok. | SS-Pref | SS-Asst | Temporal | Multi-S | Know.Upd. | SS-User | Overall |
-|--------|----------|---------|---------|----------|---------|-----------|---------|---------|
-| EverMemOS | 2.8k | 93.33 | 85.71 | 77.44 | 73.68 | 89.74 | 97.14 | 83.00 |
-| **Mandol (Ours)** | 2.3k | **96.67** | **98.21** | **87.22** | **77.44** | **89.74** | **98.57** | **88.40** |
-
-> Overall metric excludes adversarial queries. † denotes results reproduced using the official EverMemOS implementation.
-
-### Quick Reproduce
+Build documentation locally:
 
 ```bash
-# LoCoMo
-cd benchmarks/locomo && bash scripts/env.sh
-python build_graph.py --config configs/base.yaml --output output/
-python retrieve.py --config configs/base.yaml --input output/ --output output/
-python generate.py --config configs/base.yaml --input output/ --output output/
-python evaluate.py --input output/ --output output/
-
-# LongMemEval
-cd benchmarks/longmemeval && bash scripts/env.sh
-python build_graph.py --config configs/base.yaml --output output/
-python retrieve.py --config configs/base.yaml --input output/ --output output/
-python generate.py --config configs/base.yaml --input output/ --output output/
-python evaluate.py --input output/ --output output/
+cd docs && make html
 ```
 
-For complete test environment configuration, dataset details, ablation experiments, and full performance comparison tables, see [LoCoMo Benchmark](benchmarks/locomo/README.md) and [LongMemEval Benchmark](benchmarks/longmemeval/README.md).
+### Contributing
 
-## FAQ
+We welcome community contributions! Please read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting a PR to learn about development environment setup, code standards (Ruff, 100-char line length), testing requirements, and the PR process.
 
-### Installation Issues
+### Feedback & Discussion
 
-**Q: `pip install mandol` reports "No matching distribution found"**
-A: Ensure Python version >= 3.9 and try `pip install --upgrade pip`.
+- **Issues**: [GitHub Issues](https://github.com/AgentCombo/Mandol/issues) — Report bugs or request new features
+- **Discussions**: [GitHub Discussions](https://github.com/AgentCombo/Mandol/discussions) — Usage questions, best practice discussions
+- **Community**: [Discord](https://discord.gg/mandol) — Real-time chat and community support
 
-**Q: Installing `faiss-cpu` fails**
-A: Try `conda install -c conda-forge faiss-cpu` or `pip install faiss-cpu --no-deps`.
+---
 
-### Runtime Errors
+## 📄 Citation
 
-**Q: `MemorySystem()` initialization raises CUDA out of memory**
-A: Set environment variables `MANDOL_EMBEDDER_DEVICE=cpu` and `MANDOL_RERANKER_DEVICE=cpu`, or use remote API mode (`USE_REMOTE_EMBEDDER=true`).
+If this work is helpful to your research, please cite our paper:
 
-**Q: `holistic_retrieve` returns empty results**
-A: Ensure `build_high_level()` has been called or wait for automatic construction to complete. Check that sufficient memory data exists (at least 5+ units recommended).
+```bibtex
+@article{mandol2026,
+  title   = {Mandol: An In-Memory Layered Memory System for Long-Term Conversational Agents},
+  author  = {Yuhan Zhang, Zhiyuan Guo, Ziheng Zeng, Wei Wang, Wentao Wu, Lijie Xu},
+  journal = {arXiv preprint arXiv:260x.xxxxx},
+  year    = {2026}
+}
+```
 
-**Q: LLM API call timeout**
-A: Verify `OPENAI_API_KEY` is correct and the API endpoint is reachable. You can increase the timeout with `MANDOL_LLM_TIMEOUT_S=120`.
+> The paper is forthcoming. The full author list and arXiv link will be updated upon publication.
 
-### Performance Optimization
+---
 
-**Q: Retrieval is slow. How to optimize?**
-A:
-1. Use FAISS index acceleration: `pip install mandol[faiss]`
-2. Reduce `bfs_expansion_hops` (default 1 → 0)
-3. Disable reranking: `holistic_retrieve(query, use_rerank=False)`
-4. Use GPU for embedding: `MANDOL_EMBEDDER_DEVICE=cuda`
+## 📄 License
 
-**Q: Memory usage is too high. How to optimize?**
-A:
-1. Use remote Embedding/Reranker instead of local models
-2. Reduce `similarity_recent_window`
-3. Enable persistence and periodically `save`/`load`
-
-## Documentation
-
-- [Developer Documentation](docs/index.rst) - Architecture design, data structures, retrieval interfaces, extension guide
-
-## License
-
-Apache License 2.0 - See [LICENSE](LICENSE)
+Apache License 2.0 — See [LICENSE](LICENSE)

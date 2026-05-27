@@ -1,6 +1,3 @@
-# Ablation: No Entity-Relation retrieval.
-# Removes the entity-relation graph view (T2 tower) from the retrieval groups.
-# Base memory, event-causality, and summary views are retained.
 embedder:
   dimension: 4096
 
@@ -28,13 +25,14 @@ experiment:
   sample_ids: []
   skip_categories: [5]
   output_dir: "output"
+  config_name: null
 
 retrieval:
   top_k: 10
   skip_views: ["entity"]
 
 generation:
-  max_tokens: 2048
+  max_tokens: 256
   temperature: 0.3
 
 evaluation:

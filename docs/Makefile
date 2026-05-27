@@ -8,7 +8,7 @@ SPHINXBUILD   ?= sphinx-build
 SOURCEDIR     = .
 BUILDDIR      = _build
 EN_SOURCEDIR  = en
-EN_BUILDDIR   = _build/html/en
+EN_BUILDDIR   = _build/en
 
 # Put it first so that "make" without argument is like "make help".
 help:

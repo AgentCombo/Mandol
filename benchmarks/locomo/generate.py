@@ -19,9 +19,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
+from mandol import MemorySystem
+
 from pipeline_utils import (
     GENERATION_PROMPT_TEMPLATE,
-    build_llm_provider_from_config,
     extract_final_answer,
     load_config,
     load_dataset,
@@ -38,41 +39,36 @@ logger = logging.getLogger(__name__)
 def generate_single_sample(
     sample_id: str,
     output_dir: Path,
-    llm,
     max_tokens: int,
     temperature: float,
     force: bool = False,
-) -> dict:
+) -> None:
     result_path = output_dir / sample_id / "generation.json"
-
-    if force and result_path.exists():
-        result_path.unlink()
-        logger.info("Force mode: deleted existing results for %s", sample_id)
 
     if not force and result_path.exists():
         import json
         existing = json.loads(result_path.read_text(encoding="utf-8"))
         if existing.get("status") == "completed":
             logger.info("Skipping %s: generation already completed", sample_id)
-            return {"sample_id": sample_id, "status": "skipped", "queries_processed": 0, "token_usage": {}}
+            return
 
     retrieval_path = output_dir / sample_id / "retrieval.json"
     retrieval = load_json(retrieval_path)
     if retrieval is None:
         logger.error("Retrieval results not found for %s, run retrieve.py first", sample_id)
-        return {"sample_id": sample_id, "status": "error", "queries_processed": 0, "token_usage": {}}
+        return
 
     retrieval_results = retrieval.get("results", [])
     total_queries = len(retrieval_results)
     if total_queries == 0:
         logger.info("No queries to generate for %s", sample_id)
-        return {"sample_id": sample_id, "status": "skipped", "queries_processed": 0, "token_usage": {}}
+        return
 
     results, completed = load_or_init_results(result_path, total_queries)
     logger.info("Generating %s: %d queries (%d already done)", sample_id, total_queries, completed)
 
-    t0 = time.time()
-    accumulated_tokens = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+    system = MemorySystem.load(str(output_dir / sample_id / "graph"))
+    system.reset_token_usage()
 
     for i, item in enumerate(retrieval_results):
         if i < completed:
@@ -85,19 +81,18 @@ def generate_single_sample(
                 context_parts.append(f"[{j + 1}] {text}")
         context = "\n".join(context_parts)
 
-        prompt = GENERATION_PROMPT_TEMPLATE.replace("{question}", item["question"]).replace("{context}", context)
+        prompt = GENERATION_PROMPT_TEMPLATE.format(
+            question=item["question"],
+            context=context,
+        )
 
-        q_t0 = time.time()
-        response = llm.chat(
+        t0 = time.time()
+        response = system.llm.chat(
             messages=[{"role": "user", "content": prompt}],
             temperature=temperature,
             max_tokens=max_tokens,
         )
-        q_elapsed = time.time() - q_t0
-
-        usage = response.usage or {}
-        for k in accumulated_tokens:
-            accumulated_tokens[k] += usage.get(k, 0)
+        elapsed = time.time() - t0
 
         results.append({
             "question": item["question"],
@@ -106,8 +101,8 @@ def generate_single_sample(
             "evidence": item.get("evidence", ""),
             "generated_answer": response.content,
             "generated_answer_extracted": extract_final_answer(response.content),
-            "generation_time_seconds": round(q_elapsed, 4),
-            "token_usage": usage,
+            "generation_time_seconds": round(elapsed, 4),
+            "token_usage": response.usage,
         })
 
         update_results_file(result_path, sample_id, results, total_queries)
@@ -115,16 +110,8 @@ def generate_single_sample(
         if (i + 1) % 10 == 0 or i + 1 == total_queries:
             logger.info("  %s: %d/%d queries generated", sample_id, i + 1, total_queries)
 
-    elapsed = time.time() - t0
-    queries_done = len(results) - completed
-    logger.info("  %s generation: %d queries in %.1fs, token usage: %s", sample_id, queries_done, elapsed, accumulated_tokens)
-    return {
-        "sample_id": sample_id,
-        "status": "completed",
-        "queries_processed": queries_done,
-        "duration_seconds": round(elapsed, 3),
-        "token_usage": accumulated_tokens,
-    }
+    total_usage = system.get_token_usage()
+    logger.info("  %s generation token usage: %s", sample_id, total_usage)
 
 
 def main():
@@ -149,49 +136,28 @@ def main():
     dataset_path = experiment.get("dataset_path", "data/locomo10.json")
     samples = load_dataset(dataset_path, sample_ids_override or None)
 
-    llm = build_llm_provider_from_config(args.config)
-
     logger.info("Output directory: %s", output_dir)
     logger.info("max_tokens=%d, temperature=%.2f", max_tokens, temperature)
 
-    all_results = []
-    for idx, sample in enumerate(samples, 1):
+    for sample in samples:
         sid = sample["sample_id"]
-        logger.info("[%d/%d] Processing sample: %s", idx, len(samples), sid)
-        result = generate_single_sample(
+        generate_single_sample(
             sample_id=sid,
             output_dir=output_dir,
-            llm=llm,
             max_tokens=max_tokens,
             temperature=temperature,
             force=args.force,
         )
-        all_results.append(result)
-
-    total_queries = sum(r.get("queries_processed", 0) for r in all_results)
-    total_duration = sum(r.get("duration_seconds", 0) for r in all_results)
-    total_tokens = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
-    for r in all_results:
-        for k in total_tokens:
-            total_tokens[k] += r.get("token_usage", {}).get(k, 0)
 
     stats = {
         "config_name": config_name,
-        "total_samples": len(samples),
-        "completed_samples": sum(1 for r in all_results if r.get("status") == "completed"),
-        "skipped_samples": sum(1 for r in all_results if r.get("status") == "skipped"),
-        "error_samples": sum(1 for r in all_results if r.get("status") == "error"),
-        "total_queries_generated": total_queries,
-        "total_duration_seconds": round(total_duration, 3),
-        "avg_query_seconds": round(total_duration / max(total_queries, 1), 3),
-        "total_token_usage": total_tokens,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
     save_json(output_dir / "generation_stats.json", stats)
-    logger.info("Generation complete: %s", stats)
+    logger.info("Generation complete for all samples")
 
 
 if __name__ == "__main__":
     main()
 
-# conda activate mandol && cd benchmarks/locomo/ && nohup python generate.py --config configs/base.yaml --force > results/generate.log 2>&1 &
+# conda activate mandol && cd benchmarks/locomo/ && nohup python generate.py --config configs/base.yaml --force > results/generate.log 2>&1 & 

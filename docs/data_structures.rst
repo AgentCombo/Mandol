@@ -9,7 +9,7 @@
    - 完整数据结构参考：:doc:`/shared/data-structures-reference`
    - 术语表：:doc:`/shared/glossary`
 
-本节介绍 Mandol 记忆系统的核心数据结构，包括记忆单元、记忆空间、语义映射表和语义关系图。
+本节介绍 Mandol 记忆系统的核心数据结构，包括记忆单元、记忆空间、语义索引和语义关系图。
 
 .. _data-structure-memory-unit:
 
@@ -161,7 +161,7 @@
 
 .. _data-structure-semantic-map:
 
-语义映射表 (SemanticMap)
+语义索引 (SemanticMap)
 ----------------------
 
 ``SemanticMapService``（位于 ``mandol.application.semantic_map``）是管理记忆存储与向量索引的核心服务。
@@ -275,7 +275,7 @@
 
    SemanticGraphService(
        *,
-       semantic_map: SemanticMapService,   # 关联的语义映射表
+       semantic_map: SemanticMapService,   # 关联的语义索引
        graph_store: GraphStore,            # 图存储后端
    )
 

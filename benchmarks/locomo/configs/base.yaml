@@ -25,13 +25,14 @@ experiment:
   sample_ids: ["conv-41"]
   skip_categories: [5]
   output_dir: "output"
+  config_name: null
 
 retrieval:
   top_k: 10
   skip_views: []
 
 generation:
-  max_tokens: 2048
+  max_tokens: 256
   temperature: 0.3
 
 evaluation:

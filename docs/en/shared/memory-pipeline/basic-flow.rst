@@ -1,10 +1,12 @@
-Basic Depth: Three-Step Memory Pipeline
-========================================
+Basic Depth: Understanding the Memory Pipeline in Three Sentences
+===================================================================
 
-Step 1: Add Memories
---------------------
+Mandol works like an assistant who proactively takes notes.
 
-Add conversation records to the system. The system automatically vectorizes and stores them.
+Step 1: Feed It Conversations
+------------------------------
+
+You tell the system your conversation records, and it automatically understands and remembers them.
 
 .. code-block:: python
 
@@ -14,16 +16,10 @@ Add conversation records to the system. The system automatically vectorizes and 
    )
    system.add(unit)
 
-Step 2: Build High-Level Memories
-----------------------------------
+Step 2: Let It Digest and Organize
+-----------------------------------
 
-After adding a batch of data, call ``build_high_level()``. The system internally performs the following:
-
-- **Chunking**: Overly long memory units are split into smaller sub-units, ensuring each unit fits within LLM processing limits
-- **Session segmentation**: LLM-based semantic analysis identifies topic boundaries, grouping adjacent memories into sessions by theme
-- **High-level extraction**: For each session, the system extracts entity relationships, event causality, and multi-type summaries (episodic/knowledge/emotional/procedural), then further distills deep insights; cross-session entities and events are automatically merged and deduplicated, and global insights accumulate continuously
-
-All of this is transparent to you — just one method call:
+After adding a batch of data, call the "digest" command once. The system will automatically identify topic boundaries, extract key people, events, and knowledge points.
 
 .. code-block:: python
 
@@ -31,12 +27,12 @@ All of this is transparent to you — just one method call:
 
 .. important::
 
-   If you skip this step, the raw data is stored but not yet organized into entities, events, and summaries — retrieval of high-level memories will return empty results. If you only need to retrieve raw conversations (BASE group), this step is not needed.
+   If you skip this step, the system hasn't organized the memories yet, and retrieving entities/events/summaries will return empty results. It's like someone who took notes but hasn't reviewed them — the information is in their head, but they can't quickly recall it. If you only need to retrieve raw conversations (BASE group), this step is not needed.
 
-Step 3: Retrieve Memories
---------------------------
+Step 3: Ask It Questions
+-------------------------
 
-Once construction is complete, use natural language queries to retrieve relevant memories.
+Once the system has digested the data, you can ask questions in natural language as if asking a person.
 
 .. code-block:: python
 
@@ -45,10 +41,4 @@ Once construction is complete, use natural language queries to retrieve relevant
    for hit in hits:
        print(f"Relevance {hit.final_score:.2f}: {hit.unit.raw_data['text_content']}")
 
-The entire process is just these three steps: **add memories → build high-level memories → retrieve**.
-
-.. note::
-
-   For complete details on each step inside ``build_high_level()`` (chunking strategy,
-   session detection mechanism, extraction methods for each high-level memory type,
-   cross-session merging logic, etc.), see :doc:`detailed-flow`.
+The entire process is just these three steps: **feed data → let it digest → ask it questions**.

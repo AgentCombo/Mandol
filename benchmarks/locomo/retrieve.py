@@ -13,7 +13,6 @@ import argparse
 import logging
 import sys
 import time
-from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
@@ -27,7 +26,6 @@ from pipeline_utils import (
     load_config,
     load_dataset,
     load_or_init_results,
-    save_json,
     update_results_file,
 )
 
@@ -43,7 +41,7 @@ def retrieve_single_sample(
     skip_views: list,
     skip_categories: list,
     force: bool = False,
-) -> dict:
+) -> None:
     result_path = output_dir / sample_id / "retrieval.json"
 
     if force and result_path.exists():
@@ -55,11 +53,11 @@ def retrieve_single_sample(
         existing = json.loads(result_path.read_text(encoding="utf-8"))
         if existing.get("status") == "completed":
             logger.info("Skipping %s: retrieval already completed", sample_id)
-            return {"sample_id": sample_id, "status": "skipped", "queries_processed": 0, "token_usage": {}}
+            return
 
     if not is_graph_built(output_dir, sample_id):
         logger.error("Graph not built for %s, run build_graph.py first", sample_id)
-        return {"sample_id": sample_id, "status": "error", "queries_processed": 0, "token_usage": {}}
+        return
 
     sample = load_locomo_sample(dataset_path=dataset_path, sample_id=sample_id)
     qa_list = filter_qa(sample.get("qa", []), skip_categories)
@@ -67,19 +65,18 @@ def retrieve_single_sample(
 
     if total_queries == 0:
         logger.info("No queries to retrieve for %s (all filtered)", sample_id)
-        return {"sample_id": sample_id, "status": "skipped", "queries_processed": 0, "token_usage": {}}
+        return
 
     results, completed = load_or_init_results(result_path, total_queries)
     logger.info("Retrieving %s: %d queries (%d already done)", sample_id, total_queries, completed)
 
-    t0 = time.time()
     system = MemorySystem.load(str(output_dir / sample_id / "graph"))
 
     for i, qa in enumerate(qa_list):
         if i < completed:
             continue
 
-        q_t0 = time.time()
+        t0 = time.time()
         hits = system.holistic_retrieve(
             query=qa["question"],
             top_k=top_k,
@@ -87,14 +84,14 @@ def retrieve_single_sample(
             auto_build_if_empty=False,
             skip_views=skip_views or None,
         )
-        q_elapsed = time.time() - q_t0
+        elapsed = time.time() - t0
 
         results.append({
             "question": qa["question"],
             "answer": qa.get("answer", ""),
             "category": qa.get("category", 0),
             "evidence": qa.get("evidence", ""),
-            "retrieval_time_seconds": round(q_elapsed, 4),
+            "retrieval_time_seconds": round(elapsed, 4),
             "top_k_hits": [
                 {
                     "uid": str(hit.unit.uid),
@@ -111,16 +108,6 @@ def retrieve_single_sample(
 
         if (i + 1) % 10 == 0 or i + 1 == total_queries:
             logger.info("  %s: %d/%d queries retrieved", sample_id, i + 1, total_queries)
-
-    elapsed = time.time() - t0
-    queries_done = len(results) - completed
-    logger.info("  %s retrieval: %d queries in %.1fs", sample_id, queries_done, elapsed)
-    return {
-        "sample_id": sample_id,
-        "status": "completed",
-        "queries_processed": queries_done,
-        "duration_seconds": round(elapsed, 3),
-    }
 
 
 def main():
@@ -150,11 +137,9 @@ def main():
     logger.info("Output directory: %s", output_dir)
     logger.info("top_k=%d, skip_views=%s, skip_categories=%s", top_k, skip_views, skip_categories)
 
-    all_results = []
-    for idx, sample in enumerate(samples, 1):
+    for sample in samples:
         sid = sample["sample_id"]
-        logger.info("[%d/%d] Processing sample: %s", idx, len(samples), sid)
-        result = retrieve_single_sample(
+        retrieve_single_sample(
             sample_id=sid,
             dataset_path=dataset_path,
             output_dir=output_dir,
@@ -163,24 +148,8 @@ def main():
             skip_categories=skip_categories,
             force=args.force,
         )
-        all_results.append(result)
 
-    total_queries = sum(r.get("queries_processed", 0) for r in all_results)
-    total_duration = sum(r.get("duration_seconds", 0) for r in all_results)
-
-    stats = {
-        "config_name": config_name,
-        "total_samples": len(samples),
-        "completed_samples": sum(1 for r in all_results if r.get("status") == "completed"),
-        "skipped_samples": sum(1 for r in all_results if r.get("status") == "skipped"),
-        "error_samples": sum(1 for r in all_results if r.get("status") == "error"),
-        "total_queries_retrieved": total_queries,
-        "total_duration_seconds": round(total_duration, 3),
-        "avg_query_seconds": round(total_duration / max(total_queries, 1), 3),
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-    }
-    save_json(output_dir / "retrieval_stats.json", stats)
-    logger.info("Retrieval complete: %s", stats)
+    logger.info("Retrieval complete for all samples")
 
 
 if __name__ == "__main__":

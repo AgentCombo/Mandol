@@ -19,7 +19,7 @@ Core Data Structures
    * - 记忆空间
      - MemorySpace
      - Logical container for memory units, supporting hierarchical nesting
-   * - 语义映射表
+   * - 语义索引
      - SemanticMap / SemanticMapService
      - Responsible for memory unit CRUD, vector indexing, and space management
    * - 语义图

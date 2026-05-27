@@ -4,9 +4,12 @@ build:
   os: ubuntu-22.04
   tools:
     python: "3.11"
+  apt_packages:
+    - graphviz
 
 sphinx:
   configuration: docs/conf.py
+  fail_on_warning: false
 
 python:
   install:
@@ -14,3 +17,7 @@ python:
       path: .
       extra_requirements:
         - docs
+
+formats:
+  - pdf
+  - epub

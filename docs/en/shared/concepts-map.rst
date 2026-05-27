@@ -52,13 +52,13 @@ How do Mandol's core concepts relate to each other? The diagram below provides a
 Core Concepts in One Sentence
 ------------------------------
 
-- **MemoryUnit**: The smallest memory unit — a message, a knowledge point, or an event
-- **MemorySpace**: A logical container, organizing memory units by topic or hierarchy
-- **SemanticMap**: Storage and lookup service for memory units and vector indexes
-- **SemanticGraph**: Relationship modeling service, recording edges between units
-- **SessionManager**: Session boundary detection, determining when a new topic starts
-- **build_high_level**: Triggers extraction of entities, events, summaries, and relationships from raw data
-- **holistic_retrieve**: Unified retrieval entry point, searching across all memory levels
+- **MemoryUnit**: The smallest thing to remember — a message, a knowledge point, or an event
+- **MemorySpace**: A category box, grouping memories by topic or hierarchy
+- **SemanticMap**: The archive manager, handling storage and lookup
+- **SemanticGraph**: The relationship network, recording "who has what relationship with whom"
+- **SessionManager**: The clerk, determining when a new topic starts
+- **build_high_level**: The digestion command, turning raw notes into structured cards
+- **holistic_retrieve**: The query command, the system automatically finds the most relevant content
 
 Data Flow Diagram
 ------------------

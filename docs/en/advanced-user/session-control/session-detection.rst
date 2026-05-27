@@ -15,7 +15,7 @@ When the ``timestamp`` difference between two adjacent memories exceeds ``sessio
    # system:
    #   session_time_gap_seconds: 1800  # 30 minutes
 
-Strategy 2: LLM-Based Segmentation
+Strategy 2: LLM Smart Segmentation
 ------------------------------------
 
 When ``session_check_interval`` memories are accumulated → call LLM to determine session boundaries.

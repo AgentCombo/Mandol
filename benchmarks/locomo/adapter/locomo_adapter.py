@@ -126,7 +126,7 @@ def _parse_locomo_datetime(dt_str: str) -> Optional[str]:
             return dt.replace(tzinfo=timezone.utc).isoformat()
         except ValueError:
             continue
-    logger.warning("Could not parse LoCoMo datetime: %r. All %d format(s) failed.", dt_str, len(_LOCOMO_DATETIME_FORMATS))
+    logger.warning("Could not parse LoCoMo datetime: %r", dt_str)
     return None
 
 

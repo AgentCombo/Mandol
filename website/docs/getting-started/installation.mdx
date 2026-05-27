@@ -1,0 +1,34 @@
+---
+sidebar_position: 1
+title: Installation
+---
+
+# Installation
+
+## Prerequisites
+
+- Python 3.9 – 3.13
+- pip
+
+## Install via pip
+
+```bash
+pip install mandol
+```
+
+## With optional dependencies
+
+```bash
+# FAISS vector index
+pip install mandol[faiss]
+
+# Full installation
+pip install mandol[all]
+```
+
+## Verify
+
+```python
+import mandol
+print(mandol.__version__)
+```

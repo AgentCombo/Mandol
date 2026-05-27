@@ -62,14 +62,9 @@
 
 .. _diagram-placeholder-1:
 
-.. admonition:: 占位：高阶记忆构建流程全景图
-   :class: hint
-
-   **此图需要展示的内容：**
-
-   从 ``add()`` 写入的原始记忆单元出发，依次经过 **分块 → 会话分割 → 空间创建 → 摘要生成（四类并行）→ 实体/事件提取 → 洞察提炼 → 跨会话合并 → 全局洞察更新** 的完整流程。用横向流程箭头连接各阶段，每个阶段下方标注关键配置参数和产物。
-
-   建议采用横向分栏或纵向分层布局，突出"一条原始对话如何逐步变成结构化记忆"的叙事。
+.. image:: /_static/images/pipeline-build-overview.png
+    :alt: 高阶记忆构建流程全景图
+    :align: center
 
 下面按流程顺序逐一说明每个子阶段。
 
@@ -239,14 +234,9 @@
 
 .. _diagram-placeholder-2:
 
-.. admonition:: 占位：三阶段检索管线全景图
-   :class: hint
-
-   **此图需要展示的内容：**
-
-   展示阶段三的检索管线：**查询输入 → 向量化 → 四组并行召回（BASE/ENTITY/EVENT/SUMMARY）→ 每组三路检索（Dense/BM25/Sparse）→ RRF 融合 → BFS 图扩展 → Cross-Encoder 重排 → SearchHit 输出**。
-
-   建议采用从左到右的管线布局，各组召回和融合步骤用不同颜色区分。
+.. image:: /_static/images/pipeline-retrieval-overview.png
+    :alt: 三阶段检索管线全景图
+    :align: center
 
 构建报告（BuildReport）
 ------------------------
@@ -310,12 +300,9 @@
 
 .. _diagram-placeholder-3:
 
-.. admonition:: 占位：基础记忆图结构示例
-   :class: hint
-
-   **此图需要展示的内容：**
-
-   三条对话单元（dialogue_001/002/003）之间的 PRECEDES/FOLLOWS 时序边和 SEMANTIC_SIMILAR 语义相似边。简单有向图，节点标出文本摘要。
+.. image:: /_static/images/base-memory-graph.png
+    :alt: 基础记忆图结构示例
+    :align: center
 
 .. _representation-entity-relation:
 
@@ -368,12 +355,9 @@
 
 .. _diagram-placeholder-4:
 
-.. admonition:: 占位：实体关系图结构示例
-   :class: hint
-
-   **此图需要展示的内容：**
-
-   实体节点（北京/故宫/长城）之间 RELATED_TO 边，以及对话单元到实体的 COREF 边和 EVIDENCED_BY 边。突出实体间空间关系（located_in/part_of）和指代消解链路。
+.. image:: /_static/images/entity-relation-graph.png
+    :alt: 实体关系图结构示例
+    :align: center
 
 .. _representation-event-causal:
 
@@ -414,12 +398,9 @@
 
 .. _diagram-placeholder-5:
 
-.. admonition:: 占位：事件因果图结构示例
-   :class: hint
-
-   **此图需要展示的内容：**
-
-   事件节点（出差北京/参观故宫/了解历史文化）之间的 CAUSES 因果链和 PRECEDES 时序边，以及事件到实体（北京/故宫）的 INVOLVES 边。展示事件-实体-对话三层的完整追溯链路。
+.. image:: /_static/images/event-causal-graph.png
+    :alt: 事件因果图结构示例
+    :align: center
 
 .. _representation-emotional-summary:
 
@@ -608,22 +589,9 @@
 
 .. _diagram-placeholder-6:
 
-.. admonition:: 占位：全局多视角记忆图结构总览
-   :class: hint
-
-   **此图需要展示的内容：**
-
-   将基础记忆、实体关系、事件因果、四类摘要（情感/情景/知识/程序）、洞察记忆的全景图结构汇总到一张图中。
-   用颜色或区域区分不同视角的子图，清晰展示各层之间的 EVIDENCED_BY 溯源边和 COREF 指代边的层级关系。
-
-   核心信息层级（从底层到顶层）：
-
-   1. **基础记忆层**：原始对话单元，PRECEDES/FOLLOWS 时序边
-   2. **实体/事件层**：从对话中提取，RELATED_TO/CAUSES/INVOLVES 关系边
-   3. **摘要层**：四类总结，EVIDENCED_BY 指向基础记忆
-   4. **洞察层**：深层洞察，EVIDENCED_BY 指向摘要层
-
-   跨层边清晰展示从"原始数据 → 结构化事实 → 总结提炼 → 深度洞察"的逐层抽象过程。
+.. image:: /_static/images/global-memory-graph-overview.png
+    :alt: 全局多视角记忆图结构总览
+    :align: center
 
 空间层级结构
 ------------

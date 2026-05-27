@@ -72,30 +72,3 @@ SearchHit 结构
    hits = system.holistic_retrieve("...")
 
 如果已调用仍返回空，请翻阅 :doc:`troubleshooting`。
-
-从 SearchHit 到自然语言回复
-----------------------------
-
-``holistic_retrieve`` 返回的是结构化的 ``SearchHit`` 列表。如果你需要自然语言回复，可以使用 ``ask()`` 方法：
-
-.. code-block:: python
-
-   answer = system.ask("张三去了哪里？")
-   print(answer)
-
-``ask()`` 内部自动调用 ``holistic_retrieve`` 检索，然后将检索结果作为上下文发送给 LLM 生成自然语言回复。
-
-如果你希望自行控制检索过程（例如使用 ``retrieve_in_space`` 或 ``retrieve_by_view``），可以将检索结果传入 ``ask_with_hits()``：
-
-.. code-block:: python
-
-   hits = system.retrieve_by_view("张三", view="entity_relation", top_k=3)
-   answer = system.ask_with_hits("张三去了哪里？", hits)
-   print(answer)
-
-你也可以自定义 system prompt：
-
-.. code-block:: python
-
-   custom_prompt = "你是一个简洁的助手。仅根据以下记忆回答问题，用一句话回复。\n\n记忆：\n{context}"
-   answer = system.ask("张三去了哪里？", system_prompt=custom_prompt)

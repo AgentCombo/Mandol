@@ -2,8 +2,7 @@
 """Step 4: Evaluate - LLM judge evaluation of generated answers.
 
 Loads generation results, runs LLM judge for each answer, and computes
-per-category accuracy.  Supports multiple judge runs per query to detect
-misjudgments.  Per-query resume is supported.
+per-category accuracy.  Per-query resume is supported.
 
 Usage:
     python evaluate.py --config configs/base.yaml [--output output/] [--force]
@@ -14,16 +13,16 @@ import argparse
 import logging
 import sys
 import time
-from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
+from mandol import MemorySystem
+
 from pipeline_utils import (
     EVALUATION_PROMPT_TEMPLATE,
     aggregate_llm_judge_accuracy,
-    build_llm_provider_from_config,
     generate_report,
     load_config,
     load_dataset,
@@ -41,7 +40,6 @@ logger = logging.getLogger(__name__)
 def evaluate_single_sample(
     sample_id: str,
     output_dir: Path,
-    llm,
     llm_judge_runs: int,
     force: bool = False,
 ) -> dict:
@@ -74,63 +72,44 @@ def evaluate_single_sample(
     logger.info("Evaluating %s: %d queries (%d already done)", sample_id, total_queries, completed)
 
     t0 = time.time()
-    accumulated_tokens = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+    system = MemorySystem.load(str(output_dir / sample_id / "graph"))
+    system.reset_token_usage()
 
     for i, item in enumerate(generation_results):
         if i < completed:
             continue
 
         question = item["question"]
-        gold_answer = str(item.get("answer", ""))
+        gold_answer = item.get("answer", "")
         generated_answer = item.get("generated_answer_extracted") or item.get("generated_answer", "")
 
-        prompt = (EVALUATION_PROMPT_TEMPLATE
-            .replace("{question}", question)
-            .replace("{gold_answer}", gold_answer)
-            .replace("{generated_answer}", generated_answer))
+        prompt = EVALUATION_PROMPT_TEMPLATE.format(
+            question=question,
+            gold_answer=gold_answer,
+            generated_answer=generated_answer,
+        )
 
-        # Run the judge multiple times to detect misjudgments
-        run_labels: list[str] = []
-        run_raws: list[str] = []
-        run_tokens: list[dict] = []
-        run_times: list[float] = []
+        q_t0 = time.time()
+        response = system.llm.chat(
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.0,
+            max_tokens=100,
+        )
+        q_elapsed = time.time() - q_t0
 
-        for _ in range(max(1, llm_judge_runs)):
-            q_t0 = time.time()
-            response = llm.chat(
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.0,
-                max_tokens=100,
-            )
-            q_elapsed = time.time() - q_t0
-
-            label = parse_judge_label(response.content)
-            run_labels.append(label)
-            run_raws.append(response.content)
-            run_times.append(round(q_elapsed, 4))
-            usage = response.usage or {}
-            run_tokens.append(usage)
-            for k in accumulated_tokens:
-                accumulated_tokens[k] += usage.get(k, 0)
-
-        # Majority vote across runs
-        label_counts = Counter(run_labels)
-        majority_label = label_counts.most_common(1)[0][0]
-        agreement = label_counts[majority_label] / len(run_labels) if run_labels else 1.0
-        accuracy = 1.0 if majority_label == "CORRECT" else 0.0
+        label = parse_judge_label(response.content)
+        accuracy = 1.0 if label == "CORRECT" else 0.0
 
         results.append({
             "question": question,
             "category": item.get("category", 0),
             "gold_answer": gold_answer,
             "generated_answer": generated_answer,
-            "llm_judge_label": majority_label,
+            "llm_judge_label": label,
             "llm_judge_accuracy": accuracy,
-            "llm_judge_agreement": round(agreement, 4),
-            "llm_judge_runs": run_labels,
-            "llm_judge_raw": run_raws[0] if len(run_raws) == 1 else run_raws,
-            "evaluation_time_seconds": round(sum(run_times), 4),
-            "token_usage": run_tokens[0] if len(run_tokens) == 1 else run_tokens,
+            "llm_judge_raw": response.content,
+            "evaluation_time_seconds": round(q_elapsed, 4),
+            "token_usage": response.usage,
         })
 
         update_results_file(result_path, sample_id, results, total_queries)
@@ -140,13 +119,14 @@ def evaluate_single_sample(
 
     elapsed = time.time() - t0
     queries_done = len(results) - completed
-    logger.info("  %s evaluation: %d queries in %.1fs, token usage: %s", sample_id, queries_done, elapsed, accumulated_tokens)
+    total_usage = system.get_token_usage()
+    logger.info("  %s evaluation: %d queries in %.1fs, token usage: %s", sample_id, queries_done, elapsed, total_usage)
     return {
         "sample_id": sample_id,
         "status": "completed",
         "queries_processed": queries_done,
         "duration_seconds": round(elapsed, 3),
-        "token_usage": accumulated_tokens,
+        "token_usage": total_usage,
     }
 
 
@@ -165,17 +145,14 @@ def main():
     config_name = experiment.get("config_name", "default")
     output_dir = output_dir / config_name
 
-    llm_judge_runs = int(evaluation_cfg.get("llm_judge_runs", 1))
+    llm_judge_runs = evaluation_cfg.get("llm_judge_runs", 1)
 
     sample_ids_override = experiment.get("sample_ids", [])
     dataset_path = experiment.get("dataset_path", "data/locomo10.json")
     samples = load_dataset(dataset_path, sample_ids_override or None)
     sample_ids = [s["sample_id"] for s in samples]
 
-    llm = build_llm_provider_from_config(args.config)
-
     logger.info("Output directory: %s", output_dir)
-    logger.info("llm_judge_runs=%d", llm_judge_runs)
 
     all_results = []
     for idx, sample in enumerate(samples, 1):
@@ -184,7 +161,6 @@ def main():
         result = evaluate_single_sample(
             sample_id=sid,
             output_dir=output_dir,
-            llm=llm,
             llm_judge_runs=llm_judge_runs,
             force=args.force,
         )
@@ -204,7 +180,6 @@ def main():
     accuracy_summary["error_samples"] = sum(1 for r in all_results if r.get("status") == "error")
     accuracy_summary["total_queries_evaluated"] = total_queries
     accuracy_summary["total_duration_seconds"] = round(total_duration, 3)
-    accuracy_summary["llm_judge_runs"] = llm_judge_runs
     accuracy_summary["total_token_usage"] = total_tokens
     accuracy_summary["timestamp"] = datetime.now(timezone.utc).isoformat()
 
@@ -224,4 +199,4 @@ def main():
 if __name__ == "__main__":
     main()
 
-# conda activate mandol && cd benchmarks/locomo/ && nohup python evaluate.py --config configs/base.yaml --force > results/evaluate.log 2>&1 &
+# conda activate mandol && cd benchmarks/locomo && nohup python evaluate.py --config configs/base.yaml --force > results/evaluate.log 2>&1 &

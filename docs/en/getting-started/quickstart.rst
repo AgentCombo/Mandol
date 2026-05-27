@@ -139,5 +139,5 @@ Next Steps
 ----------
 
 - Read :doc:`configuration` for detailed configuration options
-- Read :doc:`/shared/data-structures-reference` for core data structures
-- Read :doc:`/shared/retrieval-reference` for retrieval interface details
+- Read :doc:`../data_structures` for core data structures
+- Read :doc:`../retrieval/index` for retrieval interface details

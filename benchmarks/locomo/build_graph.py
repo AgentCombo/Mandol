@@ -11,13 +11,11 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import json
 import logging
 import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
@@ -48,35 +46,13 @@ def build_single_sample(
         logger.info("Skipping %s: graph already built", sample_id)
         existing = output_dir / sample_id / "build.json"
         if existing.exists():
+            import json
             return json.loads(existing.read_text(encoding="utf-8"))
         return {"sample_id": sample_id, "status": "skipped"}
 
     logger.info("Building graph for sample: %s", sample_id)
 
     system = MemorySystem.from_yaml_config(config_path, root=sample_id)
-
-    # Pre-flight: verify LLM connectivity before any expensive work
-    try:
-        test_resp = system.llm.chat(
-            [{"role": "user", "content": "Respond with exactly: ok"}],
-            temperature=0,
-            max_tokens=5,
-        )
-        if "ok" not in test_resp.content.lower():
-            raise RuntimeError(f"LLM returned unexpected response: {test_resp.content[:100]!r}")
-        logger.info("LLM pre-flight check passed for %s", sample_id)
-    except Exception as e:
-        msg = f"LLM pre-flight check FAILED for {sample_id}: {e}"
-        logger.error(msg)
-        return {
-            "sample_id": sample_id,
-            "status": "error",
-            "error_message": msg,
-            "sessions_processed": 0,
-            "units_processed": 0,
-            "duration_seconds": 0,
-            "token_usage": {},
-        }
 
     sample = load_locomo_sample(dataset_path=dataset_path, sample_id=sample_id)
     write_sample_to_graph(graph=system.graph, sample=sample)
@@ -98,8 +74,6 @@ def build_single_sample(
     }
     if report.error_message:
         build_result["error_message"] = report.error_message
-    if report.warnings:
-        build_result["warnings"] = report.warnings
     save_json(output_dir / sample_id / "build.json", build_result)
 
     if report.status == "error":
@@ -145,9 +119,8 @@ def main():
     logger.info("Samples to process: %d", len(samples))
 
     all_results = []
-    for idx, sample in enumerate(samples, 1):
+    for sample in samples:
         sid = sample["sample_id"]
-        logger.info("[%d/%d] Processing sample: %s", idx, len(samples), sid)
         result = build_single_sample(
             sample_id=sid,
             dataset_path=dataset_path,
@@ -165,26 +138,17 @@ def main():
         for k in total_tokens:
             total_tokens[k] += r.get("token_usage", {}).get(k, 0)
 
-    all_warnings: List[str] = []
-    for r in all_results:
-        for w in r.get("warnings", []):
-            all_warnings.append(f"[{r.get('sample_id', '?')}] {w}")
-
     stats = {
         "config_name": config_name,
         "total_samples": len(samples),
         "completed_samples": sum(1 for r in all_results if r.get("status") == "completed"),
         "skipped_samples": sum(1 for r in all_results if r.get("status") == "skipped"),
-        "error_samples": sum(1 for r in all_results if r.get("status") == "error"),
         "total_sessions": total_sessions,
         "total_units": total_units,
         "total_duration_seconds": round(total_duration, 3),
         "total_token_usage": total_tokens,
-        "warning_count": len(all_warnings),
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
-    if all_warnings:
-        stats["warnings_summary"] = all_warnings[:50]  # Cap at 50 to avoid bloat
     save_json(output_dir / "build_stats.json", stats)
     logger.info("Build complete: %s", stats)
 

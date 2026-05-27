@@ -5,18 +5,9 @@ Mandol 的核心概念之间如何关联？下图给出全局视图。
 
 .. _diagram-placeholder-concepts-1:
 
-.. admonition:: 占位：核心概念关系全景图
-   :class: hint
-
-   **此图需要展示的内容：**
-
-   从 **用户** 出发的三条主线：
-
-   1. **写入线（add）**：用户 → MemoryUnit → SemanticMap → MemorySpace（层级嵌套），同时 MemoryUnit → EmbeddingProvider → VectorIndex
-   2. **构建线（build_high_level）**：触发 SessionManager 进行会话分割 → 每 Session 内：SummaryMapReducer（四类摘要）、UnifiedFactPipeline（实体/事件/关系提取）、InsightMapReducer（洞察提炼）→ CrossSessionCorefManager（跨会话实体/事件合并）→ GlobalInsightManager（全局洞察累积）
-   3. **检索线（holistic_retrieve）**：查询 → 四组召回（BASE/ENTITY/EVENT/SUMMARY）→ 每组三路检索（Dense/BM25/Sparse）→ RRF 融合 → BFS 图扩展 ← SemanticGraph → Reranker 重排 → SearchHit
-
-   建议将三条主线用不同颜色区分，垂直排列，从左到右展示"写入 → 构建 → 检索"的时间顺序。
+.. image:: /_static/images/core-concepts-map.png
+    :alt: 核心概念关系全景图
+    :align: center
 
 核心概念一句话解释
 ------------------
