@@ -235,7 +235,7 @@ class MemoryPersistenceService:
 
         except Exception as e:
             errors.append(str(e))
-            logger.error(f"Save failed: {e}")
+            logger.error("Save failed: %s", e, exc_info=True)
             return SaveResult(
                 success=False,
                 saved_at=datetime.now(timezone.utc).isoformat(),
@@ -276,8 +276,8 @@ class MemoryPersistenceService:
                     self._graph_store.upsert_relationship(
                         Uid(str(source)), Uid(str(target)), str(rel_type), dict(properties)
                     )
-                except Exception as e:
-                    logger.debug(f"Failed to restore edge {source}->{target}: {e}")
+                except (KeyError, ValueError, TypeError) as e:
+                    logger.debug("Failed to restore edge %s->%s: %s", source, target, e)
 
             self._session_manager.reset()
             for session in sessions:
@@ -313,7 +313,7 @@ class MemoryPersistenceService:
 
         except Exception as e:
             errors.append(str(e))
-            logger.error(f"Load failed: {e}")
+            logger.error("Load failed: %s", e, exc_info=True)
             return LoadResult(
                 success=False,
                 loaded_from=storage_path,

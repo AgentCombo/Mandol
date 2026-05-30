@@ -9,6 +9,8 @@ import numpy as np
 
 from mandol.application.pipeline.cross_session_coref_manager import CrossSessionCorefManager
 from mandol.application.pipeline.unified_fact_pipeline import (
+    ExtractedEntity,
+    ExtractedEvent,
     PipelineResult,
 )
 from mandol.domain.memory_unit import MemoryUnit
@@ -57,177 +59,326 @@ class TestCrossSessionCorefManager(unittest.TestCase):
             unit.embedding = emb
         return unit
 
-    # ── _should_simple_concat ──────────────────────────────────────────
+    # ── Name index building ───────────────────────────────────────────
 
-    def test_should_simple_concat_below_threshold(self):
-        existing = self._make_unit("e1", "short")
-        new_entity = self._make_unit("e2", "also short")
-        result = self.manager._should_simple_concat(existing, new_entity)
-        self.assertTrue(result)
+    def test_build_entity_name_index_empty(self):
+        result = self.manager._build_entity_name_index([])
+        self.assertEqual(len(result), 0)
+        self.assertIsInstance(result, dict)
 
-    def test_should_simple_concat_above_threshold(self):
-        existing = self._make_unit("e1", "a" * 500)
-        new_entity = self._make_unit("e2", "b" * 500)
-        result = self.manager._should_simple_concat(existing, new_entity)
-        self.assertFalse(result)
+    def test_build_entity_name_index_populates_keys(self):
+        unit = MemoryUnit(
+            uid=Uid("e1"),
+            raw_data={
+                "text_content": "Entity Alice(Person): A software engineer",
+                "entity_name": "Alice",
+                "entity_type": "Person",
+                "aliases": ["Ally", "A"],
+            },
+            metadata={"session_id": "s1"},
+        )
+        result = self.manager._build_entity_name_index([unit])
+        self.assertIn("alice", result)
+        self.assertIn("ally", result)
+        self.assertIn("a", result)
+        self.assertIn("e1", result["alice"])
 
-    # ── _update_entity_description ─────────────────────────────────────
+    def test_build_event_name_index_populates_keys(self):
+        unit = MemoryUnit(
+            uid=Uid("ev1"),
+            raw_data={
+                "text_content": "Event Conference: Tech summit in SF",
+                "event_name": "Conference",
+            },
+            metadata={"session_id": "s1"},
+        )
+        result = self.manager._build_event_name_index([unit])
+        self.assertIn("conference", result)
+        self.assertIn("ev1", result["conference"])
 
-    def test_update_entity_description_simple_concat(self):
-        existing = self._make_unit("e1", "A brief note")
-        new_entity = self._make_unit("e2", "Another note")
-        self.manager._update_entity_description(existing, new_entity)
-        self.assertIn("A brief note", existing.raw_data["text_content"])
-        self.assertIn("Another note", existing.raw_data["text_content"])
+    # ── Description merging ───────────────────────────────────────────
 
-    def test_update_entity_description_llm_merge(self):
-        existing = self._make_unit("e1", "a" * 500)
-        new_entity = self._make_unit("e2", "b" * 500)
+    def test_update_description_simple_concat(self):
+        result = self.manager._update_description_simple(
+            "A brief note", ["Another note"]
+        )
+        self.assertIn("A brief note", result)
+        self.assertIn("Another note", result)
 
+    def test_update_description_llm_merge(self):
         mock_response = MagicMock()
         mock_response.content = '{"merged_description": "Merged LLM result"}'
         self.llm.chat.return_value = mock_response
 
-        self.manager._update_entity_description(existing, new_entity)
-        self.assertEqual(existing.raw_data["text_content"], "Merged LLM result")
+        result = self.manager._update_description_llm(
+            "a" * 500, ["b" * 500], "TestEntity"
+        )
+        self.assertEqual(result, "Merged LLM result")
 
-    def test_update_entity_description_llm_fallback(self):
-        existing = self._make_unit("e1", "a" * 500)
-        new_entity = self._make_unit("e2", "b" * 500)
-        self.llm.chat.side_effect = Exception("LLM error")
+    def test_update_description_llm_fallback(self):
+        self.llm.chat.side_effect = ConnectionError("LLM connection error")
 
-        self.manager._update_entity_description(existing, new_entity)
-        self.assertIn("a" * 500, existing.raw_data["text_content"])
-        self.assertIn("b" * 500, existing.raw_data["text_content"])
+        result = self.manager._update_description_llm(
+            "existing_desc", ["new fact"], "TestEntity"
+        )
+        # Fallback to simple concat
+        self.assertIn("existing_desc", result)
+        self.assertIn("new fact", result)
 
-    # ── _update_event_description ──────────────────────────────────────
+    # ── Entity matching ───────────────────────────────────────────────
 
-    def test_update_event_description_simple_concat(self):
-        existing = self._make_unit("ev1", "Event summary 1")
-        new_event = self._make_unit("ev2", "Event summary 2")
-        self.manager._update_event_description(existing, new_event)
-        self.assertIn("Event summary 1", existing.raw_data["text_content"])
-        self.assertIn("Event summary 2", existing.raw_data["text_content"])
+    def test_llm_judge_entity_match_no_candidates(self):
+        entity = ExtractedEntity(
+            entity_name="Alice",
+            entity_type="Person",
+            linked_id=None,
+            is_new=True,
+            confidence=0.9,
+            mention_text="Alice",
+            new_facts=["Works at Acme"],
+            aliases=["Ally"],
+        )
+        matched_idx, confidence, canonical_name, new_aliases, reasoning = (
+            self.manager._llm_judge_entity_match(entity, [])
+        )
+        self.assertIsNone(matched_idx)
+        self.assertEqual(confidence, 0.0)
 
-    def test_update_event_description_llm_merge(self):
-        existing = self._make_unit("ev1", "a" * 500)
-        new_event = self._make_unit("ev2", "b" * 500)
-
+    def test_llm_judge_entity_match_found(self):
         mock_response = MagicMock()
-        mock_response.content = '{"merged_description": "Merged event result"}'
+        mock_response.content = (
+            '{"matched_index": 0, "confidence": 0.85, '
+            '"canonical_name_suggestion": "Alice Smith", '
+            '"new_aliases": ["Ally"], "reasoning": "same person"}'
+        )
         self.llm.chat.return_value = mock_response
 
-        self.manager._update_event_description(existing, new_event)
-        self.assertEqual(existing.raw_data["text_content"], "Merged event result")
+        entity = ExtractedEntity(
+            entity_name="Alice",
+            entity_type="Person",
+            linked_id=None,
+            is_new=True,
+            confidence=0.9,
+            mention_text="Alice",
+            new_facts=["Works at Acme"],
+            aliases=["Ally"],
+        )
+        candidate = MemoryUnit(
+            uid=Uid("e_existing"),
+            raw_data={
+                "text_content": "Entity Alice Smith(Person): Works at Acme Corp",
+                "entity_name": "Alice Smith",
+                "entity_type": "Person",
+                "aliases": ["Ally"],
+            },
+            metadata={"session_id": "s0"},
+        )
+        matched_idx, confidence, canonical_name, new_aliases, reasoning = (
+            self.manager._llm_judge_entity_match(entity, [candidate])
+        )
+        self.assertEqual(matched_idx, 0)
+        self.assertGreaterEqual(confidence, 0.8)
 
-    # ── Vector index methods ───────────────────────────────────────────
+    def test_llm_judge_entity_match_not_found(self):
+        mock_response = MagicMock()
+        mock_response.content = (
+            '{"matched_index": null, "confidence": 0.3, '
+            '"canonical_name_suggestion": null, '
+            '"new_aliases": [], "reasoning": "different people"}'
+        )
+        self.llm.chat.return_value = mock_response
 
-    def test_build_entity_index_sets_vectors(self):
-        emb1 = np.random.randn(2560).astype(np.float32)
-        emb2 = np.random.randn(2560).astype(np.float32)
-        entities = [
-            self._make_unit("e1", "Entity 1", emb=emb1),
-            self._make_unit("e2", "Entity 2", emb=emb2),
+        entity = ExtractedEntity(
+            entity_name="Alice",
+            entity_type="Person",
+            linked_id=None,
+            is_new=True,
+            confidence=0.9,
+            mention_text="Alice",
+            new_facts=["Works at Acme"],
+            aliases=[],
+        )
+        candidate = MemoryUnit(
+            uid=Uid("e_bob"),
+            raw_data={
+                "text_content": "Entity Bob(Person): Works at Globex",
+                "entity_name": "Bob",
+                "entity_type": "Person",
+            },
+            metadata={"session_id": "s0"},
+        )
+        matched_idx, confidence, canonical_name, new_aliases, reasoning = (
+            self.manager._llm_judge_entity_match(entity, [candidate])
+        )
+        self.assertIsNone(matched_idx)
+
+    def test_llm_judge_entity_match_fallback(self):
+        self.llm.chat.side_effect = ConnectionError("LLM connection error")
+        entity = ExtractedEntity(
+            entity_name="Alice",
+            entity_type="Person",
+            linked_id=None,
+            is_new=True,
+            confidence=0.9,
+            mention_text="Alice",
+            new_facts=[],
+            aliases=[],
+        )
+        candidate = MemoryUnit(
+            uid=Uid("e_old"),
+            raw_data={
+                "text_content": "Entity Alice(Person): Engineer",
+                "entity_name": "Alice",
+                "entity_type": "Person",
+            },
+            metadata={"session_id": "s0"},
+            embedding=np.ones(4, dtype=np.float32),
+        )
+        self.semantic_map._embedder.embed_text.return_value = [
+            np.ones(4, dtype=np.float32)
         ]
-        self.manager._build_entity_index(entities)
-        self.assertEqual(len(self.manager._entity_vectors), 2)
+        matched_idx, confidence, canonical_name, new_aliases, reasoning = (
+            self.manager._llm_judge_entity_match(entity, [candidate])
+        )
+        # Fallback vector judge runs; with identical embeddings it should match
+        self.assertIsNotNone(matched_idx)
+        self.assertEqual(matched_idx, 0)
 
-    def test_build_event_index_sets_vectors(self):
-        emb1 = np.random.randn(2560).astype(np.float32)
-        events = [
-            self._make_unit("ev1", "Event 1", emb=emb1),
-        ]
-        self.manager._build_event_index(events)
-        self.assertEqual(len(self.manager._event_vectors), 1)
+    # ── Event matching ────────────────────────────────────────────────
 
-    def test_build_entity_index_empty(self):
-        self.manager._build_entity_index([])
-        self.assertEqual(len(self.manager._entity_vectors), 0)
+    def test_llm_judge_event_match_no_candidates(self):
+        event = ExtractedEvent(
+            event_name="Conference",
+            linked_id=None,
+            is_new=True,
+            confidence=0.9,
+            description="Tech conference",
+            participants=[],
+            location=None,
+            inferred_time=None,
+            new_facts=[],
+        )
+        matched_idx, confidence, canonical_name, reasoning = (
+            self.manager._llm_judge_event_match(event, [])
+        )
+        self.assertIsNone(matched_idx)
 
-    # ── Similarity search ──────────────────────────────────────────────
-
-    def test_find_similar_entities_no_candidates(self):
-        entity = self._make_unit("e1", "test", emb=np.random.randn(2560).astype(np.float32))
-        result = self.manager._find_similar_entities(entity, [])
-        self.assertEqual(result, [])
-
-    def test_find_similar_events_no_candidates(self):
-        event = self._make_unit("ev1", "test", emb=np.random.randn(2560).astype(np.float32))
-        result = self.manager._find_similar_events(event, [])
-        self.assertEqual(result, [])
-
-    def test_find_similar_entities_below_threshold(self):
-        existing = self._make_unit("e_old", "completely different content",
-                                   emb=np.random.randn(2560).astype(np.float32))
-        self.manager._build_entity_index([existing])
-
-        new_emb = np.random.randn(2560).astype(np.float32)
-        new_entity = self._make_unit("e_new", "new entity", emb=new_emb)
-        result = self.manager._find_similar_entities(new_entity, [existing])
-        self.assertEqual(len(result), 0)
-
-    # ── LLM coref methods ──────────────────────────────────────────────
-
-    def test_llm_coref_entities_match(self):
-        mock_response = MagicMock()
-        mock_response.content = '{"match": true, "confidence": 0.85, "reasoning": "same person"}'
-        self.llm.chat.return_value = mock_response
-
-        entity = self._make_unit("e1", "Alice")
-        similar = [self._make_unit("e2", "Alice Smith")]
-        session_units = [self._make_unit("u1", "Alice is here")]
-
-        matches = self.manager._llm_coref_entities(entity, similar, session_units)
-        self.assertEqual(len(matches), 1)
-
-    def test_llm_coref_entities_no_match(self):
-        mock_response = MagicMock()
-        mock_response.content = '{"match": false, "confidence": 0.3, "reasoning": "different people"}'
-        self.llm.chat.return_value = mock_response
-
-        entity = self._make_unit("e1", "Alice")
-        similar = [self._make_unit("e2", "Bob")]
-        session_units = [self._make_unit("u1", "different people")]
-
-        matches = self.manager._llm_coref_entities(entity, similar, session_units)
-        self.assertEqual(len(matches), 0)
-
-    def test_llm_coref_entities_fallback(self):
-        self.llm.chat.side_effect = Exception("LLM error")
-        entity = self._make_unit("e1", "Alice")
-        similar = [self._make_unit("e2", "Alice")]
-        session_units = [self._make_unit("u1", "test")]
-
-        matches = self.manager._llm_coref_entities(entity, similar, session_units)
-        self.assertEqual(len(matches), 0)
-
-    # ── merge_and_write ────────────────────────────────────────────────
+    # ── merge_and_write ───────────────────────────────────────────────
 
     def test_merge_and_write_basic(self):
         session = MagicMock()
         session.session_id = "s1"
         session_units = [self._make_unit("u1", "Alice went to the store")]
 
-        session_space = MagicMock()
-        session_space.name = SpaceName("root_session_s1")
+        session_space = SpaceName("root_session_s1")
 
-        entity_unit = self._make_unit("e1", "Alice", emb=np.random.randn(2560).astype(np.float32))
-        event_unit = self._make_unit("ev1", "went to store", emb=np.random.randn(2560).astype(np.float32))
+        # Setup semantic_map to return empty lists for entity/event lookups
+        self.semantic_map.get_units_in_spaces.return_value = []
+        self.semantic_map.search_by_text.return_value = []
+        self.semantic_map.search_by_vector.return_value = []
+        self.semantic_map.get_unit.return_value = None
 
-        pipeline_result = PipelineResult(
-            entities=[entity_unit],
-            events=[event_unit],
-            entity_relations=[],
-            causal_relations=[],
-            coref_edges=[],
-            evidenced_by_edges=[],
-            involves_edges=[],
-            related_to_edges=[],
-            causes_edges=[],
+        extracted_entity = ExtractedEntity(
+            entity_name="Alice",
+            entity_type="Person",
+            linked_id=None,
+            is_new=True,
+            confidence=0.9,
+            mention_text="Alice",
+            new_facts=["Went to the store"],
+            aliases=[],
+        )
+        extracted_event = ExtractedEvent(
+            event_name="went to store",
+            linked_id=None,
+            is_new=True,
+            confidence=0.8,
+            description="Alice went to the store",
+            participants=[{"mention": "Alice", "role": "participant"}],
+            location=None,
+            inferred_time=None,
+            new_facts=[],
         )
 
-        self.manager.merge_and_write(session, session_units, session_space, pipeline_result)
-        self.assertTrue(self.graph.add_relationship.called or True)
+        pipeline_result = PipelineResult(
+            entities=[extracted_entity],
+            events=[extracted_event],
+            entity_relations=[],
+            causal_relations=[],
+        )
+
+        entity_uid_map, event_uid_map = self.manager.merge_and_write(
+            session, session_units, session_space, pipeline_result
+        )
+        self.assertIn("Alice", entity_uid_map)
+        self.assertIn("went to store", event_uid_map)
+
+    # ── Simple concat threshold ───────────────────────────────────────
+
+    def test_simple_concat_below_threshold(self):
+        """Verify simple_concat_threshold=2 means <=2 facts use simple concat."""
+        existing_desc = "Short desc"
+        facts = ["Fact 1", "Fact 2"]
+        result = self.manager._update_description_simple(existing_desc, facts)
+        self.assertIn("Short desc", result)
+        self.assertIn("Fact 1", result)
+        self.assertIn("Fact 2", result)
+
+    def test_update_entity_description_via_uid(self):
+        """Test _update_entity_description(uid, new_facts) path."""
+        existing_unit = MemoryUnit(
+            uid=Uid("e_target"),
+            raw_data={
+                "text_content": "Entity Alice(Person): Old description",
+                "entity_name": "Alice",
+                "entity_type": "Person",
+            },
+            metadata={"session_ids": ["s0"]},
+        )
+        self.semantic_map.get_unit.return_value = existing_unit
+
+        mock_response = MagicMock()
+        mock_response.content = (
+            '{"merged_description": "Updated with new facts"}'
+        )
+        self.llm.chat.return_value = mock_response
+
+        self.manager._update_entity_description(Uid("e_target"), ["New fact"])
+        self.assertEqual(
+            existing_unit.raw_data["text_content"],
+            "Entity Alice(Person): Updated with new facts",
+        )
+
+    def test_update_event_description_via_uid(self):
+        """Test _update_event_description(uid, new_facts, participants, time) path."""
+        existing_unit = MemoryUnit(
+            uid=Uid("ev_target"),
+            raw_data={
+                "text_content": "Event Meeting: Old meeting",
+                "event_name": "Meeting",
+                "description": "Old meeting",
+                "participants": [],
+                "inferred_time": None,
+            },
+            metadata={"session_ids": ["s0"]},
+        )
+        self.semantic_map.get_unit.return_value = existing_unit
+
+        mock_response = MagicMock()
+        mock_response.content = (
+            '{"merged_description": "Updated meeting", '
+            '"merged_participants": [{"mention": "Alice", "role": "participant"}], '
+            '"merged_time": "2024-06-01T10:00:00Z"}'
+        )
+        self.llm.chat.return_value = mock_response
+
+        self.manager._update_event_description(
+            Uid("ev_target"),
+            ["New detail"],
+            [{"mention": "Alice", "role": "participant"}],
+            "2024-06-01T10:00:00Z",
+        )
+        self.assertEqual(existing_unit.raw_data["description"], "Updated meeting")
 
 
 if __name__ == "__main__":

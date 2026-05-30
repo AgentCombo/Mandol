@@ -276,8 +276,8 @@ class EventDeduplicator:
                 list(data.get("matched_signatures", [])),
                 float(data.get("decision_confidence", 0.5)),
             )
-        except Exception as e:
-            logger.error(f"Event quick match failed: {e}")
+        except (json.JSONDecodeError, ConnectionError, TimeoutError, OSError, RuntimeError) as e:
+            logger.error("Event quick match failed: %s", e)
             return False, [], 0.5
 
     def _detailed_merge(
@@ -308,6 +308,6 @@ class EventDeduplicator:
             is_same = bool(data.get("is_same_event", False))
             merged = data.get("merged_event") if is_same else None
             return is_same, merged, float(data.get("decision_confidence", 0.5))
-        except Exception as e:
-            logger.error(f"Event detailed merge failed: {e}")
+        except (json.JSONDecodeError, ConnectionError, TimeoutError, OSError, RuntimeError) as e:
+            logger.error("Event detailed merge failed: %s", e)
             return False, None, 0.5

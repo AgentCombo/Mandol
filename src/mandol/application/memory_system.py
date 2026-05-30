@@ -431,7 +431,12 @@ class MemorySystem:
                     logger.warning(f"Loaded system with {len(pending_sessions)} pending sessions to rebuild")
                 self._persistence.start_auto_save()
             except Exception as e:
-                logger.warning(f"Failed to initialize persistence: {e}")
+                logger.warning(
+                    "Failed to initialize persistence: %s. "
+                    "Memory state will NOT survive process restart. "
+                    "Check that the storage_root directory is writable.",
+                    e,
+                )
                 self._persistence = None
 
         from ..infrastructure.memory_monitor import MemoryMonitor
@@ -1270,7 +1275,10 @@ class MemorySystem:
                 return self._build_high_level_auto(all_base_units, start_time)
 
         except Exception as e:
-            logger.error(f"build_high_level failed: {e}\n{traceback.format_exc()}")
+            logger.error(
+                "build_high_level failed: %s", e,
+                exc_info=True,
+            )
             duration = (datetime.now(timezone.utc) - start_time).total_seconds()
             return BuildReport(
                 status="error",
@@ -1376,8 +1384,10 @@ class MemorySystem:
             for source, target, rel_type, props in self._graph_store.get_all_edges():
                 if rel_type in ("IS_BEFORE", "IS_AFTER"):
                     temporal_edges.append((str(source), str(target), str(rel_type), dict(props)))
-        except Exception as e:
-            logger.warning(f"Failed to extract temporal edges: {e}")
+        except (KeyError, AttributeError, RuntimeError) as e:
+            # Graph store iteration may fail if edges are malformed or the
+            # underlying store type doesn't support iteration.
+            logger.warning("Failed to extract temporal edges: %s", e)
 
         # Step 3: Rebuild store, index, graph
         new_store = InMemoryUnitStore()
@@ -1408,8 +1418,8 @@ class MemorySystem:
                 self._graph_store.upsert_relationship(
                     Uid(str(source)), Uid(str(target)), str(rel_type), props
                 )
-            except Exception as e:
-                logger.debug(f"Failed to restore temporal edge {source}->{target}: {e}")
+            except (KeyError, ValueError, TypeError) as e:
+                logger.warning("Failed to restore temporal edge %s->%s: %s", source, target, e)
 
         # Rebuild vector index
         items: List[Tuple[Uid, np.ndarray]] = []
@@ -1944,8 +1954,12 @@ class MemorySystem:
                             score=score,
                         )
                         self._processed_similarity_pairs.add(pair_key)
-                    except Exception as e:
-                        logger.debug(f"Could not add immediate similarity edge: {e}")
+                    except KeyError:
+                        # Source or target unit no longer in the semantic map.
+                        logger.debug(
+                            "Immediate similarity edge skipped — UID not found: %s -> %s",
+                            new_unit.uid, existing.uid,
+                        )
 
     def _build_similarity_edges_for_units(self, units: List[MemoryUnit]) -> None:
         if not units:
@@ -1987,8 +2001,11 @@ class MemorySystem:
                             score=score,
                         )
                         self._processed_similarity_pairs.add(pair_key)
-                    except Exception as e:
-                        logger.debug(f"Could not add cross-session similarity edge: {e}")
+                    except KeyError:
+                        logger.debug(
+                            "Cross-session similarity edge skipped — UID not found: %s -> %s",
+                            new_unit.uid, existing.uid,
+                        )
 
     def flush(self) -> None:
         """Persist all stores and clear pending state."""

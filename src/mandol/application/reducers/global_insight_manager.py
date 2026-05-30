@@ -203,8 +203,8 @@ All contributing session IDs: {self._global_insight.key_source_session_ids + [se
             self._global_insight = self._parse_merge_response(
                 response.content, session_id
             )
-        except Exception as e:
-            logger.error(f"Global insight merge failed: {e}, using fallback merge")
+        except (json.JSONDecodeError, ConnectionError, TimeoutError, OSError, RuntimeError) as e:
+            logger.error("Global insight merge failed: %s, using fallback merge", e)
             self._merge_insights_fallback(session_id, session_insight)
 
     def _parse_merge_response(

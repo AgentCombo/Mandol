@@ -8,12 +8,15 @@ available.
 
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 from ..domain.memory_unit import MemoryUnit
 from ..domain.types import Uid
+
+logger = logging.getLogger(__name__)
 
 # Matches any single Chinese character in the Unicode CJK Unified Ideographs block.
 CHINESE_CHARS_RE = re.compile(r"[\u4e00-\u9fff]")
@@ -223,6 +226,12 @@ class DocumentChunker:
                 },
             )
             chunks.append(chunk_unit)
+
+        logger.debug(
+            "Chunked unit %s: %d sentences → %d chunks (max_tokens=%d, tokens=~%d)",
+            unit.uid, len(sentences), len(chunks),
+            self._max_tokens, estimate_tokens(text),
+        )
 
         parent_metadata: Dict[str, Any] = {
             "original_uid": str(unit.uid),

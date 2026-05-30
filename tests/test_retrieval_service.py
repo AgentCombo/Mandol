@@ -106,7 +106,7 @@ class TestMemoryRetrievalService(unittest.TestCase):
         self.assertEqual(mock_hr_cls.call_count, 1)
 
     @_patch_retriever
-    def test_search_group_returns_unit_score_tuples(self, mock_hr_cls):
+    def test_search_group_returns_search_hits(self, mock_hr_cls):
         unit = self._make_unit("u1", "hello")
         mock_hr = MagicMock()
         mock_hr.search.return_value = [self._make_hit(unit, 0.85)]
@@ -114,8 +114,9 @@ class TestMemoryRetrievalService(unittest.TestCase):
 
         result = self.service._search_group("q", [SpaceName("s")], 5, True)
         self.assertEqual(len(result), 1)
-        self.assertIs(result[0][0], unit)
-        self.assertAlmostEqual(result[0][1], 0.85)
+        self.assertIsInstance(result[0], SearchHit)
+        self.assertIs(result[0].unit, unit)
+        self.assertAlmostEqual(result[0].final_score, 0.85)
 
     # ── holistic_retrieve ──────────────────────────────────────────────
 
@@ -381,8 +382,8 @@ class TestMemoryRetrievalService(unittest.TestCase):
 
         hits = self.service.retrieve_in_space("q", "root_knowledge_entity", top_k=5)
         self.assertEqual(len(hits), 1)
-        self.assertIsInstance(hits[0], tuple)
-        self.assertEqual(len(hits[0]), 2)
+        self.assertIsInstance(hits[0], SearchHit)
+        self.assertEqual(hits[0].final_score, 0.9)
 
     # ── retrieve_by_view ───────────────────────────────────────────────
 

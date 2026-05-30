@@ -102,7 +102,7 @@ class PersistenceManager:
 
         except Exception as e:
             errors.append(str(e))
-            logger.error(f"Persistence save failed: {e}")
+            logger.error("Persistence save failed: %s", e, exc_info=True)
             return SaveResult(
                 success=False,
                 saved_at=datetime.now(timezone.utc).isoformat(),
@@ -127,7 +127,7 @@ class PersistenceManager:
         try:
             self.save_full()
         except Exception as e:
-            logger.error(f"Delayed save failed: {e}")
+            logger.error("Delayed save failed: %s", e, exc_info=True)
         finally:
             with self._save_lock:
                 self._pending_save = False
@@ -190,7 +190,7 @@ class PersistenceManager:
                 logger.info(f"Rebuilt vector index with {len(items)} vectors")
 
         except Exception as e:
-            logger.error(f"Failed to rebuild indexes: {e}")
+            logger.error("Failed to rebuild indexes: %s", e, exc_info=True)
             raise
 
     def verify_integrity(self) -> VerificationResult:
@@ -257,8 +257,8 @@ class PersistenceManager:
             graph = self._system._graph_store
             for source, target, rel_type, properties in graph.get_all_edges():
                 edges.append((source, target, rel_type, properties))
-        except Exception as e:
-            logger.warning(f"Failed to extract graph edges: {e}")
+        except (KeyError, AttributeError, RuntimeError) as e:
+            logger.warning("Failed to extract graph edges: %s", e)
 
         return edges
 
@@ -299,8 +299,8 @@ class MemorySystemStateLoader:
                     relationship_name=rel_type,
                     **properties,
                 )
-            except Exception as e:
-                logger.debug(f"Edge already exists or invalid: {e}")
+            except (KeyError, ValueError, TypeError) as e:
+                logger.debug("Edge already exists or invalid: %s", e)
 
         system._insertion_order = insertion_order
         system._processed_session_ids = processed_session_ids

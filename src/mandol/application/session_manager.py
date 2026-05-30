@@ -305,23 +305,36 @@ class SessionManager:
                 decision.reasoning or "",
             )
             return decision
-        except Exception as e:
+        except json.JSONDecodeError:
+            # retry_llm_json_call exhausted all retries — LLM persistently
+            # returned unparseable output.
             msg = (
-                f"[FALLBACK] Session split LLM call FAILED for session {session_id}: {e}. "
-                f"All retries exhausted. Returning no-split — {len(content_lines)} units "
+                f"[FALLBACK] Session split LLM returned unparseable JSON "
+                f"for session {session_id} after all retries. "
+                f"Returning no-split — {len(content_lines)} units "
                 f"will be merged without boundary detection."
             )
             logger.error(msg)
             if on_warning:
                 on_warning(msg)
-            return SessionSplitDecision(
-                should_split=False,
-                split_at_index=None,
-                topic="",
-                split_points=[],
-                reasoning="",
-                should_wait=False,
+        except (ConnectionError, TimeoutError, OSError, RuntimeError) as e:
+            # Network, timeout, or provider-level API errors.
+            msg = (
+                f"[FALLBACK] Session split LLM call FAILED for session {session_id}: {e}. "
+                f"Returning no-split — {len(content_lines)} units "
+                f"will be merged without boundary detection."
             )
+            logger.error(msg)
+            if on_warning:
+                on_warning(msg)
+        return SessionSplitDecision(
+            should_split=False,
+            split_at_index=None,
+            topic="",
+            split_points=[],
+            reasoning="",
+            should_wait=False,
+        )
 
     # ------------------------------------------------------------------
     # Session storage / query

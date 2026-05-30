@@ -7,6 +7,7 @@ and cross-session facts.
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Set, Tuple
 
@@ -29,6 +30,8 @@ from ..pipeline._utils import (
 from ..prompts import CROSS_SESSION_EVENT_MERGE_PROMPT, CROSS_SESSION_MERGE_PROMPT
 from ..semantic_graph import SemanticGraphService
 from ..semantic_map import SemanticMapService
+
+logger = logging.getLogger(__name__)
 
 
 class CanonicalCreator:
@@ -145,7 +148,11 @@ class CanonicalCreator:
                     all_aliases.add(a)
             merged_aliases = list(all_aliases)
         except json.JSONDecodeError:
-            pass
+            logger.debug(
+                "Canonical entity merge: LLM returned unparseable JSON for '%s', "
+                "using collected facts as-is.",
+                canonical_name,
+            )
 
         text_content = format_entity_text_content(canonical_name, entity_type, merged_description)
         canonical_uid = generate_entity_uid(canonical_name, entity_type)
@@ -239,7 +246,11 @@ class CanonicalCreator:
             if new_time:
                 merged_time = new_time
         except json.JSONDecodeError:
-            pass
+            logger.debug(
+                "Canonical event merge: LLM returned unparseable JSON for '%s', "
+                "using collected facts as-is.",
+                canonical_name,
+            )
 
         canonical_uid = generate_event_uid(canonical_name, "merged")
         now = datetime.now(timezone.utc).isoformat()
@@ -303,8 +314,14 @@ class CanonicalCreator:
                     relationship_name=rel_name,
                     **props,
                 )
-            except (KeyError, Exception):
-                pass
+            except KeyError:
+                # Expected when source or target UID doesn't exist in the semantic map.
+                # This is normal during merge — original units may have been cleaned up
+                # or the UID may reference a unit that was never persisted.
+                logger.debug(
+                    "Edge migration skipped — UID not found in semantic map: %s -> %s (%s)",
+                    source, target, rel_name,
+                )
 
     def delete_original_units(self, uids: List[Uid]) -> None:
         """Remove original (pre-merge) units from the semantic map and graph.
@@ -317,5 +334,12 @@ class CanonicalCreator:
         for uid in uids:
             try:
                 self._graph.delete_unit(uid)
-            except (RuntimeError, AttributeError, KeyError):
-                pass
+            except KeyError:
+                # Unit already removed — safe to ignore during cleanup.
+                logger.debug("Unit already deleted during merge cleanup: %s", uid)
+            except (AttributeError, RuntimeError) as exc:
+                # Graph store does not support node deletion or is in an
+                # inconsistent state. Log and continue cleaning up remaining units.
+                logger.warning(
+                    "Failed to delete unit %s from graph: %s", uid, exc,
+                )

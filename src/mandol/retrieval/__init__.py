@@ -9,15 +9,41 @@ from .bm25 import Bm25Retriever
 from .pipeline import HybridRetriever, HybridRetrieverConfig
 from .sparse import TfidfSparseRetriever
 from .subgraph_hop import SubgraphHopConfig, SubgraphHopHit, SubgraphHopRetriever
-from .types import SearchHit
+from .types import (
+    CausalChainResult,
+    CausalStep,
+    CorefTraceResult,
+    EntityInvolvementResult,
+    EntitySubgraphResult,
+    EvidenceChainResult,
+    ReasoningHit,
+    ReasoningStep,
+    RelationshipInfo,
+    SearchHit,
+    SessionContextResult,
+    SummaryEvidenceChainResult,
+    TimelineResult,
+)
 
 __all__ = [
     "Bm25Retriever",
+    "CausalChainResult",
+    "CausalStep",
+    "CorefTraceResult",
+    "EntityInvolvementResult",
+    "EntitySubgraphResult",
+    "EvidenceChainResult",
     "HybridRetriever",
     "HybridRetrieverConfig",
+    "ReasoningHit",
+    "ReasoningStep",
+    "RelationshipInfo",
     "SearchHit",
+    "SessionContextResult",
     "SubgraphHopConfig",
     "SubgraphHopHit",
     "SubgraphHopRetriever",
+    "SummaryEvidenceChainResult",
     "TfidfSparseRetriever",
+    "TimelineResult",
 ]

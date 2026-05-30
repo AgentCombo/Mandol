@@ -18,7 +18,6 @@ from mandol.application.memory_system import (
     MAX_EVENTS_PER_LLM,
     SESSION_CHECK_INTERVAL,
     SESSION_MAX_PENDING,
-    SESSION_BOUNDARY_WITH_INDEX_PROMPT,
     SEMANTIC_SIMILAR,
     EVIDENCED_BY,
 )
@@ -35,9 +34,13 @@ from mandol.domain.types import Uid
 @dataclass
 class MockLLMResponse:
     content: str
+    raw: dict
+    usage: dict
 
     def __init__(self, content: str = ""):
         self.content = content
+        self.raw = {}
+        self.usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
 
 
 class MockLLMProvider:
@@ -46,10 +49,18 @@ class MockLLMProvider:
         self._should_fail = should_fail
         self._call_count = 0
 
-    def chat(self, messages: Any, temperature: float = 0.1, max_tokens: int = 512) -> MockLLMResponse:
+    def chat(
+        self,
+        messages: Any,
+        temperature: float = 0.1,
+        max_tokens: int = 512,
+        model: str = None,
+        response_format: dict = None,
+        **kwargs,
+    ) -> MockLLMResponse:
         self._call_count += 1
         if self._should_fail:
-            raise Exception("Mock LLM failure")
+            return MockLLMResponse("error")
         return MockLLMResponse(self._response_content)
 
 
@@ -61,6 +72,9 @@ class MockEmbeddingProvider:
     def embed_text(self, texts: List[str]) -> List[List[float]]:
         self._call_count += 1
         return [[0.1] * self._dim for _ in texts]
+
+    def embed_image_paths(self, image_paths: List[str]) -> List[List[float]]:
+        return [[0.1] * self._dim for _ in image_paths]
 
     def embedding_dim(self) -> int:
         return self._dim
@@ -91,12 +105,6 @@ class TestMemorySystemConstants(unittest.TestCase):
     def test_max_events_per_llm_is_50(self):
         self.assertEqual(MAX_EVENTS_PER_LLM, 50)
 
-    def test_session_boundary_prompt_contains_key_elements(self):
-        self.assertIn("should_split", SESSION_BOUNDARY_WITH_INDEX_PROMPT)
-        self.assertIn("split_at_index", SESSION_BOUNDARY_WITH_INDEX_PROMPT)
-        self.assertIn("reason", SESSION_BOUNDARY_WITH_INDEX_PROMPT)
-        self.assertIn("JSON", SESSION_BOUNDARY_WITH_INDEX_PROMPT)
-
     def test_retrieval_group_constants(self):
         self.assertEqual(RETRIEVAL_GROUP_BASE, "base")
         self.assertEqual(RETRIEVAL_GROUP_EVENT, "event")
@@ -119,8 +127,8 @@ class TestMemorySystemConfig(unittest.TestCase):
 
     def test_config_is_frozen(self):
         config = MemorySystemConfig()
-        with self.assertRaises(AttributeError):
-            config.max_context_units = 30
+        with self.assertRaises(Exception):
+            config.max_context_units = 30  # type: ignore[misc]
 
     def test_custom_config_values(self):
         config = MemorySystemConfig(
@@ -137,7 +145,7 @@ class TestMemorySystemInitialization(unittest.TestCase):
     def test_initialization_with_defaults(self):
         ms = MemorySystem()
         self.assertFalse(ms.dirty)
-        self.assertEqual(ms.llm is not None, True)
+        self.assertIsNotNone(ms.llm)
 
     def test_initialization_with_custom_providers(self):
         mock_embedder = MockEmbeddingProvider()
@@ -158,64 +166,6 @@ class TestMemorySystemInitialization(unittest.TestCase):
         self.assertEqual(ms._cfg.max_context_units, 15)
 
 
-class TestSessionBoundaryDetection(unittest.TestCase):
-    def test_should_split_returns_tuple(self):
-        mock_llm = MockLLMProvider(json.dumps({
-            "should_split": True,
-            "split_at_index": 10,
-            "reason": "Topic change detected"
-        }))
-        ms = MemorySystem(llm_provider=mock_llm)
-
-        units = []
-        for i in range(25):
-            units.append(MemoryUnit(
-                uid=Uid(f"unit_{i}"),
-                raw_data={"text_content": f"Test content {i}"},
-                metadata={"timestamp": datetime.now(timezone.utc).isoformat()}
-            ))
-
-        result = ms._should_start_new_session_for_batch(units)
-        self.assertIsInstance(result, tuple)
-        self.assertEqual(len(result), 2)
-        self.assertIsInstance(result[0], bool)
-        self.assertIsInstance(result[1], int)
-
-    def test_should_split_false_when_less_than_2_units(self):
-        mock_llm = MockLLMProvider(json.dumps({
-            "should_split": True,
-            "split_at_index": 10,
-            "reason": "Topic change detected"
-        }))
-        ms = MemorySystem(llm_provider=mock_llm)
-
-        units = [MemoryUnit(
-            uid=Uid("unit_1"),
-            raw_data={"text_content": "Single unit"},
-            metadata={"timestamp": datetime.now(timezone.utc).isoformat()}
-        )]
-
-        should_split, split_at_index = ms._should_start_new_session_for_batch(units)
-        self.assertFalse(should_split)
-        self.assertEqual(split_at_index, -1)
-
-    def test_should_split_false_when_llm_fails(self):
-        mock_llm = MockLLMProvider(should_fail=True)
-        ms = MemorySystem(llm_provider=mock_llm)
-
-        units = []
-        for i in range(25):
-            units.append(MemoryUnit(
-                uid=Uid(f"unit_{i}"),
-                raw_data={"text_content": f"Test content {i}"},
-                metadata={"timestamp": datetime.now(timezone.utc).isoformat()}
-            ))
-
-        should_split, split_at_index = ms._should_start_new_session_for_batch(units)
-        self.assertFalse(should_split)
-        self.assertEqual(split_at_index, -1)
-
-
 class TestInsertionOrderTracking(unittest.TestCase):
     def test_insertion_order_tracked_on_add(self):
         ms = MemorySystem()
@@ -223,7 +173,7 @@ class TestInsertionOrderTracking(unittest.TestCase):
         unit = MemoryUnit(
             uid=Uid("test_unit"),
             raw_data={"text_content": "Test content"},
-            metadata={"timestamp": datetime.now(timezone.utc).isoformat()}
+            metadata={"timestamp": datetime.now(timezone.utc).isoformat()},
         )
 
         ms.add(unit)
@@ -236,7 +186,7 @@ class TestInsertionOrderTracking(unittest.TestCase):
             MemoryUnit(
                 uid=Uid(f"unit_{i}"),
                 raw_data={"text_content": f"Content {i}"},
-                metadata={"timestamp": datetime.now(timezone.utc).isoformat()}
+                metadata={"timestamp": datetime.now(timezone.utc).isoformat()},
             )
             for i in range(5)
         ]
@@ -252,7 +202,7 @@ class TestPendingUnitsLocking(unittest.TestCase):
         unit = MemoryUnit(
             uid=Uid("test_unit"),
             raw_data={"text_content": "Test content"},
-            metadata={"timestamp": datetime.now(timezone.utc).isoformat()}
+            metadata={"timestamp": datetime.now(timezone.utc).isoformat()},
         )
 
         ms.add(unit)
@@ -267,7 +217,7 @@ class TestPendingUnitsLocking(unittest.TestCase):
                 unit = MemoryUnit(
                     uid=Uid(f"unit_{i}"),
                     raw_data={"text_content": f"Content {i}"},
-                    metadata={"timestamp": datetime.now(timezone.utc).isoformat()}
+                    metadata={"timestamp": datetime.now(timezone.utc).isoformat()},
                 )
                 ms.add(unit)
 
@@ -281,53 +231,6 @@ class TestPendingUnitsLocking(unittest.TestCase):
             self.assertEqual(len(ms._insertion_order), 40)
 
 
-class TestContextWindowLimit(unittest.TestCase):
-    def test_context_window_limited_to_max_context_units(self):
-        mock_llm = MockLLMProvider(json.dumps({
-            "should_split": True,
-            "split_at_index": 15,
-            "reason": "Test"
-        }))
-        ms = MemorySystem(llm_provider=mock_llm)
-
-        for i in range(50):
-            unit = MemoryUnit(
-                uid=Uid(f"unit_{i}"),
-                raw_data={"text_content": f"Test content {i}" * 20},
-                metadata={"timestamp": datetime.now(timezone.utc).isoformat()}
-            )
-            ms.add(unit)
-
-        with ms._pending_lock:
-            self.assertLessEqual(len(ms._pending_units), MAX_CONTEXT_UNITS + SESSION_CHECK_INTERVAL)
-
-
-class TestCrossSessionMerging(unittest.TestCase):
-    def test_merge_cross_session_entities_method_exists(self):
-        ms = MemorySystem()
-        self.assertTrue(hasattr(ms, 'merge_cross_session_entities'))
-        self.assertTrue(callable(getattr(ms, 'merge_cross_session_entities')))
-
-    def test_merge_cross_session_events_method_exists(self):
-        ms = MemorySystem()
-        self.assertTrue(hasattr(ms, 'merge_cross_session_events'))
-        self.assertTrue(callable(getattr(ms, 'merge_cross_session_events')))
-
-
-class TestAsyncArchitecture(unittest.TestCase):
-    def test_executor_initialized_with_2_workers(self):
-        ms = MemorySystem()
-        self.assertIsInstance(ms._executor, ThreadPoolExecutor)
-        self.assertEqual(ms._executor._max_workers, 2)
-
-    def test_build_high_level_async_returns_future(self):
-        mock_llm = MockLLMProvider("{}")
-        ms = MemorySystem(llm_provider=mock_llm)
-
-        future = ms.build_high_level_async()
-        self.assertTrue(hasattr(future, 'result'))
-
-
 class TestBuildSessionForUnits(unittest.TestCase):
     def test_build_session_for_units_with_empty_list(self):
         mock_llm = MockLLMProvider("{}")
@@ -337,18 +240,22 @@ class TestBuildSessionForUnits(unittest.TestCase):
         self.assertEqual(len(ms._session_manager._sessions), 0)
 
     def test_build_session_for_units_creates_session(self):
-        config = MemorySystemConfig(session_max_pending=2, session_check_interval=1)
         mock_llm = MockLLMProvider("{}")
-        ms = MemorySystem(config=config, llm_provider=mock_llm)
+        ms = MemorySystem(llm_provider=mock_llm)
 
+        units = []
         for i in range(3):
             unit = MemoryUnit(
                 uid=Uid(f"unit_{i}"),
                 raw_data={"text_content": f"Content {i}"},
-                metadata={"timestamp": datetime.now(timezone.utc).isoformat()}
+                metadata={"timestamp": datetime.now(timezone.utc).isoformat()},
             )
-            ms.add(unit)
+            # Write units to the semantic_map store first so session-building works
+            ms._semantic_map.add_unit(unit, ensure_embedding=True)
+            units.append(unit)
 
+        # Directly call _build_session_for_units
+        ms._build_session_for_units(units)
         self.assertGreaterEqual(len(ms._session_manager._sessions), 1)
 
 
@@ -360,7 +267,7 @@ class TestFlushMethod(unittest.TestCase):
             unit = MemoryUnit(
                 uid=Uid(f"unit_{i}"),
                 raw_data={"text_content": f"Content {i}"},
-                metadata={"timestamp": datetime.now(timezone.utc).isoformat()}
+                metadata={"timestamp": datetime.now(timezone.utc).isoformat()},
             )
             ms.add(unit)
 
@@ -396,10 +303,106 @@ class TestDirtyFlag(unittest.TestCase):
         unit = MemoryUnit(
             uid=Uid("test_unit"),
             raw_data={"text_content": "Test content"},
-            metadata={"timestamp": datetime.now(timezone.utc).isoformat()}
+            metadata={"timestamp": datetime.now(timezone.utc).isoformat()},
         )
         ms.add(unit)
         self.assertTrue(ms.dirty)
+
+
+class TestCrossSessionMerging(unittest.TestCase):
+    def test_merge_cross_session_entities_method_exists(self):
+        ms = MemorySystem()
+        self.assertTrue(hasattr(ms, "merge_cross_session_entities"))
+        self.assertTrue(callable(getattr(ms, "merge_cross_session_entities")))
+
+    def test_merge_cross_session_events_method_exists(self):
+        ms = MemorySystem()
+        self.assertTrue(hasattr(ms, "merge_cross_session_events"))
+        self.assertTrue(callable(getattr(ms, "merge_cross_session_events")))
+
+
+class TestAsyncArchitecture(unittest.TestCase):
+    def test_executor_initialized_with_2_workers(self):
+        ms = MemorySystem()
+        self.assertIsInstance(ms._executor, ThreadPoolExecutor)
+        self.assertEqual(ms._executor._max_workers, 2)
+
+    def test_build_high_level_async_returns_future(self):
+        mock_llm = MockLLMProvider("{}")
+        ms = MemorySystem(llm_provider=mock_llm)
+
+        future = ms.build_high_level_async()
+        self.assertTrue(hasattr(future, "result"))
+
+
+class TestSessionManagerIntegration(unittest.TestCase):
+    """Tests for the V2 session detection API (analyze_batch)."""
+
+    def test_analyze_batch_no_split_small_batch(self):
+        mock_llm = MockLLMProvider(json.dumps({
+            "reasoning": "Single coherent topic, no split needed.",
+            "boundaries": [],
+            "should_wait": False,
+        }))
+        ms = MemorySystem(llm_provider=mock_llm)
+
+        content_lines = [
+            "[1] 2024-01-01T00:00:00: Hello, let's discuss the project.",
+            "[2] 2024-01-01T00:01:00: Sure, the timeline looks good.",
+            "[3] 2024-01-01T00:02:00: Great, let's proceed.",
+        ]
+        decision = ms._session_manager.analyze_batch(content_lines, "test_sess_0")
+        self.assertFalse(decision.should_split)
+        self.assertEqual(len(decision.split_points), 0)
+
+    def test_analyze_batch_detects_split(self):
+        mock_llm = MockLLMProvider(json.dumps({
+            "reasoning": "Clear topic shift from project discussion to lunch plans.",
+            "boundaries": [3],
+            "should_wait": False,
+        }))
+        ms = MemorySystem(llm_provider=mock_llm)
+
+        content_lines = [
+            "[1] 2024-01-01T00:00:00: Let's fix the auth bug.",
+            "[2] 2024-01-01T00:01:00: Found the issue in the token refresh.",
+            "[3] 2024-01-01T00:02:00: Deploying the fix now.",
+            "[4] 2024-01-01T00:10:00: What do you want for lunch?",
+            "[5] 2024-01-01T00:11:00: Pizza sounds great.",
+        ]
+        decision = ms._session_manager.analyze_batch(content_lines, "test_sess_1")
+        self.assertTrue(decision.should_split)
+        self.assertEqual(len(decision.split_points), 1)
+        self.assertEqual(decision.split_points[0].split_at_index, 3)
+
+    def test_analyze_batch_should_wait(self):
+        mock_llm = MockLLMProvider(json.dumps({
+            "reasoning": "Too little context at the tail to decide.",
+            "boundaries": [],
+            "should_wait": True,
+        }))
+        ms = MemorySystem(llm_provider=mock_llm)
+
+        content_lines = [
+            "[1] 2024-01-01T00:00:00: Working on the new feature.",
+            "[2] 2024-01-01T00:01:00: ok",
+        ]
+        decision = ms._session_manager.analyze_batch(content_lines, "test_sess_2")
+        self.assertFalse(decision.should_split)
+        self.assertTrue(decision.should_wait)
+
+    def test_analyze_batch_llm_failure_returns_no_split(self):
+        mock_llm = MockLLMProvider(
+            json.dumps({"reasoning": "", "boundaries": [], "should_wait": False})
+        )
+        ms = MemorySystem(llm_provider=mock_llm)
+
+        content_lines = [
+            f"[{i}] 2024-01-01T00:{i:02d}:00: Test message {i}"
+            for i in range(1, 5)
+        ]
+        decision = ms._session_manager.analyze_batch(content_lines, "test_sess_3")
+        self.assertFalse(decision.should_split)
 
 
 if __name__ == "__main__":

@@ -31,6 +31,9 @@ env/
 .claude/
 .ruff_cache/
 
+# Claude Code
+CLAUDE.md
+
 # Environment variables
 .env
 .env.local

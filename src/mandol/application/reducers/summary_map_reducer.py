@@ -382,7 +382,7 @@ class SummaryMapReducer:
                     category, session_id, chunk_label,
                 )
                 r = self._create_fallback_summary(session_id, chunk_label, category, units)
-            except Exception as e:
+            except (ConnectionError, TimeoutError, OSError, RuntimeError) as e:
                 logger.error(
                     "[FALLBACK] Summary map phase FAILED for category=%s session=%s: %s. "
                     "Using text-concatenation fallback.",
@@ -492,7 +492,7 @@ Summary 2:
                 category, session_id,
             )
             return summary1
-        except Exception as e:
+        except (ConnectionError, TimeoutError, OSError, RuntimeError) as e:
             logger.error(
                 "[FALLBACK] Summary reduce phase FAILED for category=%s session=%s: %s. "
                 "Keeping unmerged summaries.",

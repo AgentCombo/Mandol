@@ -220,8 +220,8 @@ class InsightMapReducer:
             )
         except json.JSONDecodeError:
             insight = self._create_fallback_insight(session_id, source_summary_uids)
-        except Exception as e:
-            logger.error(f"Insight map phase failed: {e}")
+        except (ConnectionError, TimeoutError, OSError, RuntimeError) as e:
+            logger.error("Insight map phase failed: %s", e)
             insight = self._create_fallback_insight(session_id, source_summary_uids)
 
         return insight
@@ -345,8 +345,8 @@ All session IDs: {all_session_ids}"""
             return result
         except json.JSONDecodeError:
             return self._merge_insights_fallback(session_insights, all_session_ids)
-        except Exception as e:
-            logger.error(f"Insight reduce failed: {e}")
+        except (ConnectionError, TimeoutError, OSError, RuntimeError) as e:
+            logger.error("Insight reduce failed: %s", e)
             return self._merge_insights_fallback(session_insights, all_session_ids)
 
     def _parse_reduce_response(

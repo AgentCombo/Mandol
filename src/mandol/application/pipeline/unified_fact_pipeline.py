@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -299,13 +300,15 @@ class UnifiedFactPipeline:
 
             try:
                 extracted_events = f_events.result()
-            except Exception as e:
+            except (json.JSONDecodeError, ConnectionError, TimeoutError, OSError, RuntimeError) as e:
+                # LLM call failures in the worker — log and continue with empty events.
                 self._warn(f"[FALLBACK] Event extraction failed in parallel: {e}")
                 errors.append(f"event_extraction: {e}")
 
             try:
                 entity_relations = f_relations.result()
-            except Exception as e:
+            except (json.JSONDecodeError, ConnectionError, TimeoutError, OSError, RuntimeError) as e:
+                # LLM call failures in the worker — log and continue with empty relations.
                 self._warn(f"[FALLBACK] Entity relation extraction failed in parallel: {e}")
                 errors.append(f"entity_relations: {e}")
 
@@ -463,6 +466,8 @@ class UnifiedFactPipeline:
             existing_entities=json.dumps(existing_entities, indent=2) if existing_entities else "[]",
         )
 
+        logger.info("Extracting entities (%d existing known)...", len(existing_entities))
+        t0 = time.time()
         try:
             data = self._call_llm_json(prompt, context_label="extract_entities")
         except (json.JSONDecodeError, RuntimeError) as e:
@@ -492,6 +497,10 @@ class UnifiedFactPipeline:
                 reasoning=item.get("reasoning", ""),
             ))
 
+        logger.info(
+            "Entity extraction complete: %d entities in %.1fs",
+            len(entities), time.time() - t0,
+        )
         return entities
 
     def _extract_events(
@@ -506,6 +515,8 @@ class UnifiedFactPipeline:
             current_entities=json.dumps(current_entities, indent=2) if current_entities else "[]",
         )
 
+        logger.info("Extracting events...")
+        t0 = time.time()
         try:
             data = self._call_llm_json(prompt, context_label="extract_events")
         except (json.JSONDecodeError, RuntimeError) as e:
@@ -537,6 +548,10 @@ class UnifiedFactPipeline:
                 reasoning=item.get("reasoning", ""),
             ))
 
+        logger.info(
+            "Event extraction complete: %d events in %.1fs",
+            len(events), time.time() - t0,
+        )
         return events
 
     def _extract_entity_relations(
@@ -549,6 +564,8 @@ class UnifiedFactPipeline:
             current_entities=json.dumps(current_entities, indent=2) if current_entities else "[]",
         )
 
+        logger.info("Extracting entity relations (%d entities)...", len(current_entities))
+        t0 = time.time()
         try:
             data = self._call_llm_json(prompt, context_label="extract_entity_relations")
         except (json.JSONDecodeError, RuntimeError) as e:
@@ -572,6 +589,10 @@ class UnifiedFactPipeline:
                 reasoning=item.get("reasoning", ""),
             ))
 
+        logger.info(
+            "Entity relation extraction complete: %d relations in %.1fs",
+            len(relations), time.time() - t0,
+        )
         return relations
 
     def _extract_causal_relations(
@@ -584,6 +605,8 @@ class UnifiedFactPipeline:
             current_events=json.dumps(current_events, indent=2) if current_events else "[]",
         )
 
+        logger.info("Extracting causal relations (%d events)...", len(current_events))
+        t0 = time.time()
         try:
             data = self._call_llm_json(prompt, context_label="extract_causal_relations")
         except (json.JSONDecodeError, RuntimeError) as e:
@@ -605,6 +628,10 @@ class UnifiedFactPipeline:
                 reasoning=item.get("reasoning", ""),
             ))
 
+        logger.info(
+            "Causal relation extraction complete: %d causal chains in %.1fs",
+            len(causal_relations), time.time() - t0,
+        )
         return causal_relations
 
     def _create_entity_units(

@@ -253,7 +253,7 @@ class JsonPersistenceEngine:
         try:
             with open(file_path, "w", encoding="utf-8") as f:
                 json.dump(payload, f, ensure_ascii=False, indent=2)
-        except Exception as e:
+        except (OSError, TypeError) as e:
             raise PersistenceError(f"Failed to write {file_path}: {e}")
 
     def _read_json(self, file_path: str) -> Dict[str, Any]:
@@ -262,7 +262,7 @@ class JsonPersistenceEngine:
                 return json.load(f)
         except json.JSONDecodeError as e:
             raise PersistenceError(f"Invalid JSON in {file_path}: {e}")
-        except Exception as e:
+        except OSError as e:
             raise PersistenceError(f"Failed to read {file_path}: {e}")
 
     def get_storage_stats(self) -> Dict[str, int]:

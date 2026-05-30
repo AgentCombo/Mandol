@@ -90,16 +90,21 @@ class AdaptiveVectorIndex(VectorIndex):
     def _maybe_promote(self) -> None:
         """Promote to FAISS if the flat index has enough vectors and no promo yet."""
         # Count vectors in the flat index; each entry holds a normalized float32 array
-        flat_count = sum(
-            v.nbytes for v in getattr(self._flat, "_vectors", {}).values()
-        ) // (self._dim * 4) if self._faiss_index is None and hasattr(self._flat, "_vectors") else 0
+        if self._faiss_index is not None or not hasattr(self._flat, "_vectors"):
+            return
 
-        if self._faiss_index is None and hasattr(self._flat, "_vectors"):
-            if len(self._flat._vectors) >= self._promote_threshold:
-                items = list(self._flat._vectors.items())
+        flat_count = len(self._flat._vectors)
+        if flat_count >= self._promote_threshold:
+            items = list(self._flat._vectors.items())
+            try:
                 self._faiss_index = FaissVectorIndex(self._dim)
                 self._faiss_index.rebuild(items)
                 logger.info(
                     "Promoted to FAISS (dim=%d, vectors=%d)",
                     self._dim, len(items),
+                )
+            except ImportError:
+                logger.debug(
+                    "FAISS not installed — staying on flat index (dim=%d, vectors=%d)",
+                    self._dim, flat_count,
                 )

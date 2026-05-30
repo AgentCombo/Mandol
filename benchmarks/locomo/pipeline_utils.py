@@ -289,6 +289,35 @@ def aggregate_llm_judge_accuracy(
     }
 
 
+def extract_final_answer(response_text: str) -> str:
+    """Extract the final answer from a generation response.
+
+    Looks for the ## FINAL ANSWER: section in the Chain-of-Thought output.
+    If not found, returns the last non-empty line.
+
+    Args:
+        response_text: The raw LLM generation response.
+
+    Returns:
+        The extracted final answer string.
+    """
+    text = (response_text or "").strip()
+    if not text:
+        return ""
+
+    # Look for the structured FINAL ANSWER section
+    import re
+    m = re.search(r"##\s*FINAL\s*ANSWER\s*:\s*\n?(.*?)$", text, re.DOTALL | re.IGNORECASE)
+    if m:
+        answer = m.group(1).strip()
+        if answer:
+            return answer
+
+    # Fallback: return the last non-empty line
+    lines = [l.strip() for l in text.splitlines() if l.strip()]
+    return lines[-1] if lines else text
+
+
 def generate_report(summary: Dict[str, Any], path: Path) -> None:
     lines = [
         "LoCoMo Benchmark Evaluation Report",

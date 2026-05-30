@@ -132,6 +132,18 @@ class CrossSessionCorefManager:
         if self._on_warning:
             self._on_warning(msg)
 
+    @staticmethod
+    def _handle_edge_keyerror(source_uid, target_uid, rel_type) -> None:
+        """Log a debug message when a graph edge cannot be created.
+
+        This is expected when the source or target UID hasn't been persisted
+        to the semantic map yet (e.g. during incremental session processing).
+        """
+        logger.debug(
+            "Edge not created — UID missing in semantic map: %s -[%s]-> %s",
+            source_uid, target_uid, rel_type,
+        )
+
     def initialize_from_existing(self) -> None:
         """Build name/alias indices from existing entity and event stores.
 
@@ -402,7 +414,7 @@ class CrossSessionCorefManager:
                 matched_index = None
 
             return matched_index, confidence, canonical_name_suggestion, new_aliases, reasoning
-        except Exception as e:
+        except (json.JSONDecodeError, ConnectionError, TimeoutError, OSError, RuntimeError) as e:
             self._warn(
                 f"[FALLBACK] LLM entity match judge FAILED for '{entity.entity_name}': {e}. "
                 f"Falling back to vector similarity (threshold={self._vector_threshold})."
@@ -568,7 +580,7 @@ class CrossSessionCorefManager:
             )
             data = parse_json_response(response.content)
             return data.get("merged_description", existing_desc)
-        except Exception as e:
+        except (json.JSONDecodeError, ConnectionError, TimeoutError, OSError, RuntimeError) as e:
             logger.error(
                 "[FALLBACK] LLM description merge FAILED for entity '%s': %s. "
                 "Using simple string concatenation.",
@@ -635,7 +647,7 @@ class CrossSessionCorefManager:
                     session_id=session_id,
                 )
             except KeyError:
-                pass
+                self._handle_edge_keyerror(dia_uid, canonical_uid, REL_COREF)
 
         self._update_entity_name_index(str(canonical_uid), entity_name, existing_aliases)
 
@@ -691,7 +703,7 @@ class CrossSessionCorefManager:
                     session_id=session_id,
                 )
             except KeyError:
-                pass
+                self._handle_edge_keyerror(dia_uid, canonical_uid, REL_COREF)
 
         for dia_uid in matching_dialogue_uids:
             try:
@@ -702,7 +714,7 @@ class CrossSessionCorefManager:
                     mention_text=entity.mention_text,
                 )
             except KeyError:
-                pass
+                self._handle_edge_keyerror(dia_uid, canonical_uid, REL_COREF)
 
         self._update_entity_name_index(str(canonical_uid), entity.entity_name, entity.aliases)
 
@@ -769,7 +781,7 @@ class CrossSessionCorefManager:
                     session_id=session_id,
                 )
             except KeyError:
-                pass
+                self._handle_edge_keyerror(dia_uid, canonical_uid, REL_COREF)
 
         for participant in event.participants:
             mention = participant.get("mention", "")
@@ -785,7 +797,7 @@ class CrossSessionCorefManager:
                         confidence=event.confidence,
                     )
                 except KeyError:
-                    pass
+                    self._handle_edge_keyerror(canonical_uid, entity_uid, REL_INVOLVES)
 
         self._update_event_name_index(str(canonical_uid), event_name)
 
@@ -840,7 +852,7 @@ class CrossSessionCorefManager:
                     session_id=session_id,
                 )
             except KeyError:
-                pass
+                self._handle_edge_keyerror(dia_uid, canonical_uid, REL_COREF)
 
         for dia_uid in matching_dialogue_uids:
             try:
@@ -851,7 +863,7 @@ class CrossSessionCorefManager:
                     mention_text=event.event_name,
                 )
             except KeyError:
-                pass
+                self._handle_edge_keyerror(dia_uid, canonical_uid, REL_COREF)
 
         for participant in event.participants:
             mention = participant.get("mention", "")
@@ -867,7 +879,7 @@ class CrossSessionCorefManager:
                         confidence=event.confidence,
                     )
                 except KeyError:
-                    pass
+                    self._handle_edge_keyerror(canonical_uid, entity_uid, REL_INVOLVES)
 
         if event.location:
             location_key = event.location.strip().lower()
@@ -883,7 +895,7 @@ class CrossSessionCorefManager:
                     )
                     break
                 except KeyError:
-                    pass
+                    self._handle_edge_keyerror(canonical_uid, Uid(location_uid_str), REL_INVOLVES)
 
         self._update_event_name_index(str(canonical_uid), event.event_name)
 
@@ -1069,7 +1081,7 @@ class CrossSessionCorefManager:
                         confidence=rel.confidence,
                     )
                 except KeyError:
-                    pass
+                    self._handle_edge_keyerror(source_uid, target_uid, REL_RELATED_TO)
 
         for cr in causal_relations:
             cause_uid = event_uid_map.get(cr.cause_event)
@@ -1083,7 +1095,7 @@ class CrossSessionCorefManager:
                         confidence=cr.confidence,
                     )
                 except KeyError:
-                    pass
+                    self._handle_edge_keyerror(cause_uid, effect_uid, REL_CAUSES)
                 try:
                     self._graph.add_relationship(
                         source_uid=effect_uid,
@@ -1092,7 +1104,7 @@ class CrossSessionCorefManager:
                         confidence=cr.confidence,
                     )
                 except KeyError:
-                    pass
+                    self._handle_edge_keyerror(effect_uid, cause_uid, REL_CAUSED_BY)
 
     def _update_entity_description(self, uid: Uid, new_facts: List[str]) -> None:
         unit = self._semantic_map.get_unit(uid)
@@ -1125,7 +1137,11 @@ class CrossSessionCorefManager:
             unit.embedding = None
             self._semantic_map.upsert_unit(unit, ensure_embedding=True)
         except json.JSONDecodeError:
-            pass
+            logger.debug(
+                "LLM description merge returned unparseable JSON for entity '%s', "
+                "keeping original description.",
+                entity_name,
+            )
 
     def _update_event_description(
         self,
@@ -1170,7 +1186,11 @@ class CrossSessionCorefManager:
             unit.embedding = None
             self._semantic_map.upsert_unit(unit, ensure_embedding=True)
         except json.JSONDecodeError:
-            pass
+            logger.debug(
+                "LLM description merge returned unparseable JSON for event '%s', "
+                "keeping original description.",
+                event_name,
+            )
 
     def merge_and_write(
         self,

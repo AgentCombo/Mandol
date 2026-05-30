@@ -206,8 +206,8 @@ class EntityDeduplicator:
         texts = [c.text for c in candidates]
         try:
             embeddings = self._embedder.embed_text(texts)
-        except Exception as e:
-            logger.warning(f"Embedding failed: {e}, skipping preclustering")
+        except (RuntimeError, ValueError, OSError) as e:
+            logger.warning("Embedding failed: %s, skipping preclustering", e)
             return [candidates]
 
         n = len(candidates)
@@ -279,8 +279,8 @@ class EntityDeduplicator:
         try:
             response = self._llm.chat(messages, temperature=0.1, max_tokens=2048)
             return self._parse_merge_response(response.content, cluster)
-        except Exception as e:
-            logger.error(f"Entity dedup LLM failed: {e}")
+        except (json.JSONDecodeError, ConnectionError, TimeoutError, OSError, RuntimeError) as e:
+            logger.error("Entity dedup LLM failed: %s", e)
             return [{
                 "canonical_form": cluster[0].text,
                 "entity_type": cluster[0].entity_type,

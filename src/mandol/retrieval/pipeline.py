@@ -7,7 +7,9 @@ single search interface.
 
 from __future__ import annotations
 
+import logging
 import math
+import time
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
@@ -21,6 +23,8 @@ from ..ports.reranker import Reranker
 from ..ports.sparse_index import SparseIndex
 from .fusion import RankedUnit, rrf_fusion
 from .types import SearchHit
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
@@ -120,6 +124,7 @@ class HybridRetriever:
         if not isinstance(query, str) or not query.strip():
             return []
 
+        t0 = time.time()
         candidates = self._candidates(space_names=space_names, recursive=recursive)
         if not candidates:
             return []
@@ -166,6 +171,12 @@ class HybridRetriever:
                 ]
             else:
                 sparse_ranked = self._fallback_sparse_search(query, candidates, pmk)
+
+        logger.debug(
+            "Hybrid search recall: dense=%d bm25=%d sparse=%d (candidates=%d, pmk=%d)",
+            len(dense_ranked), len(bm25_ranked), len(sparse_ranked),
+            len(candidates), pmk,
+        )
 
         fused = rrf_fusion(
             [dense_ranked, bm25_ranked, sparse_ranked],
@@ -249,6 +260,11 @@ class HybridRetriever:
                         ranks=dict(ranks),
                     )
                 )
+            logger.debug(
+                "Hybrid search complete: %d fused + %d expanded → %d reranked "
+                "for '%.60s' in %.1fs",
+                len(fused_units), len(expanded), len(out), query, time.time() - t0,
+            )
             return out
 
         hits: List[SearchHit] = []
@@ -266,6 +282,11 @@ class HybridRetriever:
             hits.append(SearchHit(unit=unit, final_score=float(scores.get("rrf", 0.0)), scores=scores, ranks=dict(ranks)))
 
         hits.sort(key=lambda h: h.final_score, reverse=True)
+        logger.debug(
+            "Hybrid search complete: %d fused + %d expanded → %d hits "
+            "for '%.60s' in %.1fs",
+            len(fused_units), len(expanded), len(hits[:top_k]), query, time.time() - t0,
+        )
         return hits[: max(0, int(top_k))]
 
     def _parallel_search(

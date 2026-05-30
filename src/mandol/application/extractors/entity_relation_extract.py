@@ -226,8 +226,8 @@ class EntityRelationExtractor:
                 max_tokens=4096,
             )
             return self._parse_entity_response(response.content)
-        except Exception as e:
-            logger.error(f"Entity extraction failed: {e}")
+        except (json.JSONDecodeError, ConnectionError, TimeoutError, OSError, RuntimeError) as e:
+            logger.error("Entity extraction failed: %s", e)
             return []
 
     def extract_relations(
@@ -276,8 +276,8 @@ class EntityRelationExtractor:
                 max_tokens=2048,
             )
             return self._parse_response(response.content, entity_list)
-        except Exception as e:
-            logger.error(f"Entity relation extraction failed: {e}")
+        except (json.JSONDecodeError, ConnectionError, TimeoutError, OSError, RuntimeError) as e:
+            logger.error("Entity relation extraction failed: %s", e)
             return []
 
     def _parse_entity_response(

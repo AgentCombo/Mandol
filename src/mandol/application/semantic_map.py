@@ -7,12 +7,16 @@ reranking, and automatic memory limit enforcement.
 
 from __future__ import annotations
 
+import logging
+import time
 from typing import List, Optional, Sequence, Set, Tuple, Union
 
 import numpy as np
 
 from ..domain.memory_space import MemorySpace
 from ..domain.memory_unit import MemoryUnit
+
+logger = logging.getLogger(__name__)
 from ..domain.types import Embedding, SpaceName, Uid
 from ..ports.embedding_provider import EmbeddingProvider
 from ..ports.reranker import Reranker
@@ -198,6 +202,7 @@ class SemanticMapService:
             self.rebuild_index_from_store()
 
         self._enforce_memory_limit()
+        logger.debug("Added unit %s to spaces=%s", uid, names if space_names else "(none)")
 
     def upsert_unit(
         self,
@@ -240,6 +245,7 @@ class SemanticMapService:
             uid: The UID (or string) of the unit to delete.
         """
         u = Uid(str(uid))
+        logger.debug("Deleting unit %s", u)
         self._store.delete_units([u])
         self._index.delete([u])
         if self._abi is not None:
@@ -477,9 +483,14 @@ class SemanticMapService:
         if self._embedder is None:
             raise RuntimeError("embedder is required for search_by_text")
         emb = self._embedder.embed_text([str(query_text)])[0]
-        return self.search_by_vector(
+        result = self.search_by_vector(
             emb, top_k=top_k, space_names=space_names, recursive=recursive
         )
+        logger.debug(
+            "Text search returned %d results for query='%.80s' (top_k=%d, spaces=%s)",
+            len(result), query_text, top_k, space_names,
+        )
+        return result
 
     def search_by_text_with_rerank(
         self,
@@ -588,6 +599,209 @@ class SemanticMapService:
                 break
         return out
 
+    def filter_memory_units(
+        self,
+        candidate_units: Optional[List[MemoryUnit]] = None,
+        filter_condition: Optional[dict] = None,
+        ms_names: Optional[List[str]] = None,
+        recursive: bool = True,
+    ) -> List[MemoryUnit]:
+        """Filter memory units by conditions with nested field queries.
+
+        Args:
+            candidate_units: Optional pre-filtered list. If None, uses
+                :meth:`get_units_in_spaces` with *ms_names*.
+            filter_condition: Dict with keys being dot-separated paths like
+                ``"metadata.entity_type"`` mapped to operator dicts like
+                ``{"eq": "Person"}``. Supported operators: ``"eq"`` (equal),
+                ``"neq"`` (not equal), ``"in"`` (value in list),
+                ``"contains"`` (substring), ``"gt"`` (greater than),
+                ``"lt"`` (less than), ``"gte"``, ``"lte"``.
+                Multiple conditions are ANDed together.
+            ms_names: Optional space names to restrict candidates to.
+            recursive: If True, include child spaces in space lookup.
+
+        Returns:
+            Filtered list of MemoryUnits matching all conditions.
+        """
+        # Resolve candidate set
+        if candidate_units is not None:
+            candidates: List[MemoryUnit] = list(candidate_units)
+        elif ms_names:
+            candidates = self.get_units_in_spaces(
+                ms_names, mode="union", recursive=recursive,
+            )
+        else:
+            candidates = self.list_units()
+
+        if filter_condition is None:
+            return candidates
+
+        # Helper to walk dot-separated paths into nested dicts / attributes
+        def _resolve_field(obj: MemoryUnit, path: str) -> object:
+            parts = path.split(".")
+            current: object = obj
+            for part in parts:
+                if isinstance(current, dict):
+                    current = current.get(part)
+                elif hasattr(current, part):
+                    current = getattr(current, part)
+                else:
+                    return None
+            return current
+
+        op_handlers = {
+            "eq": lambda val, target: val == target,
+            "neq": lambda val, target: val != target,
+            "in": lambda val, target: (
+                val in target if target is not None else False
+            ),
+            "contains": lambda val, target: (
+                str(target).lower() in str(val).lower()
+                if val is not None
+                else False
+            ),
+            "gt": lambda val, target: val is not None and val > target,
+            "lt": lambda val, target: val is not None and val < target,
+            "gte": lambda val, target: val is not None and val >= target,
+            "lte": lambda val, target: val is not None and val <= target,
+        }
+
+        results: List[MemoryUnit] = []
+        for unit in candidates:
+            match = True
+            for path, op_dict in filter_condition.items():
+                val = _resolve_field(unit, path)
+                for op_name, target in op_dict.items():
+                    handler = op_handlers.get(op_name)
+                    if handler is None:
+                        continue
+                    try:
+                        if not handler(val, target):
+                            match = False
+                            break
+                    except (TypeError, ValueError):
+                        match = False
+                        break
+                if not match:
+                    break
+            if match:
+                results.append(unit)
+
+        return results
+
+    def search(
+        self,
+        query: Union[str, Embedding],
+        k: int = 5,
+        retriever_type: Optional[str] = None,
+        retrievers: Optional[List[str]] = None,
+        ms_names: Optional[List[str]] = None,
+        candidate_uids: Optional[List[str]] = None,
+        **kwargs,
+    ) -> List[Tuple[MemoryUnit, float]]:
+        """Unified semantic search supporting multiple retriever backends.
+
+        Supports single-retriever mode (``retriever_type``) and multi-retriever
+        mode (``retrievers``) with RRF fusion.
+
+        Args:
+            query: Query text (str) or pre-generated embedding vector
+                (np.ndarray).
+            k: Number of results to return (default 5).
+            retriever_type: Single retriever backend: ``"dense"``, ``"bm25"``,
+                or ``"sparse"``.
+            retrievers: List of retriever backends for multi-recall with RRF
+                fusion, e.g. ``["dense", "bm25", "sparse"]``.
+            ms_names: Optional list of space names to restrict search to.
+            candidate_uids: Optional list of UID strings to restrict search to.
+            **kwargs: Additional keyword arguments passed to underlying
+                retrievers.
+
+        Returns:
+            List of (MemoryUnit, score) tuples.
+
+        Raises:
+            ValueError: If an ndarray query is used with BM25 or sparse
+                retrieval, or if an unknown retriever type is specified.
+        """
+        # Default to dense when nothing is specified
+        if retriever_type is None and retrievers is None:
+            retriever_type = "dense"
+
+        def _get_candidates() -> List[MemoryUnit]:
+            if ms_names:
+                return self.get_units_in_spaces(
+                    ms_names, mode="union", recursive=True,
+                )
+            return self.list_units()
+
+        def _post_filter(
+            results: List[Tuple[MemoryUnit, float]],
+        ) -> List[Tuple[MemoryUnit, float]]:
+            if candidate_uids is None:
+                return results
+            uid_set: Set[str] = set(candidate_uids)
+            return [(u, s) for u, s in results if str(u.uid) in uid_set]
+
+        def _run_single(name: str) -> List[Tuple[MemoryUnit, float]]:
+            if name == "dense":
+                if isinstance(query, np.ndarray):
+                    return self.search_by_vector(
+                        query, top_k=k, space_names=ms_names,
+                    )
+                return self.search_by_text(
+                    str(query), top_k=k, space_names=ms_names,
+                )
+            elif name == "bm25":
+                if isinstance(query, np.ndarray):
+                    raise ValueError(
+                        "BM25 retriever requires a text query, "
+                        "not an embedding vector",
+                    )
+                from mandol.retrieval.bm25 import Bm25Retriever
+
+                retriever = Bm25Retriever()
+                candidates = _get_candidates()
+                scored = retriever.search(str(query), candidates, top_k=k)
+                return [(item.unit, item.score) for item in scored]
+            elif name == "sparse":
+                if isinstance(query, np.ndarray):
+                    raise ValueError(
+                        "Sparse retriever requires a text query, "
+                        "not an embedding vector",
+                    )
+                from mandol.retrieval.sparse import TfidfSparseRetriever
+
+                retriever = TfidfSparseRetriever()
+                candidates = _get_candidates()
+                scored = retriever.search(str(query), candidates, top_k=k)
+                return [(item.unit, item.score) for item in scored]
+            else:
+                raise ValueError(f"Unknown retriever type: {name}")
+
+        if retrievers is not None:
+            from mandol.retrieval.fusion import RankedUnit, rrf_fusion
+
+            ranked_lists = []
+            for ret_name in retrievers:
+                results = _run_single(ret_name)
+                ranked_lists.append(
+                    [RankedUnit(unit=u, score=s) for u, s in results],
+                )
+
+            fused = rrf_fusion(
+                ranked_lists, top_k=k, method_names=retrievers,
+            )
+            out: List[Tuple[MemoryUnit, float]] = [
+                (unit, score) for unit, score, _ranks in fused
+            ]
+            return _post_filter(out)
+
+        # Single retriever mode
+        results = _run_single(retriever_type)  # type: ignore[arg-type]
+        return _post_filter(results)
+
     def rebuild_index_from_store(self) -> None:
         """Rebuild the entire vector index from all units in the store.
 
@@ -595,16 +809,26 @@ class SemanticMapService:
         the index from scratch. Useful after bulk operations or when the index
         becomes stale.
         """
+        t0 = time.time()
+        total = 0
+        skipped = 0
         items: List[Tuple[Uid, Embedding]] = []
         for unit in self._store.list_units():
+            total += 1
             if unit.embedding is None:
+                skipped += 1
                 continue
             uid = Uid(str(unit.uid))
             emb = np.asarray(unit.embedding, dtype=np.float32).reshape(-1)
             if emb.shape[0] != self._index.dim():
+                skipped += 1
                 continue
             items.append((uid, emb))
         self._index.rebuild(items)
+        logger.info(
+            "Rebuilt vector index: %d vectors from %d units (%d skipped) in %.1fs",
+            len(items), total, skipped, time.time() - t0,
+        )
 
     def batch_embed_unembedded(self, batch_size: int = 64) -> int:
         """Compute and store embeddings for all units that lack one.
@@ -634,6 +858,8 @@ class SemanticMapService:
         if not pending:
             return 0
 
+        logger.info("Batch embedding %d unembedded units (batch_size=%d)...", len(pending), batch_size)
+        t0 = time.time()
         embedded_count = 0
         for i in range(0, len(pending), batch_size):
             chunk = pending[i : i + batch_size]
@@ -651,6 +877,10 @@ class SemanticMapService:
                     self._index.upsert([(uid, arr)])
                     embedded_count += 1
 
+        logger.info(
+            "Batch embedding complete: %d/%d units embedded in %.1fs",
+            embedded_count, len(pending), time.time() - t0,
+        )
         return embedded_count
 
     def flush(self) -> None:
@@ -702,5 +932,9 @@ class SemanticMapService:
             if len(victims) >= over:
                 break
         if victims:
+            logger.warning(
+                "Memory limit reached: %d units > %d max, evicting %d oldest units",
+                current, self._max_units_in_memory, len(victims),
+            )
             self._store.delete_units(victims)
             self._index.delete(victims)
