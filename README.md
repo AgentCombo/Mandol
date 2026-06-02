@@ -12,7 +12,7 @@
 
 [English](README.md) | [中文](README_CN.md)
 
-![Mandol Overview](README.assets/Mandol-overview.png)
+![Mandol Overview](README.assets/Mandol-overview-v2.png)
 
 ---
 
@@ -24,7 +24,6 @@
 - [📖 What is Mandol?](#-what-is-mandol)
 - [💡 Core Modules and Techniques](#-core-modules-and-techniques)
 - [✨ Implementation](#-implementation)
-- [📊 Comparison with Mainstream Memory Systems](#-comparison-with-mainstream-memory-systems)
 - [🔬 Reproduction](#-reproduction)
 - [⚡ Quick Start](#-quick-start)
 - [📚 Documentation & Community](#-documentation--community)
@@ -37,9 +36,13 @@
 
 ## 📖 What is Mandol?
 
-> Mandol replaces the RAG-style "recall->rerank" retrieval paradigm with proactive query-aware routing, achieving SOTA accuracy at a fraction of the token cost.
+Mandol is a native in-memory hierarchical memory system purpose-built for long-term agent conversations. Its core components are:
 
-Mandol is a native in-memory hierarchical memory system for long-term conversations. It organizes basic and high-level abstract memories in a structured *SemanticGraph* with traceable relationships, and uses *SemanticMap* and *SemanticGraph* to natively structure key-value, vector, and graph information while providing unified hybrid retrieval operators. It also introduces a *smart quantitative query mechanism* with query-adaptive routing, two-stage denoising and conflict resolution, and token-constrained context generation, without invoking LLMs during retrieval. On the LoCoMo and LongMemEval benchmarks, Mandol achieves state-of-the-art accuracy of 92.21% and 88.40%, respectively. Under 10-QPS concurrent load, it delivers a 5.4× retrieval speedup and 4.8× insertion speedup over widely used agent memory systems, while sustaining low latency on consumer-grade hardware.
+1. **Hierarchical Memory Model** — Organizes memory into a basic layer and a high-level abstract layer, both uniformly represented as a structured semantic graph with traceable relationships between all memory elements.
+2. **In-Memory Semantic Data Structures** — Combines *SemanticMap* and *SemanticGraph* to natively fuse key-value, vector, and graph stores into a unified hybrid retrieval interface, eliminating cross-database I/O overhead.
+3. **Smart Quantitative Retrieval** — A query-adaptive routing mechanism with two-stage denoising, conflict resolution, and token-constrained context generation — all operating without invoking LLMs during retrieval.
+
+On the LoCoMo and LongMemEval long-term conversation benchmarks, Mandol achieves state-of-the-art accuracy of 92.21% and 88.40%, respectively. Compared to representative agent memory systems, Mandol delivers a 5.4× retrieval speedup and a 4.8× insertion speedup under 10 QPS concurrent load, while sustaining low latency on consumer-grade hardware. These results validate the system's effectiveness, efficiency, and stability in complex long-conversation scenarios.
 
 **System-level comparison of agent memory systems:**
 
@@ -108,6 +111,10 @@ Mandol is a native in-memory hierarchical memory system for long-term conversati
 </tbody>
 </table>
 
+> <sup>†</sup> Reproduced using the official implementation from EverMemOS.
+
+Mandol achieves the highest Overall accuracy on LoCoMo under both backbone settings.
+
 **LongMemEval accuracy (%) comparison among different memory systems:**
 
 <table>
@@ -152,7 +159,11 @@ Mandol is a native in-memory hierarchical memory system for long-term conversati
 </tbody>
 </table>
 
-> Mandol achieves a LoCoMo score of 92.21 with only 1.9k tokens — 1.4× the token efficiency of EverMemOS (2.7k) at comparable accuracy, and 3.7× that of Mem0 v2.0 (7.0k). On LongMemEval, it scores 88.40 with 2.3k tokens, improving 5.4 points over EverMemOS (2.8k / 83.00) while using 18% fewer tokens.
+Mandol achieves the highest Overall accuracy on LongMemEval under both backbone settings.
+
+**Evaluation methodology.** Retrieval quality is measured via QA accuracy on the two benchmarks, defined as the percentage of questions whose generated answers are judged correct or semantically consistent with the ground-truth answers. Following the evaluation protocol of prior memory-system studies, GPT-4o-mini and GPT-4.1-mini serve as the answer-generation backbones, and we adopt the released LLM-based answer correctness evaluation script from EverMemOS.<br/>
+Notably, rather than using large-parameter models such as Qwen3-Embedding-4B and Qwen3-Reranker-4B, we employ lightweight alternatives — Qwen3-Embedding-0.6B for embedding and bge-reranker-v2-m3 for reranking.
+
 
 ---
 
@@ -160,21 +171,23 @@ Mandol is a native in-memory hierarchical memory system for long-term conversati
 
 ### (I) Hierarchical Memory Model
 
-Memory is organized into a basic memory layer and a high-level abstract memory layer, both represented as a structured semantic graph. The basic layer captures raw memory through memory units, spaces, and explicit/implicit relations. The abstract layer derives episodic memory (event chains), semantic memory (entity graphs), and emotional memory (user preferences) from basic memories, with traceable backlinks that ensure evidence grounding while enabling abstract reasoning.
+Memory is organized into a basic memory layer and a high-level abstract memory layer, both uniformly represented as a structured semantic graph.
+The basic layer represents raw memory through memory units, spaces, and explicit/implicit relationships.
+The abstract layer automatically derives episodic memory (event chains), semantic memory (entity graphs), and emotional memory (user preferences) from basic memories, with traceable links that ensure evidence grounding while supporting abstract reasoning.
 
-![Layered Memory Model](README.assets/memory-model.png)
+![Layered Memory Model](README.assets/memory-model.svg)
 
 ### (II) In-Memory Semantic Data Structures
 
-A unified in-memory data structure combining SemanticMap and SemanticGraph natively fuses key-value storage, vector indexes, and graph structures into a single runtime, eliminating multi-database fragmentation. Hybrid retrieval operators combine vector matching and graph traversal through a consistent API surface, removing the I/O latency inherent in heterogeneous storage architectures. For durability, the in-memory structures connect to an underlying persistent database for cold storage and long-term retention.
+*SemanticMap* and *SemanticGraph* form a unified in-memory data structure that natively fuses key-value storage, vector indexes, and graph representations, eliminating multi-database fragmentation. Hybrid retrieval operators combine vector matching and graph traversal through a single API surface, removing the I/O latency inherent in heterogeneous storage architectures. The data structures also connect to an underlying persistent database for cold storage and long-term retention.
 
-![Unified Storage Architecture](README.assets/Data-structure.png)
+![Unified Storage Architecture](README.assets/Data-structure.svg)
 
 ### (III) Smart Quantitative Retrieval Mechanism
 
-A Query-Adaptive Routing and quantitative retrieval method transforms the retrieval process from the passive "recall–rerank" pattern into a proactive paradigm: **Query-Adaptive Routing → quantitative denoising → high-quality context generation**. Query intent drives dynamic routing to the most relevant memory spaces; quantitative denoising and conflict resolution filter noise within and across sources; and token-constrained context generation assembles high-information-density output — all within strict computation and token budgets.
+The RAG-style recall-then-rank paradigm is replaced with a proactive pipeline of Query-Adaptive Routing, two-stage denoising and conflict resolution, and token-constrained context generation. Query-Adaptive Routing dynamically selects and queries the most relevant memory sources based on query intent. Two-stage quantitative denoising and conflict resolution then remove noise and contradictory information across sources. Finally, a compact high-quality context is assembled under token constraints by jointly optimizing relevance and diversity — all without LLM involvement in retrieval.
 
-![Quantitative Retrieval Pipeline](README.assets/Retrieval.png)
+![Quantitative Retrieval Pipeline](README.assets/Retrieval.svg)
 
 ---
 
@@ -206,7 +219,7 @@ inspection, backup, or later restoration.
 
 ---
 
-## 📊 Comparison with Mainstream Memory Systems
+<!-- ## 📊 Comparison with Mainstream Memory Systems
 
 The fundamental distinction between Mandol and existing memory systems lies in the retrieval paradigm: traditional systems treat retrieval as a unidirectional pipeline (embedding recall → rerank → top-K), where the process is passive and lacks explicit noise control. Mandol restructures this into a three-stage proactive retrieval pipeline — dynamically routing to the most relevant memory sources based on query intent, performing multi-level quantitative filtering and conflict resolution within and across sources, and finally generating high-information-density context under token constraints. This paradigm upgrade transforms retrieval from passive "match–return" to proactive "understand–filter–summarize."
 
@@ -214,7 +227,7 @@ At the architectural level, Mandol adopts a hexagonal architecture (ports-adapte
 
 > For detailed benchmark comparison data, see the performance table in the [What is Mandol?](#-what-is-mandol) section above.
 
----
+--- -->
 <!-- 
 ## 🏆 Application Cases
 
