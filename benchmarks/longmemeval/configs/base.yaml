@@ -1,0 +1,40 @@
+embedder:
+  dimension: 4096
+
+system:
+  chunk_max_tokens: 512
+  session_time_gap_seconds: 1800
+  session_check_interval: 20
+  session_max_pending: 100
+  similarity_top_k: 5
+  similarity_threshold: 0.7
+  similarity_recent_window: 20
+  bfs_expansion_per_seed: 3
+  bfs_expansion_hops: 1
+  max_context_units: 20
+  max_entities_per_llm: 50
+  max_events_per_llm: 50
+  promote_threshold: 100
+
+storage:
+  root: null
+  enable_persistence: false
+  auto_save_interval: 300
+
+experiment:
+  question_ids: []
+  skip_types: []
+  output_dir: "output"
+  config_name: null
+  dataset_path: "data/longmemeval_s_cleaned.json"
+
+retrieval:
+  top_k: 10
+  skip_views: []
+
+generation:
+  max_tokens: 256
+  temperature: 0.3
+
+evaluation:
+  llm_judge_runs: 1

@@ -78,6 +78,7 @@ output/
 # Benchmark results and outputs
 benchmarks/*/results/
 benchmarks/*/output/
+benchmarks/longmemeval/data
 
 # Jupyter
 .ipynb_checkpoints/
