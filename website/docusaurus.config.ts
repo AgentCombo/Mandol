@@ -4,12 +4,12 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
   title: 'Mandol',
-  tagline: 'An In-Memory Agent Memory System for Long-Term Conversations',
+  tagline: 'An In-Memory Layered Memory System for Long-Term Conversational Agents',
   favicon: 'img/favicon.svg',
 
-  future: {
-    v4: true,
-  },
+  // future: {
+  //   v4: true,
+  // },
 
   url: 'https://AgentCombo.github.io',
   baseUrl: '/Mandol/',
@@ -22,6 +22,16 @@ const config: Config = {
   i18n: {
     defaultLocale: 'en',
     locales: ['en', 'zh-Hans'],
+    localeConfigs: {
+      en: {
+        htmlLang: 'en-US',
+        label: 'English',
+      },
+      'zh-Hans': {
+        htmlLang: 'zh-Hans',
+        label: '简体中文',
+      },
+    },
   },
 
   markdown: {
@@ -34,11 +44,7 @@ const config: Config = {
     [
       'classic',
       {
-        docs: {
-          sidebarPath: './sidebars.ts',
-          editUrl:
-            'https://github.com/AgentCombo/Mandol/edit/dev/website/',
-        },
+        docs: false,
         blog: {
           showReadingTime: true,
           feedOptions: {
@@ -51,6 +57,7 @@ const config: Config = {
           onInlineAuthors: 'warn',
           onUntruncatedBlogPosts: 'warn',
         },
+        pages: {},
         theme: {
           customCss: './src/css/custom.css',
         },
@@ -61,7 +68,9 @@ const config: Config = {
   themeConfig: {
     image: 'img/mandol-social-card.png',
     colorMode: {
-      respectPrefersColorScheme: true,
+      defaultMode: 'dark',
+      respectPrefersColorScheme: false,
+      disableSwitch: false,
     },
     navbar: {
       title: 'Mandol',
@@ -69,10 +78,11 @@ const config: Config = {
         alt: 'Mandol Logo',
         src: 'img/logo.svg',
       },
+      hideOnScroll: true,
       items: [
         {
-          to: '/docs/api',
-          label: 'Documentation',
+          href: '/Mandol/docs/',
+          label: 'Docs',
           position: 'left',
         },
         {
@@ -93,52 +103,8 @@ const config: Config = {
     },
     footer: {
       style: 'dark',
-      links: [
-        {
-          title: 'Documentation',
-          items: [
-            {
-              label: 'Getting Started',
-              to: '/docs/getting-started/installation',
-            },
-            {
-              label: 'Core Concepts',
-              to: '/docs/core-concepts/memory-space',
-            },
-            {
-              label: 'API Reference',
-              to: '/docs/api',
-            },
-          ],
-        },
-        {
-          title: 'Community',
-          items: [
-            {
-              label: 'GitHub Issues',
-              href: 'https://github.com/AgentCombo/Mandol/issues',
-            },
-            {
-              label: 'GitHub Discussions',
-              href: 'https://github.com/AgentCombo/Mandol/discussions',
-            },
-          ],
-        },
-        {
-          title: 'More',
-          items: [
-            {
-              label: 'Blog',
-              to: '/blog',
-            },
-            {
-              label: 'GitHub',
-              href: 'https://github.com/AgentCombo/Mandol',
-            },
-          ],
-        },
-      ],
-      copyright: `Copyright © ${new Date().getFullYear()} Mandol Contributors. Built with Docusaurus.`,
+      links: [],
+      copyright: `Copyright © ${new Date().getFullYear()} Mandol Contributors.`,
     },
     prism: {
       theme: prismThemes.github,

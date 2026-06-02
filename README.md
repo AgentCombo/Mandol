@@ -43,10 +43,10 @@ The system is built on pure Python in-memory data structures, fusing key-value, 
 
 | **Dimension** | **Mem0** | **Zep** | **MemOS** | **EverMemOS** | **Mandol** |
 |---|---|---|---|---|---|
-| **Memory Organization & Representation** | Text vectors + metadata | Text vectors + temporal knowledge graph | Text vectors + graph/tree summaries | Text vectors + high-level summaries | **Structured semantic graph + abstract high-level memory + hierarchical memory** |
-| **Storage Architecture** | Single relational database (with vector extension) | Relational DB + custom graph engine + graph DB | Graph DB + vector DB combination | Hybrid multi-component DB (document, retrieval, vector, cache) | **In-memory semantic data structures + in-process DB DuckDB/DuckPGQ** |
-| **Retrieval & Query Mechanism** | Vector semantic retrieval + keyword filtering | Multi-step graph traversal topology search + reranking | Vector retrieval + dynamic graph node recall | Multi-path routing + LLM multi-round query rewriting | **In-memory multi-path parallel recall + intelligent routing + quantitative denoising + context optimization** |
-| **I/O Overhead & Resource** | Medium: limited by row-level updates and single-path index of traditional databases | High: frequent fact extraction and cross-service communication cause high system latency | High: multiple databases lead to heavy IO overhead | Extremely high: extremely fragmented component stack causes severe cross-store network and serialization overhead | **Extremely low: core operators execute natively in-process, completely eliminating cross-store network and communication bottlenecks** |
+| **Memory Organization** | Text vectors + metadata | Text vectors + temporal knowledge graph | Text vectors + graph/tree summaries | Text vectors + memory summaries | **Basic + high-level memories represented as a structured semantic graph** |
+| **Storage** | VectorDB + metadata store | GraphDB + vector/full-text indexes | VectorDB + GraphDB | Multi-DB stack | **SemanticMap/Graph; DuckDB fallback** |
+| **Retrieval** | Vector semantic retrieval + medatada filtering | Multi-step graph traversal + reranking | Vector retrieval + graph node matching | Multi-turn retrieval + query rewriting | **Hybrid recall + smart quantitative retrieval** |
+| **Search Latency** | Medium | High | High | Very high | **low** |
 | | | | | | |
 | **LoCoMo Score** | 64.20 (1.0k Tokens) | 85.22 (1.4k Tokens) | 80.76 (2.5k Tokens) | 91.97 (2.7k Tokens) | **92.21 (1.9k Tokens)** |
 | **LongMemEval Score** | 66.40 (1.1k Tokens) | 63.80 (1.6k Tokens) | 77.80 (1.4k Tokens) | 83.00 (2.8k Tokens) | **88.40 (2.3k Tokens)** |

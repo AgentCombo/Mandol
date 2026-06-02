@@ -84,3 +84,6 @@ benchmarks/*/output/
 
 # mypy
 .mypy_cache/
+
+# Website test
+website/build_test/
