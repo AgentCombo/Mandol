@@ -42,7 +42,7 @@ openai = ["openai>=1.0"]
 monitoring = ["psutil>=5.9"]
 all = ["mandol[faiss,milvus,neo4j,sentence-transformers,openai]"]
 dev = ["pytest>=7.0", "pytest-asyncio", "pre-commit", "ruff"]
-docs = ["sphinx>=7.0", "furo", "myst-parser", "sphinxcontrib-mermaid"]
+docs = ["sphinx>=7.4.7", "furo", "myst-parser", "sphinxcontrib-mermaid"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
