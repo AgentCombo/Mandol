@@ -115,8 +115,6 @@ class TestGetNodeNeighbors(unittest.TestCase):
         self.assertEqual(len(result["structural"]), 1)
 
     def test_returns_semantic_neighbors_only(self):
-        import numpy as np
-
         u1 = _make_unit("u1")
         u1.embedding = np.random.rand(128).astype(np.float32)
         u2 = _make_unit("u2")

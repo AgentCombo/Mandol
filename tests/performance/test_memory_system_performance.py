@@ -7,21 +7,17 @@ correctness invariants alongside timing measurements.
 
 from __future__ import annotations
 
-import gc
 import json
 import logging
-import threading
 import time
 import tracemalloc
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from typing import List
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from mandol.application.memory_system import (
     MemorySystem,
-    MemorySystemConfig,
-    MAX_CONTEXT_UNITS,
     SESSION_CHECK_INTERVAL,
     SESSION_MAX_PENDING,
 )

@@ -112,7 +112,7 @@ class OpenAICompatibleEmbeddingProvider(EmbeddingProvider):
             )
 
         try:
-            import requests
+            import requests  # noqa: F401
         except Exception as e:  # pragma: no cover
             raise RuntimeError("requests is required for OpenAICompatibleEmbeddingProvider") from e
 

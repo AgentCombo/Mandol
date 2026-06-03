@@ -8,9 +8,8 @@ promotes to a FAISS-backed ANN index for faster approximate search.
 from __future__ import annotations
 
 import logging
-from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple
+from typing import Iterable, List, Optional, Sequence, Set, Tuple
 
-import numpy as np
 
 from ..domain.types import Embedding, Uid
 from ..ports.vector_index import VectorIndex

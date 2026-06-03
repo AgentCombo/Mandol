@@ -11,8 +11,6 @@ import pytest
 from mandol.application._llm_retry import (
     retry_llm_json_call,
     strip_json_fences,
-    DEFAULT_MAX_RETRIES,
-    DEFAULT_RETRY_DELAY,
 )
 
 

@@ -9,12 +9,10 @@ holistic or per-group retrieval with reranking.
 
 from __future__ import annotations
 
-import json
 import logging
 import os
 import threading
 import time
-import traceback
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -1512,8 +1510,6 @@ class MemorySystem:
 
         On the last batch, any remaining units are force-closed as a session.
         """
-        unit_map = {str(u.uid): u for u in all_units_lookup}
-
         # Batch into groups of 20
         batches: List[List[MemoryUnit]] = []
         for i in range(0, len(sorted_units), SESSION_CHECK_INTERVAL):

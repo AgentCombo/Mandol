@@ -5,6 +5,6 @@ Uses LLMs to condense conversational memory into structured summaries
 across sessions.
 """
 
-from .summary_map_reducer import SummaryMapReducer
-from .insight_map_reducer import InsightMapReducer
-from .global_insight_manager import GlobalInsightManager
+from .summary_map_reducer import SummaryMapReducer as SummaryMapReducer
+from .insight_map_reducer import InsightMapReducer as InsightMapReducer
+from .global_insight_manager import GlobalInsightManager as GlobalInsightManager

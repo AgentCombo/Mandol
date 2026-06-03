@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 from collections import deque
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 
@@ -17,6 +17,15 @@ from ..domain.memory_unit import MemoryUnit
 from ..domain.types import Embedding, SpaceName, Uid
 from ..ports.graph_store import GraphStore
 from .semantic_map import SemanticMapService
+
+if TYPE_CHECKING:
+    from ..retrieval.types import (
+        CorefTraceResult,
+        EntityInvolvementResult,
+        EntitySubgraphResult,
+        EvidenceChainResult,
+        SummaryEvidenceChainResult,
+    )
 
 logger = logging.getLogger(__name__)
 

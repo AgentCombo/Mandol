@@ -87,8 +87,6 @@ def strip_json_fences(text: str) -> str:
     # Process line by line to avoid removing // inside strings
     lines = text.split("\n")
     cleaned_lines = []
-    in_string = False
-    string_char = None
     for line in lines:
         # Simple state machine to avoid removing comments inside strings
         cleaned = _remove_comments_from_line(line)

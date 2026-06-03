@@ -137,7 +137,6 @@ class OpenAICompatibleLLMProvider(LLMProvider):
         _BASE_DELAY = 2.0
         _logger = logging.getLogger(__name__)
 
-        last_exc: Optional[Exception] = None
         for attempt in range(1, _MAX_RETRIES + 1):
             try:
                 resp = requests.post(
@@ -147,7 +146,6 @@ class OpenAICompatibleLLMProvider(LLMProvider):
                     timeout=self._timeout_s,
                 )
             except (requests.ConnectionError, requests.Timeout) as exc:
-                last_exc = exc
                 if attempt == _MAX_RETRIES:
                     raise RuntimeError(
                         f"LLM connection failed after {_MAX_RETRIES} attempts: {exc}"

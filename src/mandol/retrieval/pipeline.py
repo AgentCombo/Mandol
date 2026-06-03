@@ -17,7 +17,7 @@ from typing import Dict, List, Optional, Sequence, Tuple
 
 from ..application.semantic_graph import SemanticGraphService
 from ..domain.memory_unit import MemoryUnit
-from ..domain.types import SpaceName, Uid
+from ..domain.types import Uid
 from ..ports.bm25_index import BM25Index
 from ..ports.reranker import Reranker
 from ..ports.sparse_index import SparseIndex

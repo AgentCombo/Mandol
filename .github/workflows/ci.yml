@@ -23,7 +23,7 @@ jobs:
           pip install ruff
 
       - name: Lint with ruff
-        run: ruff check mandol/ tests/
+        run: ruff check src/mandol/ tests/
 
   test:
     runs-on: ubuntu-latest

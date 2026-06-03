@@ -16,13 +16,14 @@ import numpy as np
 from ..domain.memory_space import MemorySpace
 from ..domain.memory_unit import MemoryUnit
 
-logger = logging.getLogger(__name__)
 from ..domain.types import Embedding, SpaceName, Uid
 from ..ports.embedding_provider import EmbeddingProvider
 from ..ports.reranker import Reranker
 from ..ports.unit_store import UnitStore
 from ..ports.vector_index import VectorIndex
 from ..infrastructure.adaptive_vector_index import AdaptiveVectorIndex
+
+logger = logging.getLogger(__name__)
 
 
 class SemanticMapService:

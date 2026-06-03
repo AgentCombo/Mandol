@@ -10,7 +10,7 @@ throughout the retrieval subsystem.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional
 
 from ..domain.memory_unit import MemoryUnit
 from ..domain.types import Uid

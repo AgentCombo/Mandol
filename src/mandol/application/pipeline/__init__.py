@@ -5,5 +5,5 @@ dialogue sessions, and the CrossSessionCorefManager for deduplication across
 multiple sessions.
 """
 
-from .unified_fact_pipeline import UnifiedFactPipeline
-from .cross_session_coref_manager import CrossSessionCorefManager
+from .unified_fact_pipeline import UnifiedFactPipeline as UnifiedFactPipeline
+from .cross_session_coref_manager import CrossSessionCorefManager as CrossSessionCorefManager

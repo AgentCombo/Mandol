@@ -7,7 +7,6 @@ rebuild, and integration with SemanticMapService.
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
 from mandol.application.semantic_map import SemanticMapService
 from mandol.domain.memory_unit import MemoryUnit

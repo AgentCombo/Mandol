@@ -45,6 +45,7 @@ dev = ["pytest>=7.0", "pytest-asyncio", "pre-commit", "ruff"]
 docs = ["sphinx>=7.0", "furo", "myst-parser", "sphinxcontrib-mermaid"]
 
 [tool.setuptools.packages.find]
+where = ["src"]
 include = ["mandol*"]
 
 [tool.pytest.ini_options]
