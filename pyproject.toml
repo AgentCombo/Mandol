@@ -25,7 +25,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = [
-    "numpy>=1.21",
+    "numpy>=2.0.2",
     "networkx>=2.6",
     "rank-bm25>=0.2",
     "scikit-learn>=1.0",
