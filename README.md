@@ -36,7 +36,7 @@
 
 ## 📖 What is Mandol?
 
-Mandol is a native in-memory hierarchical memory system purpose-built for long-term agent conversations. Its core components are:
+Mandol is a native in-memory hierarchical memory system for LLM agents such as long-term conversational agents. Its core components are:
 
 1. **Hierarchical Memory Model** — Organizes memory into a basic layer and a high-level abstract layer, both uniformly represented as a structured semantic graph with traceable relationships between all memory elements.
 2. **In-Memory Semantic Data Structures** — Combines *SemanticMap* and *SemanticGraph* to natively fuse key-value, vector, and graph stores into a unified hybrid retrieval interface, eliminating cross-database I/O overhead.
