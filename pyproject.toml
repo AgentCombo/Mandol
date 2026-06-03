@@ -37,7 +37,7 @@ dependencies = [
 faiss = ["faiss-cpu>=1.7"]
 milvus = ["pymilvus>=2.3"]
 neo4j = ["neo4j>=5.0"]
-sentence-transformers = ["sentence-transformers>=2.2"]
+sentence-transformers = ["sentence-transformers>=5.1.2"]
 openai = ["openai>=1.0"]
 monitoring = ["psutil>=5.9"]
 all = ["mandol[faiss,milvus,neo4j,sentence-transformers,openai]"]
