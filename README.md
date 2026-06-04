@@ -297,12 +297,13 @@ llm:
   api_key: "sk-..."
 
 embedder:
-  model: "Qwen/Qwen3-Embedding-4B"
+  model: "Qwen/Qwen3-Embedding-0.6B"
   device: "cpu"
   use_remote: false
 
 reranker:
-  model: "Qwen/Qwen3-Reranker-4B"
+  model: "BAAI/bge-reranker-v2-m3"
+  # model: "Qwen/Qwen3-Reranker-4B"
   device: "cpu"
   use_remote: false
 
