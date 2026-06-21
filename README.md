@@ -12,6 +12,9 @@
 
 [English](README.md) | [中文](README_CN.md)
 
+> [!IMPORTANT]
+> The `main` branch is currently under active refactoring. For exact reproduction of the paper results, please use the [`paper-repro`](https://github.com/AgentCombo/Mandol/tree/paper-repro) branch.
+
 ![Mandol Overview](README.assets/Mandol-overview-v2.png)
 
 ---
