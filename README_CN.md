@@ -7,6 +7,7 @@
 [![Homepage](https://img.shields.io/badge/Homepage-agentcombo.github.io%2FMandol-blue)](https://agentcombo.github.io/Mandol)
 [![Docs](https://img.shields.io/badge/Docs-agentcombo.github.io%2FMandol%2Fdocs-green)](https://agentcombo.github.io/Mandol/docs)
 [![Paper](https://img.shields.io/badge/arXiv-2606.29778-b31b1b.svg)](https://arxiv.org/abs/2606.29778)
+[![PyPI](https://img.shields.io/badge/PyPI-0.1.0a1-blue)](https://pypi.org/project/mandol/0.1.0a1/)
 
 [English](README.md) | [中文](README_CN.md)
 
@@ -89,11 +90,14 @@ uv pip install --force-reinstall dist/mandol-*.whl
 uv run python -c "from mandol import MemoryUnit, SemanticGraph, SemanticMap; print('ok')"
 ```
 
-正式发布到 PyPI 后，用户可以通过以下方式安装运行时包：
+Mandol 已正式发布到 PyPI。当前公开 alpha 版本是
+[`mandol==0.1.0a1`](https://pypi.org/project/mandol/0.1.0a1/)：
 
 ```bash
-python -m pip install mandol
+python -m pip install mandol==0.1.0a1
 ```
+
+建议在当前 alpha artifact 阶段固定版本安装，避免安装到 PyPI 上的其他历史版本。
 
 benchmark 目录是论文 artifact 的一部分，不属于运行时包本体。复现论文结果时请使用源码 checkout。
 
@@ -407,3 +411,9 @@ npm run build
 ## 许可证
 
 Mandol 使用 Apache License 2.0 发布。详见 [LICENSE](LICENSE)。
+
+## 社区交流
+
+欢迎加入 Mandol 微信用户交流群进行讨论和反馈。
+
+<img src="picture/mandol_wechat_user_group_qr_20260713.jpg" alt="Mandol 微信用户交流群二维码" width="260" />

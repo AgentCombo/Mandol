@@ -7,6 +7,7 @@
 [![Homepage](https://img.shields.io/badge/Homepage-agentcombo.github.io%2FMandol-blue)](https://agentcombo.github.io/Mandol)
 [![Docs](https://img.shields.io/badge/Docs-agentcombo.github.io%2FMandol%2Fdocs-green)](https://agentcombo.github.io/Mandol/docs)
 [![Paper](https://img.shields.io/badge/arXiv-2606.29778-b31b1b.svg)](https://arxiv.org/abs/2606.29778)
+[![PyPI](https://img.shields.io/badge/PyPI-0.1.0a1-blue)](https://pypi.org/project/mandol/0.1.0a1/)
 
 [English](README.md) | [Chinese](README_CN.md)
 
@@ -111,11 +112,14 @@ uv pip install --force-reinstall dist/mandol-*.whl
 uv run python -c "from mandol import MemoryUnit, SemanticGraph, SemanticMap; print('ok')"
 ```
 
-After a public PyPI release, users can install the package with:
+Mandol is published on PyPI. The current public alpha release is
+[`mandol==0.1.0a1`](https://pypi.org/project/mandol/0.1.0a1/):
 
 ```bash
-python -m pip install mandol
+python -m pip install mandol==0.1.0a1
 ```
+
+Pinning the version is recommended for this alpha artifact release.
 
 The benchmark directories are repository artifacts, not part of the runtime
 package. Use the source checkout when reproducing paper results.
@@ -483,3 +487,9 @@ If you use Mandol in your research, please cite the arXiv paper:
 ## License
 
 Mandol is released under the Apache License 2.0. See [LICENSE](LICENSE).
+
+## Community
+
+For discussion and user support, you can join the Mandol WeChat user group.
+
+<img src="picture/mandol_wechat_user_group_qr_20260713.jpg" alt="Mandol WeChat user group QR code" width="260" />
