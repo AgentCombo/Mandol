@@ -14,7 +14,7 @@ interface Innovation {
 function buildInnovations(t: typeof translations['en']): Innovation[] {
   return [
     {
-      icon: '🏗️',
+      icon: 'API',
       title: t.innovation1_title,
       tag: 'Theoretical',
       tagColor: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
@@ -22,7 +22,7 @@ function buildInnovations(t: typeof translations['en']): Innovation[] {
       points: t.innovation1_points,
     },
     {
-      icon: '💾',
+      icon: 'MAP',
       title: t.innovation2_title,
       tag: 'Architecture',
       tagColor: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20',
@@ -30,7 +30,7 @@ function buildInnovations(t: typeof translations['en']): Innovation[] {
       points: t.innovation2_points,
     },
     {
-      icon: '🔍',
+      icon: 'RET',
       title: t.innovation3_title,
       tag: 'Retrieval',
       tagColor: 'text-violet-400 bg-violet-500/10 border-violet-500/20',
@@ -54,7 +54,7 @@ function InnovationCard({
       className={`card-glow flex flex-col p-7 animate-initial ${visible ? 'animate-fade-in-up' : ''}`}
       style={{ animationDelay: `${delay}s` }}
     >
-      <div className="mb-4 text-3xl">{inv.icon}</div>
+      <div className="mb-4 font-mono text-xs font-semibold uppercase tracking-[0.2em] text-primary-300/70">{inv.icon}</div>
       <div className="mb-2 flex items-center gap-3">
         <h3 className="text-lg font-semibold text-white/90">{inv.title}</h3>
       </div>

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mandol Chat Demo</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <div class="app">
+      <aside class="panel sessions">
+        <header>
+          <h1>Mandol Chat</h1>
+          <p id="status">Checking backend...</p>
+        </header>
+        <section class="current">
+          <span>Current session</span>
+          <strong id="currentSession">none</strong>
+        </section>
+        <div class="button-grid">
+          <button id="refreshSessions">Refresh Session</button>
+          <button id="finalizeSession">Finalize Current</button>
+          <button id="buildMemory">Build High-Level</button>
+          <button id="resetDemo" class="danger">Reset</button>
+        </div>
+        <h2>Sessions</h2>
+        <div id="sessionList" class="list empty">No sessions yet.</div>
+      </aside>
+
+      <main class="chat">
+        <div id="chatLog" class="chat-log"></div>
+        <form id="chatForm" class="composer">
+          <textarea id="messageInput" rows="3" placeholder="Tell Mandol something..."></textarea>
+          <button id="sendButton" type="submit">Send</button>
+        </form>
+      </main>
+
+      <aside class="panel memories">
+        <h2>Retrieved Memories</h2>
+        <div id="memoryList" class="list empty">No retrieved memories.</div>
+
+        <h2>Search Memory</h2>
+        <div class="search-box">
+          <input id="searchInput" type="text" placeholder="Search memory..." />
+          <button id="searchButton">Search</button>
+        </div>
+        <div id="searchResults" class="list empty">No search results.</div>
+
+        <h2>Build Status</h2>
+        <pre id="buildStatus">Not started.</pre>
+      </aside>
+    </div>
+    <script src="/static/app.js"></script>
+  </body>
+</html>

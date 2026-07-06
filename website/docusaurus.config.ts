@@ -4,7 +4,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
   title: 'Mandol',
-  tagline: 'An In-Memory Layered Memory System for Long-Term Conversational Agents',
+  tagline: 'An In-Memory Semantic Memory Runtime for Agent Retrieval Systems',
   favicon: 'img/favicon.svg',
 
   // future: {
@@ -45,18 +45,7 @@ const config: Config = {
       'classic',
       {
         docs: false,
-        blog: {
-          showReadingTime: true,
-          feedOptions: {
-            type: ['rss', 'atom'],
-            xslt: true,
-          },
-          editUrl:
-            'https://github.com/AgentCombo/Mandol/edit/dev/website/',
-          onInlineTags: 'warn',
-          onInlineAuthors: 'warn',
-          onUntruncatedBlogPosts: 'warn',
-        },
+        blog: false,
         pages: {},
         theme: {
           customCss: './src/css/custom.css',
@@ -66,7 +55,7 @@ const config: Config = {
   ],
 
   themeConfig: {
-    image: 'img/mandol-social-card.png',
+    image: 'img/mandol-overview.png',
     colorMode: {
       defaultMode: 'dark',
       respectPrefersColorScheme: false,
@@ -83,11 +72,6 @@ const config: Config = {
         {
           href: '/Mandol/docs/',
           label: 'Docs',
-          position: 'left',
-        },
-        {
-          to: '/blog',
-          label: 'Blog',
           position: 'left',
         },
         {

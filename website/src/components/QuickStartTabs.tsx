@@ -3,49 +3,59 @@ import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import { translations, type Locale } from '@site/src/data/translations';
 
 const codeSnippets: Record<string, string> = {
-  install: `# Install Mandol (zero mandatory dependencies)
-pip install mandol
+  install: `# Build the repository environment
+uv sync --extra dev --extra docs --group spacy-model
 
-# Optional backends
-pip install mandol[faiss]      # FAISS vector index acceleration
-pip install mandol[neo4j]      # Neo4j graph database
-pip install mandol[all]        # Install all optional deps`,
-  insert: `from mandol import MemorySystem, MemoryUnit, Uid
+# Paper performance reproduction stack
+uv sync --extra dev --extra docs --extra cuda --group spacy-model
 
-# Start the memory system (no-arg constructor)
-system = MemorySystem.from_yaml_config("config.yaml")
+# Runtime-only install
+uv sync
 
-# Write memories — the system auto-vectorizes text
-system.add(MemoryUnit(
-    uid=Uid("msg_001"),
-    raw_data={"text_content": "Zhang San went to Beijing today"},
-    metadata={"timestamp": "2024-01-15T10:00:00"},
-))`,
-  build: `# Build high-level memory structures (one call)
-system.build_high_level(mode="auto")
+# Lightweight import check
+uv run python -c "import mandol; print(mandol.__version__)"`,
+  insert: `from mandol import MemoryUnit, SemanticGraph, SemanticMap
 
-# The system automatically performs:
-#  • Session segmentation (LLM-driven)
-#  • Entity & event extraction + deduplication
-#  • Cross-session coreference resolution
-#  • Multi-type summary & insight generation
-
-# Query-adaptive hybrid retrieval
-hits = system.holistic_retrieve(
-    "Where did Zhang San go?", top_k=5
+semantic_map = SemanticMap(
+    embedding_model_name="all-MiniLM-L6-v2",
+    use_flash_attention=False,
 )
-for hit in hits:
-    print(f"[{hit.final_score:.3f}] {hit.unit.raw_data['text_content']}")`,
-  save: `# One-click persistence
-system.save("./memory_snapshot")
+graph = SemanticGraph(semantic_map_instance=semantic_map)
 
-# One-click restoration
-system2 = MemorySystem.load("./memory_snapshot")
+graph.add_unit(MemoryUnit(
+    uid="msg_001",
+    raw_data={"text_content": "Zhang San travelled to Beijing today."},
+    metadata={"timestamp": "2024-01-15T10:00:00"},
+), space_names=["demo"], generate_sparse_embedding=False)
 
-# The snapshot preserves:
-#  • All base & high-level memories
-#  • SemanticGraph topology
-#  • Vector indices & metadata`,
+graph.add_unit(MemoryUnit(
+    uid="msg_002",
+    raw_data={"text_content": "He will discuss the Q2 delivery plan."},
+    metadata={"timestamp": "2024-01-15T10:05:00"},
+), space_names=["demo"], generate_sparse_embedding=False)`,
+  build: `graph.add_relationship("msg_001", "msg_002", "NEXT")
+
+from mandol.retrieval import MultiRetriever
+
+retriever = MultiRetriever(graph)
+hits = retriever.smart_search(
+    "Where did Zhang San go?",
+    methods=["bm25", "cosine"],
+    top_k=5,
+    rerank_method=None,
+    space_names=["demo"],
+)
+for unit, score in hits:
+    print(f"{score:.3f} {unit.uid}")`,
+  save: `# Complete graph snapshot
+graph.save_graph("./memory_snapshot", build_sparse_vectors=False)
+
+restored = SemanticGraph.load_graph(
+    "./memory_snapshot",
+    embedding_model_name="all-MiniLM-L6-v2",
+    use_flash_attention=False,
+)`,
+
 };
 
 export default function QuickStartTabs(): JSX.Element {

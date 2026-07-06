@@ -60,13 +60,13 @@ export default function Home(): ReactNode {
     <Layout
       title={
         locale === 'zh-Hans'
-          ? 'Mandol — 面向长期对话Agent的内存级分层记忆系统'
-          : 'Mandol — An In-Memory Layered Memory System for Long-Term Conversational Agents'
+          ? 'Mandol — 面向智能体检索系统的内存语义记忆运行时'
+          : 'Mandol — An In-Memory Semantic Memory Runtime for Agent Retrieval Systems'
       }
       description={
         locale === 'zh-Hans'
-          ? 'Mandol 是一个面向长期对话Agent的内存级分层记忆系统。LoCoMo 92.21% | LongMemEval 88.40% | 5.8× 构建加速 | 5.4× 检索加速。'
-          : 'Mandol is an in-memory, layered memory system for long-term conversational agents. LoCoMo 92.21% | LongMemEval 88.40% | 5.8× build speed | 5.4× retrieval speed.'
+          ? 'Mandol 当前公开 MemoryUnit、SemanticMap、SemanticGraph、MultiRetriever 与三塔检索组件。'
+          : 'Mandol currently exposes MemoryUnit, SemanticMap, SemanticGraph, MultiRetriever, and three-tower retrieval components.'
       }
     >
       <main className="homepage-layout">

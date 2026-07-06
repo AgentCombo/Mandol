@@ -1,41 +1,31 @@
-# Website
+# Mandol Website
 
-This website is built using [Docusaurus](https://docusaurus.io/), a modern static website generator.
+This directory contains the Docusaurus static front page for Mandol. It is not
+the Sphinx documentation source; the maintained docs live in `../docs`.
 
-## Installation
-
-```bash
-yarn
-```
-
-## Local Development
+## Install
 
 ```bash
-yarn start
+npm install
 ```
 
-This command starts a local development server and opens up a browser window. Most changes are reflected live without having to restart the server.
+## Develop
+
+```bash
+npm run start
+```
+
+## Typecheck
+
+```bash
+npm run typecheck
+```
 
 ## Build
 
 ```bash
-yarn build
+npm run build
 ```
 
-This command generates static content into the `build` directory and can be served using any static contents hosting service.
-
-## Deployment
-
-Using SSH:
-
-```bash
-USE_SSH=true yarn deploy
-```
-
-Not using SSH:
-
-```bash
-GIT_USER=<Your GitHub username> yarn deploy
-```
-
-If you are using GitHub pages for hosting, this command is a convenient way to build the website and push to the `gh-pages` branch.
+The site links its Docs buttons to `/Mandol/docs/`, where the Sphinx output is
+expected to be published.

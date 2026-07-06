@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Purpose: Build retry requests for failed LongMemEval entity-relation extraction batches using uv.
+
+# Resolve repository root for the src/ package layout.
+AMS_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+AMS_REPO_ROOT="$AMS_SCRIPT_DIR"
+while [[ "$AMS_REPO_ROOT" != "/" && ! -d "$AMS_REPO_ROOT/src/mandol" ]]; do
+    AMS_REPO_ROOT="$(dirname "$AMS_REPO_ROOT")"
+done
+if [[ ! -d "$AMS_REPO_ROOT/src/mandol" ]]; then
+    echo "Could not locate AgentMemorySystem repo root from $AMS_SCRIPT_DIR" >&2
+    exit 1
+fi
+cd "$AMS_REPO_ROOT"
+if [[ -d "$AMS_REPO_ROOT/.venv/bin" ]]; then
+    export PATH="$AMS_REPO_ROOT/.venv/bin:$PATH"
+fi
+export PYTHONPATH="$AMS_REPO_ROOT/src:$AMS_REPO_ROOT:${PYTHONPATH:-}"
+if ! command -v uv >/dev/null 2>&1; then
+    echo "uv is required to run this dataset maker script" >&2
+    exit 1
+fi
+
+# LongMemEval Entity Relation - Step 1.5: 重试失败的批量请求
+# 读取阿里云百炼的错误结果文件，生成新的补救 batch 请求文件
+
+# 1. 重试 error 目录下的所有失败请求
+uv run python -m benchmark_longmemeval.dataset_maker.longmemeval_entity_relation_new.step1_5_retry_failed_requests \
+    --error-files benchmark_longmemeval/dataset_maker/longmemeval_entity_relation_new/batch_results/error \
+    --output-file benchmark_longmemeval/dataset_maker/longmemeval_entity_relation_new/batch_requests/retry_batch_requests.jsonl
+
+# 2. 重试指定的错误文件
+# uv run python -m benchmark_longmemeval.dataset_maker.longmemeval_entity_relation_new.step1_5_retry_failed_requests \
+#     --error-files benchmark_longmemeval/dataset_maker/longmemeval_entity_relation_new/batch_results/error/0-49_error.jsonl \
+#     --output-file benchmark_longmemeval/dataset_maker/longmemeval_entity_relation_new/batch_requests/retry_0_49.jsonl
+
+# 3. 使用不同模型重试
+# uv run python -m benchmark_longmemeval.dataset_maker.longmemeval_entity_relation_new.step1_5_retry_failed_requests \
+#     --error-files benchmark_longmemeval/dataset_maker/longmemeval_entity_relation_new/batch_results/error \
+#     --output-file benchmark_longmemeval/dataset_maker/longmemeval_entity_relation_new/batch_requests/retry_qwen_max.jsonl \
+#     --model qwen-max

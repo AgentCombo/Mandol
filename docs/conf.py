@@ -5,12 +5,12 @@
 
 import os
 import sys
-sys.path.insert(0, os.path.abspath('..'))
+sys.path.insert(0, os.path.abspath('../src'))
 
 project = 'Mandol'
 copyright = '2024-2026, Mandol Contributors'
 author = 'Mandol Contributors'
-release = '0.1.0'
+release = '0.1.0a1'
 
 language = 'zh_CN'
 
@@ -28,7 +28,36 @@ extensions = [
 ]
 
 templates_path = ['_templates']
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+
+# The repository still keeps historical design notes and pre-refactor docs.
+# They are useful as archive material, but many mention API names that are not
+# exported by the current src/mandol package. Keep the default build focused on
+# the maintained current-code documentation under docs/current/.
+exclude_patterns = [
+    '_build',
+    'Thumbs.db',
+    '.DS_Store',
+    'advanced-user/**',
+    'advanced/**',
+    'api/**',
+    'api-reference/**',
+    'basic-user/**',
+    'contributing/**',
+    'developer/**',
+    'en/**',
+    'getting-started/**',
+    'retrieval/**',
+    'shared/**',
+    'user-guide/**',
+    'DOC_*.md',
+    'data_structures.rst',
+    'extending.rst',
+    'introduction.rst',
+    'memory-monitor-design.md',
+    'multidim_construction.rst',
+    'multimodal-capability-assessment.md',
+    'retrieval_interfaces.rst',
+]
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output

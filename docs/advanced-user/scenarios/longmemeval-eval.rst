@@ -1,73 +1,29 @@
-LongMemEval 完整评估
-=========================
+LongMemEval Reproduction
+========================
 
-使用 HuggingFace 全量数据集进行 6 类问题评估。
+The maintained LongMemEval reproduction workflow lives under
+``benchmark_longmemeval``. The paper accuracy numbers are produced by the
+router + quantification task-eval script after the hierarchical, episodic and
+entity-relation graph artifacts have been generated from the cleaned dataset.
 
-获取全量数据
-------------
-
-.. code-block:: bash
-
-   cd examples/longmemeval
-   python download_data.py
-
-6 类评估详解
-------------
-
-.. list-table::
-   :header-rows: 1
-   :widths: 22 28 50
-
-   * - 类别
-     - 全称
-     - 考察
-   * - SS-Pref
-     - Single-Session Preference
-     - 用户偏好/观点
-   * - SS-Asst
-     - Single-Session Assistant
-     - 精确事实提取
-   * - Temporal
-     - Temporal
-     - 时间关系推理
-   * - Multi-S
-     - Multi-Session
-     - 跨会话综合
-   * - Know.Upd.
-     - Knowledge Update
-     - 知识变化追踪
-   * - SS-User
-     - Single-Session User
-     - 用户特定细节
-
-运行评估
---------
+Use the repository-level guide as the source of truth:
 
 .. code-block:: bash
 
-   python run_example.py --eval
+   uv run python -m benchmark_longmemeval.task_eval.benchmark_triple_router_quantification --help
 
-Per-Category 分析
-------------------
+For a bounded real-LLM smoke test, restrict the QA range and the number of
+formal tests:
 
-.. code-block::
+.. code-block:: bash
 
-   Category Breakdown:
-     SS-Pref:      180/200 (90.0%)
-     SS-Asst:      195/200 (97.5%)
-     Temporal:     170/200 (85.0%)
-     Multi-S:       88/100 (88.0%)
-     Know.Upd.:     75/100 (75.0%)
-     SS-User:      185/200 (92.5%)
-   Total:         893/1000 (89.3%)
+   uv run python -m benchmark_longmemeval.task_eval.benchmark_triple_router_quantification \
+     --dataset-size s \
+     --start-qa 0 \
+     --end-qa 0 \
+     --max-tests 1 \
+     --llm-model gpt-4.1-mini-closeai \
+     --llm-evaluate-model gpt-4o-mini-closeai
 
-自定义评估
-----------
-
-.. code-block:: python
-
-   # 仅评估特定类别
-   python run_example.py --eval --category temporal,knowledge-update
-
-   # 自定义查询
-   python run_example.py --query "What happened in 2018?"
+See ``benchmark_longmemeval/REPRODUCE.md`` for the full paper-aligned commands,
+model roles, graph paths, and output-file definitions.

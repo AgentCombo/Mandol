@@ -1,13 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import Link from '@docusaurus/Link';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import { translations, type Locale } from '@site/src/data/translations';
 
 const highlights = [
-  { value: '92.21%', labelKey: 'highlightLoCoMo' as const, color: '#60a5fa' },
-  { value: '88.40%', labelKey: 'highlightLongMemEval' as const, color: '#06b6d4' },
-  { value: '5.4×', labelKey: 'highlightRetrievalSpeedup' as const, color: '#a78bfa' },
-  { value: '4.8×', labelKey: 'highlightInsertionSpeedup' as const, color: '#f59e0b' },
+  { value: '3.12', labelKey: 'highlightLoCoMo' as const, color: '#60a5fa' },
+  { value: 'Map', labelKey: 'highlightLongMemEval' as const, color: '#06b6d4' },
+  { value: 'Graph', labelKey: 'highlightRetrievalSpeedup' as const, color: '#a78bfa' },
+  { value: 'Multi', labelKey: 'highlightInsertionSpeedup' as const, color: '#f59e0b' },
 ];
 
 export default function HeroSection(): JSX.Element {
@@ -23,7 +22,7 @@ export default function HeroSection(): JSX.Element {
   }, []);
 
   const handleCopyInstall = () => {
-    navigator.clipboard.writeText('pip install mandol');
+    navigator.clipboard.writeText('uv sync --extra dev --extra docs --group spacy-model');
   };
 
   return (
@@ -31,24 +30,6 @@ export default function HeroSection(): JSX.Element {
       ref={sectionRef}
       className="section-hero relative overflow-hidden pt-24 pb-20 sm:pt-32 sm:pb-28"
     >
-      {/* Background glow orbs */}
-      <div
-        className="pointer-events-none absolute -top-32 left-1/4 h-[500px] w-[600px] rounded-full opacity-20"
-        style={{
-          background: 'radial-gradient(circle, rgba(59,130,246,0.25) 0%, transparent 70%)',
-          filter: 'blur(80px)',
-          animation: visible ? 'float 8s ease-in-out infinite' : 'none',
-        }}
-      />
-      <div
-        className="pointer-events-none absolute -bottom-40 right-1/4 h-[400px] w-[500px] rounded-full opacity-15"
-        style={{
-          background: 'radial-gradient(circle, rgba(6,182,212,0.2) 0%, transparent 70%)',
-          filter: 'blur(60px)',
-          animation: visible ? 'float 10s ease-in-out infinite 1s' : 'none',
-        }}
-      />
-
       {/* Subtle grid pattern */}
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.03]"

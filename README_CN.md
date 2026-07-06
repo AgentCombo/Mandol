@@ -1,302 +1,409 @@
 # Mandol
 
-> Mandol：一种面向长对话的智能体内存记忆系统
+> Mandol：面向智能体系统的内存语义记忆运行时。
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
 [![Homepage](https://img.shields.io/badge/Homepage-agentcombo.github.io%2FMandol-blue)](https://agentcombo.github.io/Mandol)
 [![Docs](https://img.shields.io/badge/Docs-agentcombo.github.io%2FMandol%2Fdocs-green)](https://agentcombo.github.io/Mandol/docs)
-[![Paper](https://img.shields.io/badge/Paper-arXiv:260x.xxxxx-red.svg)](https://arxiv.org/abs/260x.xxxxx)
+[![Paper](https://img.shields.io/badge/arXiv-2606.29778-b31b1b.svg)](https://arxiv.org/abs/2606.29778)
 
 [English](README.md) | [中文](README_CN.md)
 
-![Mandol Overview](README.assets/Mandol-overview.png)
+![Mandol Overview](README.assets/Mandol-overview-v2.png)
 
----
+## 当前代码范围
 
-## 📑 目录
+本仓库当前提供 `src/mandol` 下的 `mandol` Python 包，以及
+`benchmark_locomo`、`benchmark_longmemeval`、`benchmark_self_host` 下的论文复现流程。
 
-<details>
-<summary><b>展开/收起</b></summary>
+公开 Python 入口以以下组件为核心：
 
-- [📖 Mandol 是什么？](#mandol-是什么)
-- [💡 核心创新](#核心创新)
-- [✨ 关键特性](#关键特性)
-- [📊 与主流记忆系统对比](#与主流记忆系统对比)
-- [🏆 应用案例](#应用案例)
-- [⚡ 快速开始](#快速开始)
-- [📚 文档与社区](#文档与社区)
-- [📄 引用](#引用)
-- [📄 许可](#许可)
+- `MemoryUnit`：基础记忆记录。
+- `MemorySpace`：树形逻辑命名空间，用于组织记忆单元归属。
+- `SemanticMap`：内存单元存储、embedding 生成、FAISS 索引、稀疏检索、持久化和空间过滤相似度搜索。
+- `SemanticGraph`：记忆单元和记忆空间之上的图层，提供关系 API、图遍历、检索辅助、L2 存储支持和沙盒化持久化。
+- `MultiRetriever`：BM25、SPLADE、余弦检索、图扩展、分数融合与 reranker 编排。
+- `TripleTowerRetriever`：面向已构建记忆空间的分层、实体关系、情景记忆三塔检索编排。
+- `memory_router`：论文 router + quantification 工作流使用的 LoCoMo 和 LongMemEval 路由策略。
 
-</details>
+仓库中的历史笔记可能仍提到 `MemorySystem`、`Uid`、`mandol.ports` 或
+`mandol.retrieval.pipeline.HybridRetriever`。这些名称不属于当前包的公开导出。维护中的 README、docs 和 website 使用 `MemoryUnit`、`SemanticMap`、`SemanticGraph`、`MultiRetriever` 以及当前子包接口。
 
----
+## 环境要求
 
-## 📖 Mandol 是什么？
+- Python `>=3.12,<3.13`
+- 完整研究/运行栈主要面向 Linux
+- 推荐使用 `uv` 管理可复现环境
+- 模型驱动的复现实验需要配置相应 provider key
 
-Mandol 是一套以内存为核心、具备高效精确检索能力的智能体分层记忆系统，实现复杂记忆信息的统一表示、高效存储与高效精确检索，为下一代智能体认知架构提供理论支撑与技术方案。
+`pyproject.toml` 中的默认依赖有意保持完整：Torch、transformers、sentence-transformers、FAISS CPU、DuckDB、图算法库、LLM 客户端、检索/重排序工具、benchmark 依赖和可选集成客户端都会随基础环境安装。
 
-系统基于纯 Python 内存数据结构，融合键值、向量与图三种索引范式，提供统一的存储与混合检索接口，无需外部依赖即可运行。向下可按需桥接 Milvus、Neo4j 等外部存储引擎，向上提供 `add()` → `holistic_retrieve()` 的极简操作模型。其核心创新在于将传统「被动召回-排序」检索范式转变为「智能路由 → 量化去噪 → 高质量上下文生成」主动检索新范式。
+## 环境配置
 
-**在主流对话记忆基准上，Mandol 以较低的 Token 消耗实现了 SOTA 级别的综合表现：**
+如果本机尚未安装 `uv`：
 
-| **维度** | **Mem0** | **Zep** | **MemOS** | **EverMemOS** | **Mandol** |
-|---|---|---|---|---|---|
-| **记忆组织与表示** | 文本向量 + 元数据 | 文本向量 + 时序知识图谱 | 文本向量 + 图/树摘要 | 文本向量 + 高层摘要 | **结构化语义图 + 抽象高阶记忆 + 层级化记忆** |
-| **存储架构** | 单一关系数据库（含向量扩展） | 关系数据库 + 自定义图引擎 + 图数据库 | 图数据库 + 向量数据库组合 | 混合多组件数据库（文档、检索、向量、缓存） | **内存语义数据结构 + 进程内数据库 DuckDB/DuckPGQ** |
-| **检索与查询机制** | 向量语义检索 + 关键词过滤 | 多步图遍历拓扑搜索 + 重排序 | 向量检索 + 动态图节点召回 | 多路径路由 + LLM 多轮查询改写 | **内存多路并行召回 + 智能路由 + 量化去噪 + 上下文优化** |
-| **I/O 开销与资源** | 中等：受限于传统数据库的行级更新与单路径索引 | 高：频繁的事实提取与跨服务通信导致系统延迟高 | 高：多数据库导致沉重的 I/O 开销 | 极高：极度碎片化的组件栈导致严重的跨存储网络与序列化开销 | **极低：核心算子均在进程内原生执行，完全消除跨存储网络与通信瓶颈** |
-| | | | | | |
-| **LoCoMo 评分** | 64.20 (1.0k Tokens) | 85.22 (1.4k Tokens) | 80.76 (2.5k Tokens) | 91.97 (2.7k Tokens) | **92.21 (1.9k Tokens)** |
-| **LongMemEval 评分** | 66.40 (1.1k Tokens) | 63.80 (1.6k Tokens) | 77.80 (1.4k Tokens) | 83.00 (2.8k Tokens) | **88.40 (2.3k Tokens)** |
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
 
-> Mandol 以 1.9k Token 达到 LoCoMo 92.21 分——Token 效率是同等精度系统 EverMemOS（2.7k）的 1.4 倍，是 Mem0 v2.0（7.0k）的 3.7 倍。LongMemEval 上以 2.3k Token 达到 88.40 分，较 EverMemOS（2.8k / 83.00）在 Token 减少 18% 的同时评分提升 5.4 个百分点。
+在仓库根目录创建基础运行环境：
 
----
+```bash
+uv sync
+```
 
-## 💡 核心创新
+日常开发和文档构建推荐：
 
-### （一）理论模型创新：分层式理论记忆模型
+```bash
+uv sync --extra dev --extra docs --group spacy-model
+```
 
-提出分层式理论记忆模型，将记忆系统划分为基础记忆层、高阶记忆层和智能查询层。通过结构化语义图统一表征多模态、关联复杂的记忆信息，引入隐式语义边按需生成策略兼顾结构化精确性与语义灵活性，并建立基础与高阶记忆的双向可追溯机制。该模型实现了复杂记忆信息的统一表示，并为后续存储和智能量化检索提供了理论基础。相比现有向量表示难以刻画结构关系、知识图谱对多模态和语义相似支持不足的局限，该模型构建了从原始信息存储、抽象知识提炼到查询调度的统一理论框架。
+论文复现和性能对比推荐安装完整 artifact 栈。论文中的性能结果是在安装相关 extra 后测试得到的；如果要对齐吞吐性能，请使用全量安装路径：
 
-![分层架构示意](README.assets/分层式理论记忆模型.png)
+```bash
+uv sync --extra dev --extra cuda --group spacy-model
+```
 
-### （二）存储架构创新：基于内存语义数据结构的统一存储架构
+如果机器不具备兼容的 CUDA / flash-attention 环境，可以去掉 `--extra cuda`。准确率复现实验仍可运行，但检索和重排序吞吐可能与论文性能环境不同。
+`cuda` extra 针对论文 artifact 固定到 Linux x86_64 / Python 3.12 / Torch 2.8 / CUDA 12 的 flash-attention wheel。如果该 wheel 与本机环境不匹配，请去掉 `--extra cuda`，或手动安装兼容版本的 flash-attn。
 
-提出基于内存语义数据结构的统一存储架构，设计 SemanticMap 与 SemanticGraph 协同的内存语义数据结构，在物理层面实现键值存储、向量索引与图结构的原生融合，消除多库碎片化问题。该架构通过原子化混合检索算子将向量匹配、图遍历等操作统一封装为内存原子操作，有效降低查询延迟，为上层智能量化查询提供了标准化、可组合的执行单元；同时，采用「内存活跃态-数据库持久态」协同架构，实现性能与存储容量的有效平衡。
+环境创建后验证本地 editable 包：
 
-![统一存储框架](README.assets/基于内存语义数据结构的统一存储架构.png)
+```bash
+uv run python -c "import mandol; print(mandol.__version__)"
+```
 
-### （三）检索机制创新：智能路由与量化检索方法
+## 安装 Mandol 包
 
-提出一种智能路由与量化检索方法，将检索过程从被动「召回-排序」模式，转变为「智能路由-量化去噪-高质量上下文生成」新范式。通过查询意图驱动的智能路由、量化去噪和冲突消解、以及 Token 约束下的高质量上下文生成等创新设计，在有限的计算与 Token 预算下，实现对复杂多源记忆的高效精确检索。
+从本仓库开发时，`uv sync` 会把本地 `src/mandol` 包安装进环境。若要构建与 PyPI 发布一致的包产物：
 
-![量化检索管线](README.assets/智能路由与量化检索.png)
+```bash
+uv build
+```
 
----
+本地测试构建出的 wheel：
 
-## ✨ 关键特性
+```bash
+uv pip install --force-reinstall dist/mandol-*.whl
+uv run python -c "from mandol import MemoryUnit, SemanticGraph, SemanticMap; print('ok')"
+```
 
-### 轻量级架构
+正式发布到 PyPI 后，用户可以通过以下方式安装运行时包：
 
-纯 Python 实现，核心逻辑采用六边形架构（端口-适配器模式），`MemorySystem()` 无参构造即可启动完整记忆系统，零外部依赖。通过 YAML 配置即可切换 FAISS、Milvus、Neo4j 等外部引擎，无需修改业务代码。
+```bash
+python -m pip install mandol
+```
 
-### 简单易用
+benchmark 目录是论文 artifact 的一部分，不属于运行时包本体。复现论文结果时请使用源码 checkout。
 
-三步操作模型覆盖核心流程：`add()` 写入记忆 → `build_high_level()` 构建高阶结构 → `holistic_retrieve()` 混合检索。`save()` / `load()` 一键持久化与恢复。远程 API 模式下无需下载本地模型，仅需配置 API 端点即可快速体验。
+## 可选加速项
+
+Mandol 不依赖加速项也可以运行，但论文 artifact 使用以下可选路径提升吞吐：
+
+- `--extra cuda`：安装 `pyproject.toml` 中声明的 flash-attention extra。代码只会在依赖可用时传入 flash-attention 配置。
+- `--group spacy-model`：安装部分抽取与检索工具使用的大型英文 spaCy 模型。部分路径有 fallback，但完整复现环境建议安装。
+- `RERANKER_BACKEND=vllm`：在可用时将兼容的 reranker scoring 交给 vLLM HTTP 服务。
+- 本地模型缓存：在共享机器上建议提前缓存 Hugging Face 和 sentence-transformers 模型，避免把首次下载时间计入 benchmark。
+
+vLLM reranker 示例配置：
+
+```bash
+export RERANKER_BACKEND=vllm
+export VLLM_API_URL=http://127.0.0.1:8000/score
+export VLLM_API_KEY=EMPTY
+```
+
+## Provider Key
+
+运行配置通过 `mandol.utils.config_manager.settings` 读取，支持项目根目录 `.env` 和系统环境变量。常用键包括：
+
+```bash
+export DASHSCOPE_API_KEY=...
+export CLOSEAI_API_KEY=...
+export OPENAI_API_KEY=...
+export OPENROUTER_API_KEY=...
+export SILICONFLOW_API_KEY=...
+export CSTCLOUD_API_KEY=...
+export HF_TOKEN=...
+```
+
+当前 provider 配置中，`CLOSEAI_API_KEY` 可以回退到 `OPENAI_API_KEY`。`CLOSEAI_*` 是论文 artifact 中使用的 OpenAI-compatible provider alias。如果不使用该网关，可以配置 `OPENAI_API_KEY`，或在 provider 配置中将模型 alias 映射到自己的服务。本地配置建议参考 `env.template`；不要提交 `.env` 文件。
+
+## 数据集准备
+
+大型公开数据集和生成图产物不会提交到 Git。每个 dataset 目录都提供了 README，记录官方来源和本地放置路径。
+
+LoCoMo10：
+
+```bash
+mkdir -p benchmark_locomo/dataset/locomo
+curl -fL https://raw.githubusercontent.com/snap-research/locomo/main/data/locomo10.json \
+  -o benchmark_locomo/dataset/locomo/locomo10.json
+
+mkdir -p benchmark_self_host/locomo10/dataset
+cp benchmark_locomo/dataset/locomo/locomo10.json \
+  benchmark_self_host/locomo10/dataset/locomo10.json
+```
+
+LongMemEval small split：
+
+```bash
+mkdir -p benchmark_longmemeval/dataset/LongMemEval
+curl -fL https://huggingface.co/datasets/xiaowu0162/longmemeval-cleaned/resolve/main/longmemeval_s_cleaned.json \
+  -o benchmark_longmemeval/dataset/LongMemEval/longmemeval_s_cleaned.json
+
+mkdir -p benchmark_self_host/longmemeval/dataset
+cp benchmark_longmemeval/dataset/LongMemEval/longmemeval_s_cleaned.json \
+  benchmark_self_host/longmemeval/dataset/longmemeval_s_cleaned.json
+```
+
+LongMemEval medium split 仅在运行 `--dataset-size m` 时需要：
+
+```bash
+curl -fL https://huggingface.co/datasets/xiaowu0162/longmemeval-cleaned/resolve/main/longmemeval_m_cleaned.json \
+  -o benchmark_longmemeval/dataset/LongMemEval/longmemeval_m_cleaned.json
+```
+
+官方数据来源：
+
+- LoCoMo: https://github.com/snap-research/locomo
+- LongMemEval: https://github.com/xiaowu0162/LongMemEval
+- LongMemEval cleaned files:
+  https://huggingface.co/datasets/xiaowu0162/longmemeval-cleaned
+
+## 快速开始
+
+下面示例使用轻量 MiniLM 预设，并关闭实时 SPLADE 向量生成，便于第一次运行。创建 `SemanticMap` 会加载 embedding 模型；如果本地没有缓存，sentence-transformers 可能会从 Hugging Face 下载模型。
 
 ```python
-from mandol import MemorySystem, MemoryUnit, Uid
+from mandol import MemoryUnit, SemanticGraph, SemanticMap
 
-system = MemorySystem.from_yaml_config("config.yaml")
+semantic_map = SemanticMap(
+    embedding_model_name="all-MiniLM-L6-v2",
+    use_flash_attention=False,
+)
+graph = SemanticGraph(semantic_map_instance=semantic_map)
 
-system.add(MemoryUnit(
-    uid=Uid("msg_001"),
-    raw_data={"text_content": "张三今天去北京出差了"},
-    metadata={"timestamp": "2024-01-15T10:00:00"},
-))
+graph.add_unit(
+    MemoryUnit(
+        uid="msg_001",
+        raw_data={"text_content": "张三今天去了北京出差。"},
+        metadata={"timestamp": "2026-06-21T09:00:00"},
+    ),
+    space_names=["demo"],
+    generate_sparse_embedding=False,
+)
+graph.add_unit(
+    MemoryUnit(
+        uid="msg_002",
+        raw_data={"text_content": "他将讨论 Q2 交付计划。"},
+        metadata={"timestamp": "2026-06-21T09:05:00"},
+    ),
+    space_names=["demo"],
+    generate_sparse_embedding=False,
+)
 
-system.build_high_level(mode="auto")
+graph.add_relationship("msg_001", "msg_002", "NEXT")
 
-hits = system.holistic_retrieve("张三去了哪里？", top_k=5)
-for hit in hits:
-    print(f"[{hit.final_score:.3f}] {hit.unit.raw_data['text_content']}")
+hits = graph.search_similarity_in_graph(
+    query_text="张三去了哪里？",
+    top_k=3,
+    ms_names=["demo"],
+    return_score=True,
+)
 
-system.save("./memory_snapshot")
+for unit, score in hits:
+    print(f"{score:.3f} {unit.uid}: {unit.text_cached}")
 ```
 
-### 统一记忆表示
-
-单一 `MemoryUnit` 抽象统一承载文本（`text_content`）与图像（`image_path`）等异构信息，自动完成向量化。`MemorySpace` 树形层级支持按 BASE / ENTITY / EVENT / SUMMARY 等维度灵活组织记忆。`SemanticGraph` 以有向图显式建模实体间关系与事件因果链，支持多跳图遍历检索。
-
-### 层级化记忆结构
-
-- **基础记忆层（Base）**：原始数据片段，`add()` 后立即可检索
-- **高阶记忆层（High-Level）**：系统自动完成会话分割（LLM 驱动）、实体提取与去重、事件提取与去重、实体关系构建、事件因果链构建、多类型摘要生成（情景 / 知识 / 情感 / 过程）及全局洞察提取
-- **跨会话共指消解**：自动合并跨会话的同一实体和事件，维护一致的知识表示
-
-### 多底层数据库支持
-
-六边形架构实现核心逻辑与存储后端的完全解耦。同一套 API 可切换不同的底层基础设施：向量索引（内存精确搜索 → FAISS ANN 自适应切换）、图存储（内存 → Neo4j）、单元存储（内存 → Milvus）、Embedding / Reranker（本地模型 → 远程 OpenAI 兼容 API）。所有后端切换仅需修改 YAML 配置文件，业务代码零改动。
-
-```yaml
-# 示例：从本地模型切换至远程 API
-embedder:
-  use_remote: true
-  base_url: "https://api.example.com/v1"
-
-# 切换图存储至 Neo4j
-graph_store:
-  backend: neo4j
-  uri: "bolt://localhost:7687"
-```
-
----
-
-## 📊 与主流记忆系统对比
-
-Mandol 与现有记忆系统的本质区别在于检索范式：传统系统将检索视为单向流水线（Embedding 召回 → Rerank 排序 → Top-K），检索过程被动且缺乏对噪声的控制。Mandol 将这一范式重构为三阶段主动检索流水线——首先依据查询意图动态路由到最相关的记忆源，然后在各源内部及跨源之间进行多级量化过滤与冲突消解，最后在 Token 约束下生成高信息密度上下文。这一范式转变使检索从被动的「匹配-返回」升级为主动的「理解-筛选-归纳」。
-
-在架构层面，Mandol 采用六边形架构（端口-适配器模式），核心检索逻辑与底层存储引擎完全解耦，支持从纯内存模式到 FAISS、Milvus、Neo4j 等外部引擎的灵活切换（详见上文「多底层数据库支持」）。
-
-> 详细的基准对比数据见上方「[Mandol 是什么？](#mandol-是什么)」章节中的性能表格。
-
----
-
-## 🏆 应用案例
-
-### 长对话记忆基准 LoCoMo
-
-在 LoCoMo 基准（10 段长对话 × 200+ 轮交互，覆盖单跳/多跳/时序/开放域查询）中，Mandol 在所有系统中取得最高的**多跳推理**评分（92.20 分）。这得益于 `SemanticGraph` 的显式实体关系图与 BFS 图扩展机制，能够沿关系边多跳遍历发现非直接关联的证据。
-
-> 当查询「张经理去年的决策对今年 Q2 的项目延期有何影响」时，Mandol 沿事件因果链 `决策A → 团队调整 → 资源转移 → 项目B延期 → Q2交付推迟` 完成 4 跳追溯，而纯向量检索仅能返回包含「张经理」「Q2」等关键词的孤立片段。
-
-### 长记忆评估基准 LongMemEval
-
-LongMemEval 侧重多会话场景下的记忆保持与知识更新能力。Mandol 在助手侧记忆（SS-Asst 98.21）和用户侧记忆（SS-User 98.57）两个子项上接近满分，知识更新评分 89.74——当同一事实存在新旧两个版本时，系统准确采纳新信息并消解冲突，验证了跨会话共指消解与「优先采纳新信息」策略的有效性。
-
-### 智能客服
-
-多轮客服对话中，当用户询问「昨天买的蓝色衬衫降价了怎么办」，系统需同时关联**时序事件**（降价发生时间）、**商品属性**（蓝色衬衫 SKU）、**用户信息**（购买记录、会员等级）三个维度的记忆。Mandol 通过多维关联查询直接锁定具体订单和适用价保策略，生成包含「您的订单符合价保规则，可退差价 ¥35」的准确回复，提升一次解决率。
-
-### 软件开发
-
-当开发者请求「分析支付模块异常与近一周上线功能的关联」，信息分散在 PR 讨论、Issue 评论、变更日志和设计文档中。Mandol 跨 BASE/ENTITY/EVENT/SUMMARY 四组空间并行检索，`SemanticGraph` 自动构建模块-函数-开发者-版本关联图，检索结果涵盖代码变更、讨论上下文和时序关联，将根因分析从天级缩短至分钟级。
-
-### 医疗
-
-医生请求「对服用阿司匹林后发热的患者提供紧急检查支持」时，关键信息分散在跨科室病历、用药记录和检查报告中。Mandol 通过实体关系图检索、事件因果链追溯和知识摘要获取，在毫秒级内将跨科室、跨时间维度的分散信息汇聚为结构化决策支持上下文，降低跨科室信息遗漏风险。
-
----
-
-## ⚡ 快速开始
-
-### 安装
-
-```bash
-pip install mandol
-```
-
-支持可选依赖以启用额外后端：
-
-```bash
-pip install mandol[faiss]                 # FAISS 向量索引加速
-pip install mandol[sentence-transformers] # 本地 Embedding/Reranker 模型
-pip install mandol[openai]                # OpenAI API 支持
-pip install mandol[milvus]                # Milvus 向量数据库
-pip install mandol[neo4j]                 # Neo4j 图数据库
-pip install mandol[all]                   # 安装所有可选依赖
-```
-
-> 完整的安装指南、配置说明和进阶用法请参阅 [在线文档](https://agentcombo.github.io/Mandol/docs)。
-
-### 配置
-
-复制环境变量模板并填入 API Key：
-
-```bash
-cp .env.example .env
-```
-
-或通过 YAML 配置文件进行完整配置：
-
-```yaml
-llm:
-  model: "gpt-4o-mini"
-  base_url: "https://api.openai.com/v1"
-  api_key: "sk-..."
-
-embedder:
-  model: "Qwen/Qwen3-Embedding-4B"
-  device: "cpu"
-  use_remote: false
-
-reranker:
-  model: "Qwen/Qwen3-Reranker-4B"
-  device: "cpu"
-  use_remote: false
-
-system:
-  chunk_max_tokens: 512
-  bfs_expansion_hops: 1
-  max_context_units: 20
-```
-
-远程 API 模式下无需下载本地模型（约 8 GB），仅需将 `use_remote` 设置为 `true` 并配置 API 端点即可快速体验。
-
-### 三步使用
+多路检索入口：
 
 ```python
-from mandol import MemorySystem, MemoryUnit, Uid
+from mandol.retrieval import MultiRetriever
 
-system = MemorySystem.from_yaml_config("config.yaml")
-
-# 1. 写入记忆
-system.add(MemoryUnit(
-    uid=Uid("msg_001"),
-    raw_data={"text_content": "张三今天去北京出差了"},
-    metadata={"timestamp": "2024-01-15T10:00:00"},
-))
-
-# 2. 构建高阶记忆结构
-system.build_high_level(mode="auto")
-
-# 3. 混合检索
-hits = system.holistic_retrieve("张三去了哪里？", top_k=5)
-
-system.save("./memory_snapshot")          # 持久化
-system2 = MemorySystem.load("./memory_snapshot")  # 恢复
+retriever = MultiRetriever(graph)
+results = retriever.smart_search(
+    "张三去了哪里？",
+    methods=["bm25", "cosine"],
+    top_k=5,
+    rerank_method=None,
+    space_names=["demo"],
+)
 ```
 
-> **提示**：系统在 `add()` 时会自动检测会话边界并触发高阶记忆构建。插入少量数据后建议手动调用 `build_high_level()` 以确保高阶记忆可用。更多配置选项和进阶用法请参阅 [在线文档](https://agentcombo.github.io/Mandol/docs)。
+## 持久化
 
----
+完整状态快照请使用 `SemanticGraph.save_graph()` 和 `SemanticGraph.load_graph()`。它们会保留图拓扑、SemanticMap 数据、已构建的检索索引以及沙盒化 DuckDB L2 存储副本。
 
-## 📚 文档与社区
+```python
+graph.save_graph("./memory_snapshot", build_sparse_vectors=False)
 
-### 文档
+restored = SemanticGraph.load_graph(
+    "./memory_snapshot",
+    embedding_model_name="all-MiniLM-L6-v2",
+    use_flash_attention=False,
+)
+```
 
-完整的 API 参考、架构设计和最佳实践指南已通过 Sphinx 构建，涵盖基础用户、高级用户和开发者三个入口：
+`SemanticMap.save_map()` 与 `SemanticMap.load_map()` 也存在，但它们只保存/加载 map 层，不保存 `SemanticGraph` 拓扑。
 
-> 🔗 在线文档：[https://agentcombo.github.io/Mandol/docs](https://agentcombo.github.io/Mandol/docs)（即将上线）
+## 模型配置
 
-本地构建文档：
+`SemanticMap` 的模型注册表位于 `src/mandol/core/semantic_map.py`。当前常用预设包括：
+
+| 模型名 | 类型 | 维度 | 说明 |
+| --- | --- | ---: | --- |
+| `Qwen/Qwen3-Embedding-0.6B` | 本地 | 1024 | 默认文本 embedding 模型 |
+| `Qwen/Qwen3-Embedding-4B` | 本地 | 2560 | 更大的本地文本模型 |
+| `Qwen/Qwen3-Embedding-8B` | 本地 | 4096 | 更大的本地文本模型 |
+| `Qwen/Qwen3-Embedding-0.6B-remote` | 云端 | 1024 | SiliconFlow 适配器 |
+| `BAAI/bge-m3` / `bge-m3` | 本地 | 1024 | 文本 embedding 模型 |
+| `all-MiniLM-L6-v2` | 本地 | 384 | 轻量 CPU 友好选项 |
+| `jinaai/jina-clip-v2` | 本地 | 1024 | 文本与图像模态 |
+| `jinaai/jina-embeddings-v4` | 本地 | 2048 | 文本与图像模态 |
+
+## 复现流程
+
+论文准确率结果使用已经构建好的三塔记忆空间，并运行 router + quantification 工作流：
+
+- LoCoMo: [benchmark_locomo/REPRODUCE.md](benchmark_locomo/REPRODUCE.md)
+- LongMemEval:
+  [benchmark_longmemeval/REPRODUCE.md](benchmark_longmemeval/REPRODUCE.md)
+
+self-host 工作流使用 Mandol 自身的高阶记忆生成路径，不使用 router + quantification：
+
+- LoCoMo10 self-host:
+  [benchmark_self_host/locomo10/REPRODUCE.md](benchmark_self_host/locomo10/REPRODUCE.md)
+- LongMemEval self-host:
+  [benchmark_self_host/longmemeval/REPRODUCE.md](benchmark_self_host/longmemeval/REPRODUCE.md)
+
+长时间运行前建议先执行入口检查：
 
 ```bash
-cd docs && make html
+uv run python -m benchmark_locomo.task_eval.locomo_triple_router_quantification --help
+uv run python -m benchmark_longmemeval.task_eval.benchmark_triple_router_quantification --help
+uv run python -m benchmark_self_host.locomo10.build_graph --help
+uv run python -m benchmark_self_host.longmemeval.build_graph --help
 ```
 
-### 参与贡献
+必要图产物生成完成后，建议先跑一个带真实 LLM 调用的低成本 task-eval smoke，再启动完整 benchmark：
 
-我们欢迎社区贡献！提交 PR 前请阅读 [CONTRIBUTING.md](CONTRIBUTING.md)，了解开发环境搭建、代码规范（Ruff，行长 100 字符）、测试要求和 PR 流程。
+```bash
+uv run python -m benchmark_locomo.task_eval.locomo_triple_router_quantification \
+  --sample-ids conv-30 \
+  --max-questions 1 \
+  --llm-model gpt-4.1-mini-closeai \
+  --llm-evaluate-model gpt-4o-mini-closeai \
+  --output-dir benchmark_locomo/task_eval/results/smoke/gpt41_mini
 
-### 反馈与讨论
+uv run python -m benchmark_longmemeval.task_eval.benchmark_triple_router_quantification \
+  --dataset-size s \
+  --start-qa 0 \
+  --end-qa 0 \
+  --max-tests 1 \
+  --llm-model gpt-4.1-mini-closeai \
+  --llm-evaluate-model gpt-4o-mini-closeai \
+  --output-dir benchmark_longmemeval/task_eval/results/smoke/gpt41_mini
+```
 
-- **Issue**：[GitHub Issues](https://github.com/AgentCombo/Mandol/issues) — 报告 Bug 或请求新功能
-- **讨论**：[GitHub Discussions](https://github.com/AgentCombo/Mandol/discussions) — 使用问题、最佳实践交流
-- **社区**：[Discord](https://discord.gg/mandol) — 实时交流与社区支持
+论文中的模型角色如下：
 
----
+下列名称是仓库配置中解析的 Mandol provider alias。若使用不同的模型网关，请保持模型角色不变，并在本地配置中将这些 alias 映射到等价的模型端点。
 
-## 📄 引用
+- LoCoMo 记忆/抽取生成：`qwen-3.5-plus-thinking`
+- LongMemEval 记忆/抽取生成：`qwen-3-plus`
+- 去重：`deepseek-v3.2-dashscope`
+- task-eval 被评测模型：`gpt-4.1-mini-closeai` 和 `gpt-4o-mini-closeai`
+- task-eval judge 模型：`gpt-4o-mini-closeai`
 
-如果本工作对您的研究有帮助，请引用我们的论文：
+复现论文表格时应保持上述模型角色不变。Qwen/DeepSeek 用于记忆生成和去重；GPT 模型用于任务评测和 judge。
+
+## 说明与限制
+
+本仓库作为 Mandol 论文的研究 artifact 和 Python 参考实现发布，不是生产级在线服务。
+
+- 完整复现需要外部模型 provider 和本地模型下载。
+- 不同硬件、依赖版本、模型服务版本和随机性可能导致结果存在小幅差异。
+- `cuda` extra 具有平台相关性；如果本机不支持 flash-attention，可以去掉该 extra。
+- 大型数据集、生成图、模型缓存和 benchmark 输出不会提交到 Git。
+
+## 性能测试口径
+
+LoCoMo 检索性能测试需要先构建每个样本的统一图。请在三塔离线图都生成完成后、运行固定 QPS 检索 benchmark 之前执行：
+
+```bash
+bash benchmark_locomo/dataset_maker/build_unified.sh
+```
+
+该脚本会调用 `benchmark_locomo/dataset_maker/build_unified_graph.py`，并将统一图写入：
+
+```text
+benchmark_locomo/dataset/locomo/unified_per_sample_graphs
+```
+
+LoCoMo 的两个性能入口衡量的是不同 API 边界：
+
+- 插入延迟：
+  `benchmark_locomo/task_eval/locomo_triple_input_speed.py` 按目标 QPS 调度请求，并只计时每次
+  `SemanticGraph.add_unit(...)` 调用本体，其中 `index_update_mode="incremental"` 且
+  `generate_sparse_embedding=True`。这段计时包含 add 路径内部的 dense embedding 生成、实时 SPLADE sparse embedding 生成，以及增量索引更新。输出的 `latency_ms` 不包含调度 sleep、memory pool 构造、图初始化、warmup 和结果文件写入。
+- 检索延迟：
+  `benchmark_locomo/task_eval/locomo_triple_smart_search_qps.py` 会先加载统一图并执行 warmup，然后计时每个已调度的
+  `MultiRetriever.smart_search(...)` 或 `smart_search_async(...)` 请求。输出的 `latency_ms` 包含一次请求内部的 BM25、余弦检索、SPLADE、分数融合、设置 `--rerank-method` 时触发的 rerank、结果解析以及 Python async/thread 包装开销。目前提供的 speed 脚本使用 `--rerank-method baai`，因此当前 smart-search QPS 结果包含重排序时间；不包含图加载、warmup、固定 QPS 调度 sleep 和报告写入。报告中还会单独记录 base retrieval 阶段的 `retrieval_time_ms` 和 rerank 阶段的 `rerank_time_ms`。
+
+## 包结构
+
+```text
+src/mandol/
+  core/                MemoryUnit、MemorySpace、SemanticMap、SemanticGraph
+  retrieval/           MultiRetriever、BM25、SPLADE、余弦检索、融合、reranker
+  triple_retrieval/    三塔检索编排
+  hierarchical/        分层记忆检索组件
+  entity_relation/     实体关系图检索组件
+  episodic/            情景记忆检索器
+  quantification/      查询扩展、剪枝、语义量化
+  memory_router/       LoCoMo 与 LongMemEval 塔路由器
+  llm/                 LLM 客户端与 provider 封装
+  storage/             DuckDB 与分层存储辅助
+  cluster/             Leiden 与 DBSCAN 聚类辅助
+  utils/               配置、日志、模型管理
+```
+
+## 文档
+
+当前维护的文档入口是 `docs/index.rst`。构建方式：
+
+```bash
+uv sync --extra docs
+uv run sphinx-build -b html docs docs/_build/html
+```
+
+Docusaurus 静态首页位于 `website/`：
+
+```bash
+cd website
+npm install
+npm run build
+```
+
+## 引用
+
+如果你在研究中使用 Mandol，请引用 arXiv 论文：
 
 ```bibtex
-@article{mandol2026,
-  title   = {Mandol: An In-Memory Agent Memory System for Long-Term Conversations},
-  author  = {Yuhan Zhang, Zhiyuan Guo, Ziheng Zeng, Wei Wang, Wentao Wu, Lijie Xu},
-  journal = {arXiv preprint arXiv:260x.xxxxx},
-  year    = {2026}
+@misc{zhang2026mandol,
+  title         = {Mandol: An Agglomerative Agent Memory System for Long-Term Conversations},
+  author        = {Yuhan Zhang and Zhiyuan Guo and Ziheng Zeng and Wei Wang and Wentao Wu and Lijie Xu},
+  year          = {2026},
+  eprint        = {2606.29778},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.DB},
+  doi           = {10.48550/arXiv.2606.29778},
+  url           = {https://arxiv.org/abs/2606.29778}
 }
 ```
 
-> 论文即将发布，届时将更新完整的作者列表和 arXiv 链接。
+## 许可证
 
----
-
-## 📄 许可
-
-Apache License 2.0 - 详见 [LICENSE](LICENSE)
+Mandol 使用 Apache License 2.0 发布。详见 [LICENSE](LICENSE)。

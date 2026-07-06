@@ -1,0 +1,52 @@
+#!/bin/bash
+
+# Purpose: Generate LongMemEval episodic-memory batch requests for all QA index ranges.
+
+# Resolve repository root for the src/ package layout.
+AMS_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+AMS_REPO_ROOT="$AMS_SCRIPT_DIR"
+while [[ "$AMS_REPO_ROOT" != "/" && ! -d "$AMS_REPO_ROOT/src/mandol" ]]; do
+    AMS_REPO_ROOT="$(dirname "$AMS_REPO_ROOT")"
+done
+if [[ ! -d "$AMS_REPO_ROOT/src/mandol" ]]; then
+    echo "Could not locate AgentMemorySystem repo root from $AMS_SCRIPT_DIR" >&2
+    exit 1
+fi
+cd "$AMS_REPO_ROOT"
+if [[ -d "$AMS_REPO_ROOT/.venv/bin" ]]; then
+    export PATH="$AMS_REPO_ROOT/.venv/bin:$PATH"
+fi
+export PYTHONPATH="$AMS_REPO_ROOT/src:$AMS_REPO_ROOT:${PYTHONPATH:-}"
+
+# LongMemEval Episodic Memory V2 - Step 1: 批量请求生成
+# 每50个QA一组，共10个任务
+
+# 任务 1: QA 0-49
+python benchmark_longmemeval/dataset_maker/longmemeval_episodic_memory_new/step1_build_batch_requests.py --start-index 0 --end-index 49 --sessions-per-group 1
+
+# 任务 2: QA 50-99
+python benchmark_longmemeval/dataset_maker/longmemeval_episodic_memory_new/step1_build_batch_requests.py --start-index 50 --end-index 99 --sessions-per-group 1
+
+# 任务 3: QA 100-149
+python benchmark_longmemeval/dataset_maker/longmemeval_episodic_memory_new/step1_build_batch_requests.py --start-index 100 --end-index 149 --sessions-per-group 1
+
+# 任务 4: QA 150-199
+python benchmark_longmemeval/dataset_maker/longmemeval_episodic_memory_new/step1_build_batch_requests.py --start-index 150 --end-index 199 --sessions-per-group 1
+
+# 任务 5: QA 200-249
+python benchmark_longmemeval/dataset_maker/longmemeval_episodic_memory_new/step1_build_batch_requests.py --start-index 200 --end-index 249 --sessions-per-group 1
+
+# 任务 6: QA 250-299
+python benchmark_longmemeval/dataset_maker/longmemeval_episodic_memory_new/step1_build_batch_requests.py --start-index 250 --end-index 299 --sessions-per-group 1
+
+# 任务 7: QA 300-349
+python benchmark_longmemeval/dataset_maker/longmemeval_episodic_memory_new/step1_build_batch_requests.py --start-index 300 --end-index 349 --sessions-per-group 1
+
+# 任务 8: QA 350-399
+python benchmark_longmemeval/dataset_maker/longmemeval_episodic_memory_new/step1_build_batch_requests.py --start-index 350 --end-index 399 --sessions-per-group 1
+
+# 任务 9: QA 400-449
+python benchmark_longmemeval/dataset_maker/longmemeval_episodic_memory_new/step1_build_batch_requests.py --start-index 400 --end-index 449 --sessions-per-group 1
+
+# 任务 10: QA 450-499
+python benchmark_longmemeval/dataset_maker/longmemeval_episodic_memory_new/step1_build_batch_requests.py --start-index 450 --end-index 499 --sessions-per-group 1
