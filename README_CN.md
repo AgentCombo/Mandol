@@ -6,7 +6,7 @@
 [![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://www.python.org/)
 [![Homepage](https://img.shields.io/badge/Homepage-agentcombo.github.io%2FMandol-blue)](https://agentcombo.github.io/Mandol)
 [![Docs](https://img.shields.io/badge/Docs-agentcombo.github.io%2FMandol%2Fdocs-green)](https://agentcombo.github.io/Mandol/docs)
-[![Paper](https://img.shields.io/badge/Paper-arXiv:260x.xxxxx-red.svg)](https://arxiv.org/abs/260x.xxxxx)
+[![Paper](https://img.shields.io/badge/Paper-arXiv:2606.29778-red.svg)](https://arxiv.org/abs/2606.29778)
 
 [English](README.md) | [中文](README_CN.md)
 
@@ -276,7 +276,9 @@ cd docs && make html
 
 - **Issue**：[GitHub Issues](https://github.com/AgentCombo/Mandol/issues) — 报告 Bug 或请求新功能
 - **讨论**：[GitHub Discussions](https://github.com/AgentCombo/Mandol/discussions) — 使用问题、最佳实践交流
-- **社区**：[Discord](https://discord.gg/mandol) — 实时交流与社区支持
+- **社区**：扫描下方二维码加入 Mandol 微信用户群
+
+<img src="README.assets/mandol_wechat_user_group_qr_20260713.jpg" alt="Mandol 微信用户群" width="300">
 
 ---
 
@@ -285,15 +287,16 @@ cd docs && make html
 如果本工作对您的研究有帮助，请引用我们的论文：
 
 ```bibtex
-@article{mandol2026,
-  title   = {Mandol: An In-Memory Agent Memory System for Long-Term Conversations},
-  author  = {Yuhan Zhang, Zhiyuan Guo, Ziheng Zeng, Wei Wang, Wentao Wu, Lijie Xu},
-  journal = {arXiv preprint arXiv:260x.xxxxx},
-  year    = {2026}
+@misc{zhang2026mandol,
+  title={Mandol: An Agglomerative Agent Memory System for Long-Term Conversations}, 
+  author={Yuhan Zhang and Zhiyuan Guo and Ziheng Zeng and Wei Wang and Wentao Wu and Lijie Xu},
+  year={2026},
+  eprint={2606.29778},
+  archivePrefix={arXiv},
+  primaryClass={cs.DB},
+  url={https://arxiv.org/abs/2606.29778}, 
 }
 ```
-
-> 论文即将发布，届时将更新完整的作者列表和 arXiv 链接。
 
 ---
 

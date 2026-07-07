@@ -8,7 +8,7 @@
 [![Downloads](https://img.shields.io/pypi/dm/mandol?label=Downloads&color=blue)](https://pypi.org/project/mandol/)
 [![Homepage](https://img.shields.io/badge/Homepage-agentcombo.github.io%2FMandol-blue)](https://agentcombo.github.io/Mandol)
 [![Docs](https://img.shields.io/badge/Docs-agentcombo.github.io%2FMandol%2Fdocs-green)](https://agentcombo.github.io/Mandol/docs)
-[![Paper](https://img.shields.io/badge/Paper-arXiv:260x.xxxxx-red.svg)](https://arxiv.org/abs/260x.xxxxx)
+[![Paper](https://img.shields.io/badge/Paper-arXiv:2606.29778-red.svg)](https://arxiv.org/abs/2606.29778)
 
 [English](README.md) | [中文](README_CN.md)
 
@@ -370,7 +370,9 @@ We welcome community contributions! Please read [CONTRIBUTING.md](CONTRIBUTING.m
 
 - **Issues**: [GitHub Issues](https://github.com/AgentCombo/Mandol/issues) — Report bugs or request new features
 - **Discussions**: [GitHub Discussions](https://github.com/AgentCombo/Mandol/discussions) — Usage questions, best practice discussions
-- **Community**: [Discord](https://discord.gg/mandol) — Real-time chat and community support
+- **Community**: Scan the QR code below to join our WeChat user group
+
+<img src="README.assets/mandol_wechat_user_group_qr_20260713.jpg" alt="Mandol WeChat User Group" width="300">
 
 ---
 
@@ -379,11 +381,14 @@ We welcome community contributions! Please read [CONTRIBUTING.md](CONTRIBUTING.m
 If this work is helpful to your research, please cite our paper:
 
 ```bibtex
-@article{mandol2026,
-  title   = {Mandol: An In-Memory Agent Memory System for Long-Term Conversations},
-  author  = {Yuhan Zhang, Zhiyuan Guo, Ziheng Zeng, Wei Wang, Wentao Wu, Lijie Xu},
-  journal = {arXiv preprint arXiv:260x.xxxxx},
-  year    = {2026}
+@misc{zhang2026mandol,
+      title={Mandol: An Agglomerative Agent Memory System for Long-Term Conversations}, 
+      author={Yuhan Zhang and Zhiyuan Guo and Ziheng Zeng and Wei Wang and Wentao Wu and Lijie Xu},
+      year={2026},
+      eprint={2606.29778},
+      archivePrefix={arXiv},
+      primaryClass={cs.DB},
+      url={https://arxiv.org/abs/2606.29778}, 
 }
 ```
 
