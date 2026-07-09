@@ -88,3 +88,5 @@ benchmarks/longmemeval/data
 
 # Website test
 website/build_test/
+
+backup.sh
