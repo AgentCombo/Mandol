@@ -30,16 +30,20 @@ The public Python surface is centered on:
   persistence.
 - `MultiRetriever`: BM25, SPLADE, cosine, graph expansion, score fusion, and
   reranker orchestration.
-- `TripleTowerRetriever`: hierarchical, entity-relation, and episodic retrieval
-  orchestration for already-built memory spaces.
+- `triple_retrieval`: `TripleTowerRetriever` and related result/config classes
+  for routing, dispatching, pruning, reranking, and packaging hierarchical,
+  entity-relation, and episodic tower results over already-built memory spaces.
+- `auto_builder`: high-level memory construction pipelines that transform raw
+  or L0 units into hierarchical summaries, episodic facts, and entity-relation
+  memories with LLM extraction, deduplication, and batched graph writes.
 - `memory_router`: LoCoMo and LongMemEval routing policies used by the paper
   router + quantification workflows.
 
 Older notes in the repository may mention `MemorySystem`, `Uid`,
 `mandol.ports`, or `mandol.retrieval.pipeline.HybridRetriever`. Those names are
 not part of the current package exports. Maintained docs and examples use
-`MemoryUnit`, `SemanticMap`, `SemanticGraph`, `MultiRetriever`, and the current
-subpackages directly.
+`MemoryUnit`, `SemanticMap`, `SemanticGraph`, `MultiRetriever`,
+`triple_retrieval`, `auto_builder`, and the current subpackages directly.
 
 ## Requirements
 
@@ -438,7 +442,8 @@ The two reported LoCoMo performance entrypoints measure different API scopes:
 src/mandol/
   core/                MemoryUnit, MemorySpace, SemanticMap, SemanticGraph
   retrieval/           MultiRetriever, BM25, SPLADE, cosine, fusion, rerankers
-  triple_retrieval/    Three-tower retrieval orchestration
+  triple_retrieval/    Three-tower routing, dispatch, pruning, rerank packaging
+  auto_builder/        High-level builders, strategy presets, batched graph writes
   hierarchical/        Retrieval-facing hierarchical memory components
   entity_relation/     Retrieval-facing entity/relation graph components
   episodic/            Episodic memory retriever

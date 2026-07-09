@@ -25,11 +25,12 @@
 - `SemanticMap`：内存单元存储、embedding 生成、FAISS 索引、稀疏检索、持久化和空间过滤相似度搜索。
 - `SemanticGraph`：记忆单元和记忆空间之上的图层，提供关系 API、图遍历、检索辅助、L2 存储支持和沙盒化持久化。
 - `MultiRetriever`：BM25、SPLADE、余弦检索、图扩展、分数融合与 reranker 编排。
-- `TripleTowerRetriever`：面向已构建记忆空间的分层、实体关系、情景记忆三塔检索编排。
+- `triple_retrieval`：提供 `TripleTowerRetriever` 及相关配置/结果类型，用于在已构建记忆空间上执行三塔路由、调度、剪枝、统一 rerank 与结果打包。
+- `auto_builder`：高阶记忆构建流水线，将 raw 或 L0 单元转换为分层摘要、情景事实和实体关系记忆，并负责 LLM 抽取、去重与批量图写入。
 - `memory_router`：论文 router + quantification 工作流使用的 LoCoMo 和 LongMemEval 路由策略。
 
 仓库中的历史笔记可能仍提到 `MemorySystem`、`Uid`、`mandol.ports` 或
-`mandol.retrieval.pipeline.HybridRetriever`。这些名称不属于当前包的公开导出。维护中的 README、docs 和 website 使用 `MemoryUnit`、`SemanticMap`、`SemanticGraph`、`MultiRetriever` 以及当前子包接口。
+`mandol.retrieval.pipeline.HybridRetriever`。这些名称不属于当前包的公开导出。维护中的 README、docs 和 website 使用 `MemoryUnit`、`SemanticMap`、`SemanticGraph`、`MultiRetriever`、`triple_retrieval`、`auto_builder` 以及当前子包接口。
 
 ## 环境要求
 
@@ -362,7 +363,8 @@ LoCoMo 的两个性能入口衡量的是不同 API 边界：
 src/mandol/
   core/                MemoryUnit、MemorySpace、SemanticMap、SemanticGraph
   retrieval/           MultiRetriever、BM25、SPLADE、余弦检索、融合、reranker
-  triple_retrieval/    三塔检索编排
+  triple_retrieval/    三塔路由、调度、剪枝、rerank 打包
+  auto_builder/        高阶记忆构建器、策略预设、批量图写入
   hierarchical/        分层记忆检索组件
   entity_relation/     实体关系图检索组件
   episodic/            情景记忆检索器
