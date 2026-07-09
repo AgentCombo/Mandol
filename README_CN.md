@@ -10,6 +10,11 @@
 
 [English](README.md) | [中文](README_CN.md)
 
+> [!IMPORTANT]
+> `main` 分支目前处于持续重构状态。若需要精确复现论文实验结果，请使用
+> [`paper-repro`](https://github.com/AgentCombo/Mandol/tree/paper-repro) 分支。
+> 当前公开的 PyPI 包 `mandol==0.1.0a1` 与 GitHub release 对应论文复现版本。
+
 ![Mandol Overview](README.assets/Mandol-overview.png)
 
 ---
@@ -175,11 +180,29 @@ LongMemEval 侧重多会话场景下的记忆保持与知识更新能力。Mando
 
 ### 安装
 
+#### 已发布的 paper-repro 包
+
+当前已发布的 PyPI 包对应 `paper-repro` 分支：
+
 ```bash
-pip install mandol
+pip install mandol==0.1.0a1
 ```
 
-支持可选依赖以启用额外后端：
+如果需要完整论文复现环境，请使用 `paper-repro` 源码分支，并安装 artifact stack：
+
+```bash
+uv sync --extra dev --extra cuda --group spacy-model
+```
+
+如果本机不支持 CUDA 或 flash-attention，可以去掉 `--extra cuda`：
+
+```bash
+uv sync --extra dev --group spacy-model
+```
+
+#### main 分支可选后端
+
+以下可选依赖组属于 `main` 分支开发版本，可能与已发布的 `paper-repro` 包不完全一致：
 
 ```bash
 pip install mandol[faiss]                 # FAISS 向量索引加速
@@ -190,6 +213,7 @@ pip install mandol[neo4j]                 # Neo4j 图数据库
 pip install mandol[all]                   # 安装所有可选依赖
 ```
 
+> 如需严格复现论文实验结果，请使用 [`paper-repro`](https://github.com/AgentCombo/Mandol/tree/paper-repro) 分支。
 > 完整的安装指南、配置说明和进阶用法请参阅 [在线文档](https://agentcombo.github.io/Mandol/docs)。
 
 ### 配置

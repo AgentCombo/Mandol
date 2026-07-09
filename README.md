@@ -13,7 +13,7 @@
 [English](README.md) | [中文](README_CN.md)
 
 > [!IMPORTANT]
-> The `main` branch is currently under active refactoring. For exact reproduction of the paper results, please use the [`paper-repro`](https://github.com/AgentCombo/Mandol/tree/paper-repro) branch.
+> The `main` branch is under active refactoring and may differ from the released artifact. For exact paper reproduction, use the [`paper-repro`](https://github.com/AgentCombo/Mandol/tree/paper-repro) branch. The current public PyPI package [`mandol==0.1.0a1`](https://pypi.org/project/mandol/0.1.0a1/) and the GitHub release are built from, and aligned with, `paper-repro`.
 
 ![Mandol Overview](README.assets/Mandol-overview-v2.png)
 
@@ -266,11 +266,29 @@ For detailed reproduction steps, refer to the [benchmarks README](benchmarks/REA
 
 ### Installation
 
+#### Released paper-repro package
+
+The currently released PyPI package corresponds to the `paper-repro` branch:
+
 ```bash
-pip install mandol
+pip install mandol==0.1.0a1
 ```
 
-Optional dependencies for additional backends:
+For the full paper reproduction environment, use the `paper-repro` source checkout and install the artifact stack with:
+
+```bash
+uv sync --extra dev --extra cuda --group spacy-model
+```
+
+If CUDA or flash-attention is not available on your platform, omit `--extra cuda`:
+
+```bash
+uv sync --extra dev --group spacy-model
+```
+
+#### Main branch optional backends
+
+The following optional dependency groups are intended for the `main` branch development version and may not match the released `paper-repro` package:
 
 ```bash
 pip install mandol[faiss]                 # FAISS vector index acceleration
@@ -281,6 +299,7 @@ pip install mandol[neo4j]                 # Neo4j graph database
 pip install mandol[all]                   # Install all optional dependencies
 ```
 
+> For exact paper reproduction, please use the [`paper-repro`](https://github.com/AgentCombo/Mandol/tree/paper-repro) branch.
 > For complete installation guides, configuration details, and advanced usage, see the [online documentation](https://agentcombo.github.io/Mandol/docs).
 
 ### Configuration
