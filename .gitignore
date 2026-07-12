@@ -76,9 +76,9 @@ memory_snapshot/
 output/
 
 # Benchmark results and outputs
-benchmarks/*/results/
-benchmarks/*/output/
-benchmarks/longmemeval/data
+experimental/self_host_benchmarks/*/results/
+experimental/self_host_benchmarks/*/output/
+experimental/self_host_benchmarks/longmemeval/data/
 
 # Jupyter
 .ipynb_checkpoints/
@@ -90,3 +90,5 @@ benchmarks/longmemeval/data
 website/build_test/
 
 backup.sh
+
+uv.lock

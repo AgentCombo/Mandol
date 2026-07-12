@@ -39,7 +39,7 @@ import threading
 from tqdm import tqdm
 
 # Add project root to path
-project_root = Path(__file__).parent.parent.parent
+project_root = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.append(str(project_root))
 
 # Hierarchical retrieval modules

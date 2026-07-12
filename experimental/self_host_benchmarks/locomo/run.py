@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""LoCoMo Benchmark — Full Pipeline Runner.
+"""LoCoMo experimental self-host evaluation runner.
 
 Two modes:
   --smoke     Fast validation on a small subset (1 sample, 3 sessions, 5 QA,
@@ -12,7 +12,7 @@ Usage:
     # Smoke test — quick validation
     python run.py --smoke --config configs/base.yaml
 
-    # Full benchmark
+    # Full development evaluation
     python run.py --config configs/base.yaml --data data/locomo10.json --output output/
     python run.py --config configs/base.yaml --force
     python run.py --config configs/base.yaml --stages build,retrieve
@@ -455,7 +455,7 @@ def _full_main(args: argparse.Namespace) -> None:
     }
 
     logger.info("=" * 60)
-    logger.info("LoCoMo Benchmark Pipeline")
+    logger.info("LoCoMo Experimental Self-host Pipeline")
     logger.info("Config: %s", config_path)
     logger.info("Dataset: %s", data_path)
     logger.info("Output: %s", output_dir)
@@ -480,7 +480,7 @@ def _full_main(args: argparse.Namespace) -> None:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="LoCoMo Benchmark — Full Pipeline Runner"
+        description="LoCoMo Experimental Self-host Evaluation Runner"
     )
     parser.add_argument(
         "--config", type=str, default="configs/base.yaml",
@@ -503,6 +503,12 @@ def main():
         help="Comma-separated stages to run (default: build,retrieve,generate,evaluate)",
     )
     args = parser.parse_args()
+
+    logger.warning(
+        "Mandol experimental self-host evaluation workflow\n"
+        "This is not the frozen paper-reproduction pipeline.\n"
+        "For exact paper reproduction, use the paper-repro branch."
+    )
 
     if args.smoke:
         success = _smoke_main(args.config, keep_output=args.keep_output)

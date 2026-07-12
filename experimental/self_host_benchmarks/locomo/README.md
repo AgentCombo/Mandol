@@ -1,6 +1,13 @@
-# LoCoMo Benchmark
+# LoCoMo Experimental Self-host Workflow
 
-Reproduction guide for Mandol's evaluation on the LoCoMo (Long Conversational Memory) benchmark dataset.
+> [!NOTE]
+> This is an experimental self-host workflow for the refactored `main` branch.
+> It is not the exact pipeline used to produce the paper results. For faithful
+> paper reproduction, use the
+> [LoCoMo workflow in `paper-repro`](https://github.com/AgentCombo/Mandol/blob/paper-repro/benchmark_locomo/REPRODUCE.md).
+
+Development guide for evaluating the refactored Mandol runtime on the LoCoMo
+(Long Conversational Memory) dataset.
 
 ## Overview
 
@@ -8,7 +15,7 @@ LoCoMo is a benchmark designed to evaluate long-term conversational memory syste
 
 ## Pipeline Overview
 
-The benchmark reproduction follows a 4-step pipeline:
+This development workflow follows a four-stage pipeline:
 
 ```
 build_graph → retrieve → generate → evaluate
@@ -33,7 +40,8 @@ Each step communicates through JSON files on disk, enabling independent executio
 | Python | 3.10.12 |
 | OS | Ubuntu 22.04 LTS |
 
-> **Note**: Results may vary on different hardware configurations. The above environment is used for the reference results reported in the paper.
+> **Note**: Results may vary across hardware and provider versions. The above
+> environment is currently used to validate this development workflow.
 
 ## Dataset Description
 
@@ -44,7 +52,7 @@ Each step communicates through JSON files on disk, enabling independent executio
   - **Temporal** (category 3): Questions involving time-based ordering or recency
   - **Open-domain** (category 4): Broad questions requiring comprehensive memory synthesis
   - **Adversarial** (category 5): Questions designed to confuse or mislead the retrieval system
-- **Data file**: `locomo10.json` in `data/` directory (included in the repository)
+- **Data file**: `locomo10.json` in `data/` (a bundled development/evaluation dataset copy)
 
 ## Key Metrics
 
@@ -58,8 +66,13 @@ Each step communicates through JSON files on disk, enabling independent executio
 ## Environment Setup
 
 ```bash
-bash scripts/env.sh
+cp ../../../.env.example ../../../.env
+# Edit ../../../.env with the provider endpoints and credentials to use.
 ```
+
+The optional `scripts/env.sh` file is retained for standalone development
+utilities. Source it only when those legacy environment variable names are
+required; the documented four-stage workflow uses the repository-level `.env`.
 
 ## Configuration
 
@@ -67,7 +80,7 @@ The benchmark uses two configuration layers:
 
 ### Layer 1: Environment Variables (`.env`)
 
-Controls **provider connectivity**: API keys, base URLs, models, timeouts, and retry settings. Loaded from the `.env` file in the project root. See [`.env.example`](../../.env.example) for all available variables.
+Controls **provider connectivity**: API keys, base URLs, models, timeouts, and retry settings. Loaded from the `.env` file in the project root. See [`.env.example`](../../../.env.example) for all available variables.
 
 Key variables for the benchmark:
 
@@ -155,11 +168,17 @@ Set `sample_ids: []` to process all samples.
 
 > **Note**: The `adapter/config.py` dataclass (`LocomoAdapterConfig`) is for the older adapter path and is separate from the YAML pipeline configs. When running the 4-step pipeline, use the YAML configs.
 
+`locomo_benchmark.py` and `evaluation.py` are standalone development utilities
+retained for ongoing migration. They are not imported by the documented
+`run.py` workflow and may require additional experimental modules.
+
 ## Data Preparation
 
-Place `locomo10.json` in `data/` directory (already included in the repository).
+The repository includes `data/locomo10.json` as a development/evaluation copy.
+It must not be treated as the authoritative input artifact for the frozen paper
+pipeline; follow the `paper-repro` guide when comparing against paper tables.
 
-## Run Benchmark
+## Run Workflow
 
 ### End-to-end Pipeline (recommended)
 
@@ -205,7 +224,12 @@ python evaluate.py --config configs/base.yaml --output output/
 
 Add `--force` to any step to re-run it even if results already exist.
 
-## Expected Results
+## Published Paper Reference Results
+
+The tables below are published-paper reference results only. They are not the
+expected output of this refactored development workflow. Use the frozen
+[`paper-repro` LoCoMo instructions](https://github.com/AgentCombo/Mandol/blob/paper-repro/benchmark_locomo/REPRODUCE.md)
+for comparisons against these values.
 
 ### GPT-4o-mini Backbone
 
@@ -265,7 +289,7 @@ locomo/
 ├── evaluate.py            # Step 4: Evaluate
 ├── evaluation.py          # Standalone evaluation utilities
 ├── pipeline_utils.py      # Shared utilities and prompt templates
-├── locomo_benchmark.py    # Benchmark class
+├── locomo_benchmark.py    # Standalone development evaluation utility
 ├── adapter/               # LoCoMo adapter for Mandol
 │   ├── __init__.py
 │   ├── locomo_adapter.py
@@ -283,3 +307,13 @@ locomo/
 ├── results/               # Run logs
 └── output/                # Pipeline output
 ```
+
+## Relationship to the Paper Artifact
+
+The workflow in this directory has been refactored for self-hosted and
+general-purpose use. Its prompts, graph-construction pipeline, retrieval
+stages, model assignments, configuration defaults, and evaluation process may
+differ from the frozen paper artifact.
+
+For comparisons against the published paper tables, use the
+[LoCoMo workflow in the `paper-repro` branch](https://github.com/AgentCombo/Mandol/blob/paper-repro/benchmark_locomo/REPRODUCE.md).

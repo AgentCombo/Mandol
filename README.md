@@ -260,7 +260,24 @@ When a doctor requests "Provide emergency examination support for a patient with
 
 ## 🔬 Reproduction
 
-For detailed reproduction steps, refer to the [benchmarks README](benchmarks/README.md).
+The LoCoMo and LongMemEval results reported in the paper were produced with the
+frozen [`paper-repro`](https://github.com/AgentCombo/Mandol/tree/paper-repro)
+artifact. For faithful reproduction, clone that branch directly:
+
+```bash
+git clone --branch paper-repro --single-branch https://github.com/AgentCombo/Mandol.git
+cd Mandol
+```
+
+Use the benchmark-specific instructions in the `paper-repro` branch:
+
+- [LoCoMo reproduction](https://github.com/AgentCombo/Mandol/blob/paper-repro/benchmark_locomo/REPRODUCE.md)
+- [LongMemEval reproduction](https://github.com/AgentCombo/Mandol/blob/paper-repro/benchmark_longmemeval/REPRODUCE.md)
+
+The `main` branch and its `experimental/self_host_benchmarks/` workflows are under active refactoring
+and are not the exact entry point used to produce the reported paper results.
+Please obtain the datasets, configurations, and intermediate artifacts according
+to the corresponding documentation in `paper-repro`.
 
 ## ⚡ Quick Start
 

@@ -155,5 +155,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-# conda activate mandol && cd benchmarks/longmemeval/ && nohup python generate.py --config configs/base.yaml --force > results/generate.log 2>&1 &

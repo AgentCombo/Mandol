@@ -154,5 +154,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-# conda activate mandol && cd benchmarks/locomo/ && nohup python retrieve.py --config configs/base.yaml --force > results/retrieve.log 2>&1 &

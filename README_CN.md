@@ -29,6 +29,7 @@
 - [✨ 关键特性](#关键特性)
 - [📊 与主流记忆系统对比](#与主流记忆系统对比)
 - [🏆 应用案例](#应用案例)
+- [🔬 论文复现](#-论文复现)
 - [⚡ 快速开始](#快速开始)
 - [📚 文档与社区](#文档与社区)
 - [📄 引用](#引用)
@@ -175,6 +176,24 @@ LongMemEval 侧重多会话场景下的记忆保持与知识更新能力。Mando
 医生请求「对服用阿司匹林后发热的患者提供紧急检查支持」时，关键信息分散在跨科室病历、用药记录和检查报告中。Mandol 通过实体关系图检索、事件因果链追溯和知识摘要获取，在毫秒级内将跨科室、跨时间维度的分散信息汇聚为结构化决策支持上下文，降低跨科室信息遗漏风险。
 
 ---
+
+## 🔬 论文复现
+
+论文中报告的 LoCoMo 和 LongMemEval 实验结果基于冻结的
+[`paper-repro`](https://github.com/AgentCombo/Mandol/tree/paper-repro)
+版本生成。若需要忠实复现论文实验，请直接克隆该分支：
+
+```bash
+git clone --branch paper-repro --single-branch https://github.com/AgentCombo/Mandol.git
+cd Mandol
+```
+
+请按照 `paper-repro` 分支中的基准专项说明运行：
+
+- [LoCoMo 论文复现](https://github.com/AgentCombo/Mandol/blob/paper-repro/benchmark_locomo/REPRODUCE.md)
+- [LongMemEval 论文复现](https://github.com/AgentCombo/Mandol/blob/paper-repro/benchmark_longmemeval/REPRODUCE.md)
+
+`main` 分支及其中的 `experimental/self_host_benchmarks/` 工作流目前仍在持续重构，不是生成论文报告结果时使用的精确复现入口。数据集、实验配置和中间产物的获取方式，请以 `paper-repro` 分支中的对应文档为准。
 
 ## ⚡ 快速开始
 

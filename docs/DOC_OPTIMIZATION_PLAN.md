@@ -18,7 +18,7 @@
 | API Reference | docs/api-reference/ | ⚠️ 仅4个 .md 文件，覆盖不完整 |
 | 快速开始示例 | examples/quick_start.py | ✅ 存在，22行 |
 | 对话演示 | examples/dialogue_demo/ | ✅ 存在 |
-| LoCoMo 基准 | benchmarks/locomo/README.md | ⚠️ 存在但结果为占位符 |
+| LoCoMo 开发评测 | experimental/self_host_benchmarks/locomo/README.md | ⚠️ 持续开发中 |
 | 配置模板 | .env.example / config.yaml | ✅ 存在 |
 
 ---
@@ -36,7 +36,7 @@
 | **核心概念** | ⚠️ 过于技术化 | 2/5 | TL;DR 使用"多库异构架构""零 IPC 的原生混合检索"等术语，基础用户难以理解；缺少通俗的类比和图解 |
 | **快速开始** | ⚠️ 不可直接运行 | 2/5 | 代码示例依赖 LLM API Key 和 Embedding 模型，但未说明如何获取和配置；`MemorySystem()` 默认配置需要下载 Qwen3-Embedding-4B（约 4GB），未提及 |
 | **常见 QA** | ❌ 缺失 | 0/5 | 完全没有 FAQ/故障排除章节 |
-| **性能测试** | ⚠️ 不完整 | 2/5 | benchmarks/locomo/README.md 有流程说明，但结果为占位符（`...`），无测试环境配置、关键指标定义、复现步骤不够详细 |
+| **性能测试** | ⚠️ 不完整 | 2/5 | experimental/self_host_benchmarks/locomo/README.md 有开发流程说明，但关键指标定义仍需完善 |
 
 **基础用户核心痛点**：
 1. **"装不上"**：不知道需要 LLM API Key，不知道 Embedding 模型需要下载，不知道 GPU 要求
@@ -153,7 +153,7 @@ README.md / README_CN.md
 ├── 架构概览
 ├── 性能测试 ★调整
 │   ├── 简要说明 + 关键指标
-│   └── 链接 → benchmarks/locomo/README.md（完整复现说明）
+│   └── 链接 → experimental/self_host_benchmarks/locomo/README.md（开发评测说明）
 ├── 常见问题 (FAQ) ★新增
 ├── 文档链接
 └── 许可证
@@ -312,12 +312,12 @@ Mandol 在 LoCoMo（Long Conversational Memory）基准数据集上进行了全�
 | 内存占用 | 系统运行时的峰值 RSS |
 
 ### 快速复现
-cd benchmarks/locomo && bash scripts/env.sh
+cd experimental/self_host_benchmarks/locomo && source scripts/env.sh
 python build_graph.py --config configs/base.yaml --output output/
 python retrieve.py --config configs/base.yaml --input output/ --output output/
 
 📖 完整的测试环境配置、数据集说明、消融实验及性能对比表格，
-请参阅 [LoCoMo Benchmark 文档](benchmarks/locomo/README.md)。
+请参阅 [LoCoMo 开发评测文档](../experimental/self_host_benchmarks/locomo/README.md)。
 ```
 
 **（6）常见问题 FAQ（全新章节）**
@@ -772,7 +772,7 @@ knowledge = system.retrieve_by_view("休假有多少天？", view="knowledge", t
 | 新增 contributing 目录 | 开发贡献指南 | P1 |
 | 重组 api-reference | 手工编写 .rst 文件，区分已实现/预想接口 | P0 |
 | 拆分 retrieval_interfaces.rst | 当前 1590 行过长，按检索层级拆分为 5-6 个文件 | P1 |
-| 增强 benchmarks/locomo/README.md | 完整复现说明移至此处，README 仅简要提及+链接 | P0 |
+| 增强 experimental/self_host_benchmarks/locomo/README.md | 开发评测说明移至此处，README 仅简要提及+链接 | P0 |
 | 英文文档同步 | docs/en/ 下镜像中文文档结构 | P2 |
 
 #### 4.2 内容补充清单
@@ -784,7 +784,7 @@ knowledge = system.retrieve_by_view("休假有多少天？", view="knowledge", t
 | 核心概念通俗解释 + 术语表 | README + core-concepts | P0 |
 | FAQ（安装/运行/性能） | README | P0 |
 | 性能测试简要说明 + 链接到 benchmarks | README | P0 |
-| benchmarks/locomo/README.md 完整复现说明 | benchmarks | P0 |
+| experimental/self_host_benchmarks/locomo/README.md 开发评测说明 | experimental | P0 |
 | 3个完整场景示例 | user-guide/scenarios | P0 |
 | 参数调优指南 | user-guide/parameter-tuning | P0 |
 | 会话划分最佳实践 | user-guide/session-management | P0 |
@@ -874,7 +874,7 @@ knowledge = system.retrieve_by_view("休假有多少天？", view="knowledge", t
 
 | 阶段 | 时间 | 任务 | 交付物 |
 |------|------|------|--------|
-| **Phase 1：README 优先** | 第1周 | README 环境准备+安装+双模式快速开始+FAQ+核心概念+性能测试链接；benchmarks/locomo/README.md 完整复现说明 | 更新的 README.md / README_CN.md + benchmarks/locomo/README.md |
+| **Phase 1：README 优先** | 第1周 | README 环境准备+安装+双模式快速开始+FAQ+核心概念+性能测试链接；experimental/self_host_benchmarks/locomo/README.md 开发评测说明 | 更新的 README.md / README_CN.md + experimental/self_host_benchmarks/locomo/README.md |
 | **Phase 2：Sphinx 拆分重组** | 第2周 | 拆分现有 5 个 .rst 为新目录结构；retrieval_interfaces.rst 拆分为 retrieval/ 下 5-6 个文件；添加状态标签 | 重组的 docs/ 目录结构 |
 | **Phase 3：场景示例+高级指南** | 第3周 | 3个完整场景示例 + 参数调优指南 + 会话管理最佳实践 | user-guide/scenarios/ + parameter-tuning.rst + session-management.rst |
 | **Phase 4：API 文档补全** | 第4周 | MemorySystem + SemanticMapService + SemanticGraphService 完整 API（手工编写，预想接口就近放置） | api-reference/ 手工 .rst 文档 |

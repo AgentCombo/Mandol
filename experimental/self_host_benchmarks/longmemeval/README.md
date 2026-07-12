@@ -1,6 +1,13 @@
-# LongMemEval Benchmark
+# LongMemEval Experimental Self-host Workflow
 
-Reproduction guide for Mandol's evaluation on the LongMemEval dataset.
+> [!NOTE]
+> This is an experimental self-host workflow for the refactored `main` branch.
+> It is not the exact pipeline used to produce the paper results. For faithful
+> paper reproduction, use the
+> [LongMemEval workflow in `paper-repro`](https://github.com/AgentCombo/Mandol/blob/paper-repro/benchmark_longmemeval/REPRODUCE.md).
+
+Development guide for evaluating the refactored Mandol runtime on the
+LongMemEval dataset.
 
 ## Overview
 
@@ -24,7 +31,7 @@ LongMemEval is a benchmark for evaluating long-term memory in conversational AI 
 
 ## Pipeline Overview
 
-The benchmark reproduction follows a 4-step pipeline:
+This development workflow follows a four-stage pipeline:
 
 ```
 build_graph → retrieve → generate → evaluate
@@ -49,7 +56,8 @@ Each step communicates through JSON files on disk, enabling independent executio
 | Python | 3.10.12 |
 | OS | Ubuntu 22.04 LTS |
 
-> **Note**: Results may vary on different hardware configurations. The above environment is used for the reference results reported in the paper.
+> **Note**: Results may vary across hardware and provider versions. The above
+> environment is currently used to validate this development workflow.
 
 ## Data Preparation
 
@@ -72,7 +80,7 @@ The benchmark uses two configuration layers:
 
 ### Layer 1: Environment Variables (`.env`)
 
-Controls **provider connectivity**: API keys, base URLs, models, timeouts, and retry settings. Loaded from the `.env` file in the project root. See [`.env.example`](../../.env.example) for all available variables.
+Controls **provider connectivity**: API keys, base URLs, models, timeouts, and retry settings. Loaded from the `.env` file in the project root. See [`.env.example`](../../../.env.example) for all available variables.
 
 | Variable | Purpose | Default |
 |----------|---------|---------|
@@ -154,7 +162,7 @@ experiment:
   # question_ids: []                       # Process all samples
 ```
 
-## Run Benchmark
+## Run Workflow
 
 ### End-to-end Pipeline (recommended)
 
@@ -200,7 +208,12 @@ python evaluate.py --config configs/base.yaml --output output/
 
 Add `--force` to any step to re-run it even if results already exist.
 
-## Expected Results
+## Published Paper Reference Results
+
+The tables below are published-paper reference results only. They are not the
+expected output of this refactored development workflow. Use the frozen
+[`paper-repro` LongMemEval instructions](https://github.com/AgentCombo/Mandol/blob/paper-repro/benchmark_longmemeval/REPRODUCE.md)
+for comparisons against these values.
 
 ### GPT-4o-mini Backbone
 
@@ -262,3 +275,13 @@ longmemeval/
 │   └── base.yaml
 └── output/                # Pipeline output
 ```
+
+## Relationship to the Paper Artifact
+
+The workflow in this directory has been refactored for self-hosted and
+general-purpose use. Its prompts, graph-construction pipeline, retrieval
+stages, model assignments, configuration defaults, and evaluation process may
+differ from the frozen paper artifact.
+
+For comparisons against the published paper tables, use the
+[LongMemEval workflow in the `paper-repro` branch](https://github.com/AgentCombo/Mandol/blob/paper-repro/benchmark_longmemeval/REPRODUCE.md).
