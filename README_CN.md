@@ -322,6 +322,10 @@ uv run python -m benchmark_longmemeval.task_eval.benchmark_triple_router_quantif
 - task-eval 被评测模型：`gpt-4.1-mini-closeai` 和 `gpt-4o-mini-closeai`
 - task-eval judge 模型：`gpt-4o-mini-closeai`
 
+`qwen-3-plus` 表示不带推理的版本；带推理的 alias 是
+`qwen-3-plus-thinking`。论文中报告的 LongMemEval 记忆/抽取结果使用
+`qwen-3-plus` 生成，而不是带推理的版本。
+
 复现论文表格时应保持上述模型角色不变。Qwen/DeepSeek 用于记忆生成和去重；GPT 模型用于任务评测和 judge。
 
 ## 说明与限制

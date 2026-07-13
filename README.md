@@ -377,6 +377,10 @@ but map each alias to an equivalent model endpoint in your local configuration.
   `gpt-4o-mini-closeai`
 - Task-eval judge model: `gpt-4o-mini-closeai`
 
+`qwen-3-plus` denotes the non-thinking variant. The thinking-enabled alias is
+`qwen-3-plus-thinking`. The LongMemEval memory/extraction results reported in
+the paper were generated with `qwen-3-plus`, not the thinking-enabled variant.
+
 The model names above should be kept fixed when reproducing the paper tables.
 The Qwen/DeepSeek models are used for memory generation and deduplication; the
 GPT models are used for task evaluation and judging.
