@@ -13,7 +13,7 @@ while [[ "$REPO_ROOT" != "/" && ! -d "$REPO_ROOT/src/mandol" ]]; do
   REPO_ROOT="$(dirname "$REPO_ROOT")"
 done
 if [[ ! -d "$REPO_ROOT/src/mandol" ]]; then
-  echo "Could not locate AgentMemorySystem repo root from $SCRIPT_DIR" >&2
+  echo "Could not locate Mandol repo root from $SCRIPT_DIR" >&2
   exit 1
 fi
 cd "$REPO_ROOT"

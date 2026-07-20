@@ -6,11 +6,9 @@ The maintained public surface is based on ``MemoryUnit``, ``MemorySpace``,
 ``SemanticMap``, ``SemanticGraph``, ``MultiRetriever`` and the retrieval-facing
 subpackages.
 
-Historical pages from earlier architecture experiments are kept in the
-repository for reference, but they are excluded from the default Sphinx build
-because many of them mention APIs that are not exported by the current package
-anymore, such as ``MemorySystem``, ``Uid``, ``mandol.ports`` and
-``HybridRetriever``.
+Historical pages from earlier architecture experiments are preserved under
+``docs/archive/`` for design provenance. They are excluded from the Sphinx
+build and are not an API contract for the current package.
 
 .. toctree::
    :maxdepth: 2

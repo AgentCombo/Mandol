@@ -1,8 +1,8 @@
 Quick Start
 ===========
 
-The current package does not expose ``MemorySystem`` or ``Uid``. Start from
-``MemoryUnit``, ``SemanticMap`` and ``SemanticGraph``.
+Start with the current ``MemoryUnit``, ``SemanticMap`` and ``SemanticGraph``
+APIs.
 
 Minimal semantic graph
 ----------------------

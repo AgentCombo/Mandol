@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.12, <3.13"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
-authors = [{ name = "AgentMemorySystem Team" }]
+authors = [{ name = "Mandol Team" }]
 keywords = ["memory", "agent", "rag", "retrieval", "llm", "knowledge-graph"]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -22,10 +22,9 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 
-# Default install: the complete research/runtime stack used by this repository.
-# This intentionally includes CUDA/model, benchmark, storage and integration
-# dependencies. See README.md for the current platform constraints and the
-# recommendations that should be addressed before a public PyPI release.
+# Default install: the complete research/runtime stack released for the paper
+# artifact. Platform-specific flash-attention remains in the cuda extra; see
+# README.md for the supported wheel constraints.
 dependencies = [
     # --- Numerics / data ---
     "numpy>=1.26,<2.0",
@@ -88,7 +87,7 @@ dependencies = [
     "rouge-score>=0.1.2",
     "tabulate>=0.9",
 
-    # --- Optional integrations imported in source ---
+    # --- Integration clients imported by public modules or examples ---
     "python-dotenv>=1.0",
     "gdown>=5.2",
     "zep-cloud>=2.22",
@@ -115,6 +114,7 @@ dev = [
     "datasets>=2.20",
     "ruff>=0.6",
     "matplotlib>=3.8",
+    "pre-commit>=4.0",
 ]
 
 docs = [
@@ -129,6 +129,9 @@ docs = [
 Homepage = "https://github.com/AgentCombo/Mandol"
 Repository = "https://github.com/AgentCombo/Mandol"
 Issues = "https://github.com/AgentCombo/Mandol/issues"
+Documentation = "https://agentcombo.github.io/Mandol/docs"
+Paper = "https://arxiv.org/abs/2606.29778"
+PyPI = "https://pypi.org/project/mandol/0.1.0a1/"
 
 [tool.setuptools]
 package-dir = { "" = "src" }

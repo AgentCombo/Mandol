@@ -10,7 +10,7 @@ while [[ "$AMS_REPO_ROOT" != "/" && ! -d "$AMS_REPO_ROOT/src/mandol" ]]; do
     AMS_REPO_ROOT="$(dirname "$AMS_REPO_ROOT")"
 done
 if [[ ! -d "$AMS_REPO_ROOT/src/mandol" ]]; then
-    echo "Could not locate AgentMemorySystem repo root from $AMS_SCRIPT_DIR" >&2
+    echo "Could not locate Mandol repo root from $AMS_SCRIPT_DIR" >&2
     exit 1
 fi
 cd "$AMS_REPO_ROOT"
@@ -26,7 +26,7 @@ fi
 # 定义统一的环境变量
 export ENVIRONMENT=speed
 
-echo "=== 开始运行 AgentMemorySystem 性能压测流水线 ==="
+echo "=== 开始运行 Mandol 性能压测流水线 ==="
 
 echo "[1/5] 运行三塔 10QPS 插入无漂移压测..."
 uv run python -m benchmark_locomo.task_eval.locomo_triple_input_speed \

@@ -1,33 +1,58 @@
-.PHONY: install dev test lint docs clean
+.PHONY: install dev artifact artifact-cpu test test-unit test-integration \
+	syntax lint lint-all lint-fix format docs docs-clean build clean
+
+PYTHON_DIRS := src/mandol benchmark_locomo benchmark_longmemeval benchmark_self_host examples
+TEST_DIR := examples/mandol_chat/tests
 
 install:
-	pip install -e .
+	uv sync
 
 dev:
-	pip install -e ".[dev]"
+	uv sync --extra dev --extra docs --group spacy-model
+
+artifact:
+	uv sync --extra dev --extra cuda --group spacy-model
+
+artifact-cpu:
+	uv sync --extra dev --group spacy-model
 
 test:
-	pytest tests/ -v
+	uv run pytest $(TEST_DIR) -v
 
 test-unit:
-	pytest tests/unit/ -v
+	uv run pytest $(TEST_DIR)/test_benchmark_isolation.py -v
 
 test-integration:
-	pytest tests/integration/ -v
+	uv run pytest \
+		$(TEST_DIR)/test_health.py \
+		$(TEST_DIR)/test_chat_api.py \
+		$(TEST_DIR)/test_session_api.py -v
+
+syntax:
+	uv run python -m compileall -q $(PYTHON_DIRS)
 
 lint:
-	ruff check src/mandol/ tests/
+	uv run ruff check --select E9,F63,F7,F82 src/mandol/ $(TEST_DIR)/
+
+lint-all:
+	uv run ruff check src/mandol/ $(TEST_DIR)/
 
 lint-fix:
-	ruff check --fix src/mandol/ tests/
+	uv run ruff check --fix src/mandol/ $(TEST_DIR)/
+
+format:
+	uv run ruff format src/mandol/ $(TEST_DIR)/
 
 docs:
-	cd docs && make html-all
+	uv run --extra docs sphinx-build -W --keep-going -b html docs docs/_build/html
 
 docs-clean:
-	cd docs && make clean-all
+	rm -rf docs/_build/
+
+build:
+	uv build
 
 clean:
-	rm -rf build/ dist/ *.egg-info
-	find . -type d -name __pycache__ -exec rm -rf {} +
-	find . -type f -name "*.pyc" -delete
+	rm -rf build/ dist/ .pytest_cache/ .ruff_cache/ htmlcov/ docs/_build/ src/*.egg-info/
+	find $(PYTHON_DIRS) -type d -name __pycache__ -prune -exec rm -rf {} +
+	find $(PYTHON_DIRS) -type f \( -name '*.pyc' -o -name '*.pyo' \) -delete

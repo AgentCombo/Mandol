@@ -9,7 +9,7 @@ const highlights = [
   { value: 'Multi', labelKey: 'highlightInsertionSpeedup' as const, color: '#f59e0b' },
 ];
 
-export default function HeroSection(): JSX.Element {
+export default function HeroSection(): React.JSX.Element {
   const [visible, setVisible] = useState(false);
   const sectionRef = useRef<HTMLElement>(null);
   const { i18n } = useDocusaurusContext();
@@ -22,7 +22,7 @@ export default function HeroSection(): JSX.Element {
   }, []);
 
   const handleCopyInstall = () => {
-    navigator.clipboard.writeText('uv sync --extra dev --extra docs --group spacy-model');
+    navigator.clipboard.writeText('uv sync --extra dev --group spacy-model');
   };
 
   return (
@@ -58,7 +58,7 @@ export default function HeroSection(): JSX.Element {
             GitHub
           </a>
           <a
-            href="https://arxiv.org/abs/260x.xxxxx"
+            href="https://arxiv.org/abs/2606.29778"
             target="_blank"
             rel="noopener noreferrer"
             className="badge-item"
@@ -72,7 +72,7 @@ export default function HeroSection(): JSX.Element {
             </svg>
             Paper
           </a>
-          <a href="/Mandol/docs/" className="badge-item">
+          <a href="https://agentcombo.github.io/Mandol/docs/" className="badge-item">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
               <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
@@ -125,7 +125,7 @@ export default function HeroSection(): JSX.Element {
               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
             </svg>
           </button>
-          <a href="/Mandol/docs/" className="btn-primary">
+          <a href="https://agentcombo.github.io/Mandol/docs/" className="btn-primary">
             {t.heroGetStarted}
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <line x1="5" y1="12" x2="19" y2="12" />

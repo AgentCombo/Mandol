@@ -19,7 +19,7 @@ else:
     MemorySystemType = Any
 
 __version__ = "0.1.0a1"
-__author__ = "AgentMemorySystem Team"
+__author__ = "Mandol Team"
 
 DEFAULT_EMBEDDING_DIM = 1024
 DEFAULT_COLLECTION_NAME = "semantic_memory_units"

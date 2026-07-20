@@ -7,11 +7,11 @@ const bibtex = `@article{mandol2026,
              for Long-Term Conversational Agents},
   author  = {Yuhan Zhang and Zhiyuan Guo and Ziheng Zeng
              and Wei Wang and Wentao Wu and Lijie Xu},
-  journal = {arXiv preprint arXiv:260x.xxxxx},
+  journal = {arXiv preprint arXiv:2606.29778},
   year    = {2026}
 }`;
 
-export default function CitationBlock(): JSX.Element {
+export default function CitationBlock(): React.JSX.Element {
   const [copied, setCopied] = useState(false);
   const [visible, setVisible] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -98,7 +98,7 @@ export default function CitationBlock(): JSX.Element {
             <div className="pl-8">{'for Long-Term Conversational Agents},'}</div>
             <div className="pl-4"><span style={{ color: '#82aaff' }}>author</span>  = {'{Yuhan Zhang and Zhiyuan Guo and Ziheng Zeng'}</div>
             <div className="pl-8">{'and Wei Wang and Wentao Wu and Lijie Xu},'}</div>
-            <div className="pl-4"><span style={{ color: '#82aaff' }}>journal</span> = {'{arXiv preprint arXiv:260x.xxxxx},'}</div>
+            <div className="pl-4"><span style={{ color: '#82aaff' }}>journal</span> = {'{arXiv preprint arXiv:2606.29778},'}</div>
             <div className="pl-4"><span style={{ color: '#82aaff' }}>year</span>    = {'{2026}'}</div>
             <div>{'}'}</div>
           </div>

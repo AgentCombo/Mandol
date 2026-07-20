@@ -100,7 +100,7 @@ function DataTable({
 
 // ── Component ──────────────────────────────────────────────────────
 
-export default function BenchmarkTable(): JSX.Element {
+export default function BenchmarkTable(): React.JSX.Element {
   const [visible, setVisible] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const { i18n } = useDocusaurusContext();

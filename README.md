@@ -39,11 +39,10 @@ The public Python surface is centered on:
 - `memory_router`: LoCoMo and LongMemEval routing policies used by the paper
   router + quantification workflows.
 
-Older notes in the repository may mention `MemorySystem`, `Uid`,
-`mandol.ports`, or `mandol.retrieval.pipeline.HybridRetriever`. Those names are
-not part of the current package exports. Maintained docs and examples use
-`MemoryUnit`, `SemanticMap`, `SemanticGraph`, `MultiRetriever`,
-`triple_retrieval`, `auto_builder`, and the current subpackages directly.
+Pre-refactor design material is preserved under `docs/archive/` and is not part
+of the current API contract. Maintained docs and examples use `MemoryUnit`,
+`SemanticMap`, `SemanticGraph`, `MultiRetriever`, `triple_retrieval`,
+`auto_builder`, and the current subpackages directly.
 
 ## Requirements
 

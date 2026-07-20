@@ -4,10 +4,10 @@ import { translations, type Locale } from '@site/src/data/translations';
 
 const codeSnippets: Record<string, string> = {
   install: `# Build the repository environment
-uv sync --extra dev --extra docs --group spacy-model
+uv sync --extra dev --group spacy-model
 
 # Paper performance reproduction stack
-uv sync --extra dev --extra docs --extra cuda --group spacy-model
+uv sync --extra dev --extra cuda --group spacy-model
 
 # Runtime-only install
 uv sync
@@ -58,7 +58,7 @@ restored = SemanticGraph.load_graph(
 
 };
 
-export default function QuickStartTabs(): JSX.Element {
+export default function QuickStartTabs(): React.JSX.Element {
   const [active, setActive] = useState('install');
   const [copied, setCopied] = useState(false);
   const [visible, setVisible] = useState(false);

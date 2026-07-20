@@ -59,20 +59,26 @@ Common keys:
 * ``SILICONFLOW_API_KEY``
 * ``SILICONFLOW_EMBEDDINGS_URL``
 * ``SILICONFLOW_RERANK_URL``
+* ``DEEPSEEK_API_KEY`` and ``DEEPSEEK_BASE_URL``
+* ``CLOSEAI_API_KEY`` and ``CLOSEAI_BASE_URL``
 * ``OPENAI_API_KEY`` and ``OPENAI_BASE_URL``
+* ``OPENROUTER_API_KEY`` and ``OPENROUTER_BASE_URL``
 * ``DASHSCOPE_API_KEY`` and ``DASHSCOPE_BASE_URL``
 * ``CSTCLOUD_API_KEY`` and ``CSTCLOUD_BASE_URL``
 * ``HF_TOKEN`` or ``HUGGINGFACE_TOKEN``
 * ``HF_ENDPOINT`` and ``HF_HOME``
 * ``RERANKER_BACKEND=native|vllm``
-* ``VLLM_API_URL``, ``VLLM_API_KEY``, ``VLLM_TIMEOUT_SECONDS``,
-  ``VLLM_MAX_RETRIES``
+* ``VLLM_API_URL``, ``VLLM_API_KEY``, ``VLLM_GPU_MEMORY_UTILIZATION``,
+  ``VLLM_TIMEOUT_SECONDS`` and ``VLLM_MAX_RETRIES``
 
-Repository config.yaml
-----------------------
+Optional runtime tuning
+-----------------------
 
-The root ``config.yaml`` is retained as a reference configuration for model,
-storage and system parameters. The currently maintained lower-level APIs do not
-expose ``MemorySystem.from_yaml_config``; pass model names and runtime options
-directly to ``SemanticMap``, ``SemanticGraph`` and retrieval components, and use
-``.env`` for secrets.
+``MANDOL_BM25_SPACY_MAX_PROCESSES`` limits spaCy worker processes during BM25
+tokenization. ``MANDOLIN_MODEL_DIR`` selects the root directory for locally
+fine-tuned quantification models. ``SKIP_AUTO_LOGGING=true`` disables Mandol's
+automatic root-logging setup when another application owns logging.
+
+Use ``env.template`` as the authoritative environment-variable template. Pass
+model names, index options and runtime parameters directly to ``SemanticMap``,
+``SemanticGraph``, retrieval classes and builder configuration objects.

@@ -65,7 +65,7 @@ __all__ = [
 __version__ = '1.0.0'
 
 __doc__ = """
-AgentMemorySystem Retrieval Module
+Mandol Retrieval Module
 ==================================
 
 提供多种检索方法和高级检索功能：

@@ -12,7 +12,7 @@ copyright = '2024-2026, Mandol Contributors'
 author = 'Mandol Contributors'
 release = '0.1.0a1'
 
-language = 'zh_CN'
+language = 'en'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -27,36 +27,12 @@ extensions = [
     'sphinxcontrib.mermaid',
 ]
 
-templates_path = ['_templates']
-
-# The repository still keeps historical design notes and pre-refactor docs.
-# They are useful as archive material, but many mention API names that are not
-# exported by the current src/mandol package. Keep the default build focused on
-# the maintained current-code documentation under docs/current/.
+# Archived pre-refactor documents are retained for provenance, not publication.
 exclude_patterns = [
     '_build',
     'Thumbs.db',
     '.DS_Store',
-    'advanced-user/**',
-    'advanced/**',
-    'api/**',
-    'api-reference/**',
-    'basic-user/**',
-    'contributing/**',
-    'developer/**',
-    'en/**',
-    'getting-started/**',
-    'retrieval/**',
-    'shared/**',
-    'user-guide/**',
-    'DOC_*.md',
-    'data_structures.rst',
-    'extending.rst',
-    'introduction.rst',
-    'memory-monitor-design.md',
-    'multidim_construction.rst',
-    'multimodal-capability-assessment.md',
-    'retrieval_interfaces.rst',
+    'archive/**',
 ]
 
 # -- Options for HTML output -------------------------------------------------
@@ -65,8 +41,6 @@ exclude_patterns = [
 html_theme = 'furo'
 html_static_path = ['_static']
 html_theme_options = {
-    'light_logo': 'logo-light.png',
-    'dark_logo': 'logo-dark.png',
     'sidebar_hide_name': False,
     'navigation_with_keys': True,
 }
@@ -74,7 +48,7 @@ html_theme_options = {
 # -- Options for todo extension ----------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/extensions/todo.html
 
-todo_include_todos = True
+todo_include_todos = False
 
 # -- Options for MyST markdown -----------------------------------------------
 myst_enable_extensions = [

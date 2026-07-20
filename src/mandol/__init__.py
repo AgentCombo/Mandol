@@ -25,7 +25,7 @@ from importlib import import_module
 import sys
 
 __version__ = "0.1.0a1"
-__author__ = "AgentMemorySystem Team"
+__author__ = "Mandol Team"
 __license__ = "Apache-2.0"
 
 if sys.version_info < (3, 12):

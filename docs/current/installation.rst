@@ -16,7 +16,7 @@ stack when the machine has a compatible CUDA / flash-attention environment:
 
 .. code-block:: bash
 
-   uv sync --extra dev --extra docs --extra cuda --group spacy-model
+   uv sync --extra dev --extra cuda --group spacy-model
 
 Runtime-only environment
 ------------------------

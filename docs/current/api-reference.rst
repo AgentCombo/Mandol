@@ -84,3 +84,33 @@ helpers for already-built hierarchical memory spaces.
 
 ``mandol.episodic`` exposes ``EpisodicMemoryRetriever``,
 ``EpisodicRetrievalConfig`` and ``create_episodic_retriever``.
+
+High-level memory construction
+------------------------------
+
+``mandol.auto_builder`` exposes the maintained high-level construction path:
+
+* ``MemoryOrchestrator`` and ``OrchestratorConfig``
+* ``HighLevelMemoryBuilder`` and ``HighLevelMemoryBuildConfig``
+* ``build_high_level_memory``
+* ``HierarchicalAutoBuilder``, ``EntityRelationAutoBuilder`` and
+  ``EpisodicAutoBuilder`` with their configuration and result types
+* ``PipelineStrategy`` and ``STYLE_STRATEGIES``
+
+Routing and quantification
+--------------------------
+
+``mandol.memory_router`` exposes ``LocomoTowerRouter``,
+``LongMemEvalTowerRouter`` and their routing configuration and category types.
+These policies are used by the paper's router + quantification workflows.
+
+``mandol.quantification`` exposes ``SemanticQuantifier``, ``QueryExpander``,
+confidence-aware pruning, cascade pruning and the associated factory functions.
+
+Providers, storage and clustering
+---------------------------------
+
+``mandol.llm`` provides ``LLMClient``, ``LocalLLMClient``, provider/model
+registries and client factories. ``mandol.storage`` provides ``DuckDBOperator``
+and ``TieredStorageManager``. ``mandol.cluster`` provides the Leiden and DBSCAN
+clusterer interfaces used by the builders.

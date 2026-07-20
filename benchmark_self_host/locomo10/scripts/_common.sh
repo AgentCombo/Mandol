@@ -9,7 +9,7 @@ while [[ "$AMS_REPO_ROOT" != "/" && ! -d "$AMS_REPO_ROOT/src/mandol" ]]; do
     AMS_REPO_ROOT="$(dirname "$AMS_REPO_ROOT")"
 done
 if [[ ! -d "$AMS_REPO_ROOT/src/mandol" ]]; then
-    echo "Could not locate AgentMemorySystem repo root from $AMS_SCRIPT_DIR" >&2
+    echo "Could not locate Mandol repo root from $AMS_SCRIPT_DIR" >&2
     exit 1
 fi
 

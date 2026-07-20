@@ -70,7 +70,7 @@ const config: Config = {
       hideOnScroll: true,
       items: [
         {
-          href: '/Mandol/docs/',
+          href: 'https://agentcombo.github.io/Mandol/docs/',
           label: 'Docs',
           position: 'left',
         },

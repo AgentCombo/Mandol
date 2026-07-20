@@ -2,7 +2,14 @@
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in Mandol, please report it by emailing the maintainers directly. Please do not file a public issue.
+Please report vulnerabilities through GitHub's private vulnerability-reporting
+form:
+
+https://github.com/AgentCombo/Mandol/security/advisories/new
+
+Do not include vulnerability details in a public issue. If private reporting is
+unavailable, open a public issue requesting a private contact channel without
+disclosing the sensitive details.
 
 ### What to Include
 
@@ -11,19 +18,24 @@ If you discover a security vulnerability in Mandol, please report it by emailing
 - Potential impact
 - Suggested fix (if available)
 
-### Response Time
+### Response Expectations
 
-We aim to acknowledge security reports within 48 hours and provide a substantive response within 7 days.
+Mandol is a research artifact maintained on a best-effort basis. The
+maintainers will triage reports as availability permits and will coordinate
+disclosure for confirmed issues.
 
 ## Supported Versions
 
-| Version | Supported |
-| ------- | --------- |
-| 0.1.x   | Yes       |
+| Version or branch | Support status |
+| --- | --- |
+| `main` | Best-effort fixes for the active development branch |
+| `0.1.0a1` / `paper-repro` | Best-effort fixes that preserve artifact behavior |
+| Earlier snapshots | Unsupported |
 
 ## Security Best Practices
 
-- Never commit API keys, passwords, or other secrets to the repository
-- Use environment variables for sensitive configuration
-- Keep dependencies up to date
-- Report any suspicious behavior
+- Never commit API keys, passwords, or other secrets to the repository.
+- Use `.env` or process environment variables for sensitive configuration.
+- Review model files and benchmark datasets before using untrusted copies.
+- Keep dependencies current within the compatibility constraints documented by
+  the artifact.

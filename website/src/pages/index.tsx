@@ -24,7 +24,7 @@ function HomeFooter(): ReactNode {
           </div>
           <div className="flex gap-6 text-[13px]">
             <a
-              href="/Mandol/docs/"
+              href="https://agentcombo.github.io/Mandol/docs/"
               className="text-white/30 hover:text-white/60 transition-colors no-underline"
             >
               {t.footerDocs}

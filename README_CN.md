@@ -29,8 +29,9 @@
 - `auto_builder`：高阶记忆构建流水线，将 raw 或 L0 单元转换为分层摘要、情景事实和实体关系记忆，并负责 LLM 抽取、去重与批量图写入。
 - `memory_router`：论文 router + quantification 工作流使用的 LoCoMo 和 LongMemEval 路由策略。
 
-仓库中的历史笔记可能仍提到 `MemorySystem`、`Uid`、`mandol.ports` 或
-`mandol.retrieval.pipeline.HybridRetriever`。这些名称不属于当前包的公开导出。维护中的 README、docs 和 website 使用 `MemoryUnit`、`SemanticMap`、`SemanticGraph`、`MultiRetriever`、`triple_retrieval`、`auto_builder` 以及当前子包接口。
+重构前的设计材料已归档到 `docs/archive/`，不属于当前 API 契约。维护中的
+README、docs 和 website 使用 `MemoryUnit`、`SemanticMap`、`SemanticGraph`、
+`MultiRetriever`、`triple_retrieval`、`auto_builder` 以及当前子包接口。
 
 ## 环境要求
 

@@ -2,50 +2,67 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, paper-repro]
   pull_request:
-    branches: [main]
+    branches: [main, paper-repro]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  lint:
+  checks:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v7
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Install uv and Python 3.12
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
         with:
-          python-version: "3.11"
+          python-version: "3.12"
+          enable-cache: true
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install ruff
+      - name: Verify locked dependencies
+        run: uv lock --check
 
-      - name: Lint with ruff
-        run: ruff check mandol/ tests/
+      - name: Install development environment
+        run: uv sync --frozen --extra dev
 
-  test:
+      - name: Run syntax checks
+        run: make syntax
+
+      - name: Run baseline Ruff checks
+        run: make lint
+
+      - name: Run low-cost tests
+        run: make test
+
+  package:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
-
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v7
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+      - name: Install uv and Python 3.12
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.12"
+          enable-cache: true
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev,faiss]"
+      - name: Build distributions
+        run: uv build
 
-      - name: Run unit tests
-        run: pytest tests/unit/ -v --tb=short
+      - name: Validate distribution metadata
+        run: uvx twine check dist/*
 
-      - name: Run integration tests
-        run: pytest tests/integration/ -v --tb=short
+      - name: Upload distributions
+        uses: actions/upload-artifact@v7
+        with:
+          name: mandol-distributions
+          path: dist/
+          if-no-files-found: error

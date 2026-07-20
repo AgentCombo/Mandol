@@ -21,4 +21,4 @@ Please describe the tests that you ran to verify your changes.
 - [ ] I have made corresponding changes to the documentation
 - [ ] My changes generate no new warnings
 - [ ] I have added tests that prove my fix is effective or that my feature works
-- [ ] New and existing unit tests pass locally with my changes
+- [ ] Relevant automated tests and smoke checks pass locally with my changes

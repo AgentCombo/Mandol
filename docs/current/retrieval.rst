@@ -2,8 +2,7 @@ Retrieval
 =========
 
 The current retrieval entry point is ``mandol.retrieval.MultiRetriever``.
-Historical docs that mention ``HybridRetriever`` or
-``mandol.retrieval.pipeline`` refer to an older API.
+Pre-refactor retrieval designs are retained only under ``docs/archive/``.
 
 Available methods
 -----------------
@@ -89,5 +88,5 @@ entity-relation and episodic retrieval over already-built memory spaces.
    tower = TripleTowerRetriever(graph, config=TripleTowerConfig(final_top_k=10))
    result = tower.search("What changed in the Q2 delivery plan?")
 
-The three tower package is retrieval-facing. Automatic high-level memory
-construction is not exposed as a top-level ``MemorySystem`` API in this checkout.
+The three-tower package is retrieval-facing. Use ``mandol.auto_builder`` when
+memory spaces must be constructed before retrieval.

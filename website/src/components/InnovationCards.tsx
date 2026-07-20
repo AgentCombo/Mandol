@@ -76,7 +76,7 @@ function InnovationCard({
   );
 }
 
-export default function InnovationCards(): JSX.Element {
+export default function InnovationCards(): React.JSX.Element {
   const [visible, setVisible] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const { i18n } = useDocusaurusContext();

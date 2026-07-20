@@ -6,7 +6,7 @@ the Sphinx documentation source; the maintained docs live in `../docs`.
 ## Install
 
 ```bash
-npm install
+npm ci
 ```
 
 ## Develop
@@ -27,5 +27,5 @@ npm run typecheck
 npm run build
 ```
 
-The site links its Docs buttons to `/Mandol/docs/`, where the Sphinx output is
-expected to be published.
+The deployment workflow builds the maintained Sphinx documentation and publishes
+it alongside the Docusaurus front page at `/Mandol/docs/`.

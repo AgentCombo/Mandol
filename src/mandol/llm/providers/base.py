@@ -109,8 +109,8 @@ class BaseProvider(ABC):
                     max_retries=0,
                     timeout=self._client_timeout,
                     default_headers={
-                        "HTTP-Referer": "https://github.com/JerryLead/AgentMemorySystem",
-                        "X-Title": "AgentMemorySystem"
+                        "HTTP-Referer": "https://github.com/AgentCombo/Mandol",
+                        "X-Title": "Mandol"
                     }
                 )
                 self.logger.debug(f"OpenRouter client initialized: {self.base_url}")
@@ -137,8 +137,8 @@ class BaseProvider(ABC):
                     max_retries=0,
                     timeout=self._client_timeout,
                     default_headers={
-                        "HTTP-Referer": "https://github.com/JerryLead/AgentMemorySystem",
-                        "X-Title": "AgentMemorySystem"
+                        "HTTP-Referer": "https://github.com/AgentCombo/Mandol",
+                        "X-Title": "Mandol"
                     }
                 )
                 self.logger.debug(f"AsyncOpenAI client initialized for OpenRouter: {self.base_url}")

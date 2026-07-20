@@ -7,7 +7,7 @@ body:
     id: python-version
     attributes:
       label: Python Version
-      placeholder: "3.11.5"
+      placeholder: "3.12.13"
     validations:
       required: true
 
@@ -15,7 +15,7 @@ body:
     id: mandol-version
     attributes:
       label: Mandol Version
-      placeholder: "0.1.0"
+      placeholder: "0.1.0a1"
     validations:
       required: true
 
