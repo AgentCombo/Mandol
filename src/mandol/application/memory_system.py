@@ -30,6 +30,7 @@ from ..domain.memory_unit import MemoryUnit
 from ..domain.types import Embedding, SpaceName, Uid
 from ..infrastructure.adaptive_vector_index import AdaptiveVectorIndex
 from ..infrastructure.in_memory_graph_store import InMemoryGraphStore
+from ..infrastructure.in_memory_unified_query_store import InMemoryUnifiedQueryStore
 from ..infrastructure.in_memory_unit_store import InMemoryUnitStore
 from ..infrastructure.openai_compatible_llm_provider import OpenAICompatibleLLMProvider
 from ..infrastructure.sentence_transformers_embedding_provider import SentenceTransformersEmbeddingProvider
@@ -37,6 +38,11 @@ from ..infrastructure.sentence_transformers_reranker import SentenceTransformers
 from ..ports.embedding_provider import EmbeddingProvider, StaticEmbeddingProvider
 from ..ports.llm_provider import LLMChatResponse, LLMProvider, ChatMessage
 from ..ports.reranker import Reranker
+from ..ports.unified_query_store import UnifiedQueryStore
+from ..query.vector_seeded import (
+    VectorSeededTraversalExecution,
+    VectorSeededTraversalSpec,
+)
 from .chunker import DocumentChunker
 from .extractors.entity_dedup import EntityDeduplicator
 from .extractors.entity_relation_extract import EntityRelationExtractor
@@ -294,6 +300,11 @@ class MemorySystem:
         )
         self._graph = SemanticGraphService(
             semantic_map=self._semantic_map,
+            graph_store=self._graph_store,
+        )
+        self._queries: UnifiedQueryStore = InMemoryUnifiedQueryStore(
+            unit_store=store,
+            vector_index=self._abi,
             graph_store=self._graph_store,
         )
         if llm_provider is None:
@@ -557,6 +568,20 @@ class MemorySystem:
     @property
     def graph(self) -> SemanticGraphService:
         return self._graph
+
+    @property
+    def queries(self) -> UnifiedQueryStore:
+        """Access the backend-neutral multimodal physical query executor."""
+        return self._queries
+
+    def vector_seeded_graph_traversal(
+        self,
+        spec: VectorSeededTraversalSpec,
+        *,
+        profile: bool = False,
+    ) -> VectorSeededTraversalExecution:
+        """Execute vector seeding, typed joins, and bounded graph traversal."""
+        return self._queries.vector_seeded_graph_traversal(spec, profile=profile)
 
     @property
     def llm(self) -> LLMProvider:
@@ -1403,6 +1428,11 @@ class MemorySystem:
         )
         self._graph = SemanticGraphService(
             semantic_map=self._semantic_map,
+            graph_store=self._graph_store,
+        )
+        self._queries = InMemoryUnifiedQueryStore(
+            unit_store=new_store,
+            vector_index=self._abi,
             graph_store=self._graph_store,
         )
 

@@ -22,6 +22,7 @@ from ..ports.reranker import Reranker
 from ..ports.unit_store import UnitStore
 from ..ports.vector_index import VectorIndex
 from ..infrastructure.adaptive_vector_index import AdaptiveVectorIndex
+from ..query.algebra import evaluate_comparison, resolve_field_path
 
 logger = logging.getLogger(__name__)
 
@@ -638,47 +639,25 @@ class SemanticMapService:
         if filter_condition is None:
             return candidates
 
-        # Helper to walk dot-separated paths into nested dicts / attributes
-        def _resolve_field(obj: MemoryUnit, path: str) -> object:
-            parts = path.split(".")
-            current: object = obj
-            for part in parts:
-                if isinstance(current, dict):
-                    current = current.get(part)
-                elif hasattr(current, part):
-                    current = getattr(current, part)
-                else:
-                    return None
-            return current
-
-        op_handlers = {
-            "eq": lambda val, target: val == target,
-            "neq": lambda val, target: val != target,
-            "in": lambda val, target: (
-                val in target if target is not None else False
-            ),
-            "contains": lambda val, target: (
-                str(target).lower() in str(val).lower()
-                if val is not None
-                else False
-            ),
-            "gt": lambda val, target: val is not None and val > target,
-            "lt": lambda val, target: val is not None and val < target,
-            "gte": lambda val, target: val is not None and val >= target,
-            "lte": lambda val, target: val is not None and val <= target,
-        }
-
         results: List[MemoryUnit] = []
         for unit in candidates:
             match = True
             for path, op_dict in filter_condition.items():
-                val = _resolve_field(unit, path)
+                val = resolve_field_path(unit, path)
                 for op_name, target in op_dict.items():
-                    handler = op_handlers.get(op_name)
-                    if handler is None:
+                    if op_name not in {
+                        "eq",
+                        "neq",
+                        "in",
+                        "contains",
+                        "gt",
+                        "lt",
+                        "gte",
+                        "lte",
+                    }:
                         continue
                     try:
-                        if not handler(val, target):
+                        if not evaluate_comparison(val, op_name, target):
                             match = False
                             break
                     except (TypeError, ValueError):

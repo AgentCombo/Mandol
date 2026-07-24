@@ -10,10 +10,12 @@ implementations must satisfy:
   - SparseIndex: sparse vector similarity search.
   - Reranker: cross-encoder reranking.
   - UnitStore: unit and space CRUD persistence.
+  - UnifiedQueryStore: cross-modal physical query execution.
 
 Exports:
     VectorIndex, GraphStore, EmbeddingProvider, StaticEmbeddingProvider,
-    LLMProvider, LLMChatResponse, BM25Index, SparseIndex, Reranker, UnitStore.
+    LLMProvider, LLMChatResponse, BM25Index, SparseIndex, Reranker, UnitStore,
+    UnifiedQueryStore.
 """
 
 from .bm25_index import BM25Index
@@ -23,6 +25,7 @@ from .llm_provider import LLMChatResponse, LLMProvider
 from .reranker import Reranker
 from .sparse_index import SparseIndex
 from .unit_store import UnitStore
+from .unified_query_store import UnifiedQueryStore
 from .vector_index import VectorIndex
 
 __all__ = [
@@ -35,5 +38,6 @@ __all__ = [
     "SparseIndex",
     "StaticEmbeddingProvider",
     "UnitStore",
+    "UnifiedQueryStore",
     "VectorIndex",
 ]

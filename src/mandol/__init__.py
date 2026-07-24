@@ -12,6 +12,14 @@ includes:
 from mandol.application.memory_system import MemorySystem, MemorySystemConfig
 from mandol.domain.memory_unit import MemoryUnit
 from mandol.domain.types import SpaceName, Uid
+from mandol.query import VectorSeededTraversalSpec
 
-__all__ = ["MemorySystem", "MemorySystemConfig", "MemoryUnit", "Uid", "SpaceName"]
+__all__ = [
+    "MemorySystem",
+    "MemorySystemConfig",
+    "MemoryUnit",
+    "SpaceName",
+    "Uid",
+    "VectorSeededTraversalSpec",
+]
 __version__ = "0.1.0"
