@@ -59,7 +59,7 @@ dependencies = [
     "torchvision==0.23.0",               # Pinned vision runtime version.
     "torchaudio==2.8.0",                 # Pinned audio runtime version.
     "transformers>=4.40,<5.0",           # Keep the artifact on the Transformers 4.x API line.
-    "sentence-transformers>=5.2,<6.0",   # Allow 5.x patch releases while avoiding unknown major-version changes.
+    "sentence-transformers>=5.6.1,<6.0",   # Allow 5.x patch releases while avoiding unknown major-version changes.
     "safetensors>=0.4",
     "pillow>=10.0",
     "huggingface_hub[cli]>=0.23.0",
