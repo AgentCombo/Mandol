@@ -12,7 +12,7 @@ Additional subsystems are imported from their own modules, for example::
     from mandol.llm import LLMClient
     from mandol.retrieval import MultiRetriever
     from mandol.cluster import cluster_nodes
-    from mandol.storage import DuckDBOperator
+    from mandol.storage import RocksDBPayloadStore
 
 ``SemanticMap`` and ``SemanticGraph`` are exposed lazily so importing
 ``mandol`` does not immediately import PyTorch, FAISS, or SentenceTransformers.

@@ -50,7 +50,7 @@ dependencies = [
     "leidenalg>=0.10",
 
     # --- Storage / vector index ---
-    "duckdb==1.2.2",
+    "rocksdict==0.3.29",
     "faiss-cpu>=1.8",
 
     # --- ML / embeddings (open-box) ---

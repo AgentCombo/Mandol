@@ -62,6 +62,8 @@ meeting_data/
 meeting_frontend_data/
 hippo_save_data/
 **/conversation_semantic_storage/
+l2_database/
+*.rocksdb/
 
 # =============================================================================
 # External datasets / generated benchmark data

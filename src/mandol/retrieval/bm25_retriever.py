@@ -472,13 +472,18 @@ class BM25Retriever(BaseRetriever):
         return self.retrieval_source.get_unit(uid) if hasattr(self.retrieval_source, "get_unit") else None
 
     def _uid_exists(self, uid: str) -> bool:
-        if hasattr(self.retrieval_source, "get_unit") and self.retrieval_source.get_unit(uid) is not None:
-            return True
+        if hasattr(self.retrieval_source, "_unit_exists"):
+            return bool(self.retrieval_source._unit_exists(uid))
+        semantic_map = getattr(self.retrieval_source, "semantic_map", None)
+        if semantic_map is not None and hasattr(semantic_map, "_unit_exists"):
+            return bool(semantic_map._unit_exists(uid))
         memory_units = getattr(self.retrieval_source, "memory_units", None)
         if isinstance(memory_units, dict) and uid in memory_units:
             return True
-        semantic_map = getattr(self.retrieval_source, "semantic_map", None)
-        return bool(semantic_map is not None and uid in getattr(semantic_map, "memory_units", {}))
+        return bool(
+            hasattr(self.retrieval_source, "get_unit")
+            and self.retrieval_source.get_unit(uid) is not None
+        )
 
     def _coerce_doc_key_to_int_id(self, doc_key: Any) -> Optional[int]:
         if isinstance(doc_key, (int, np.integer)):
@@ -1955,113 +1960,6 @@ class BM25Retriever(BaseRetriever):
                 continue
             normalized[int_id] = {str(term): int(tf) for term, tf in postings.items()}
         return normalized
-
-    def swap_out_to_db(
-        self,
-        db_operator,  # DuckDBOperator
-        collection_id: str,
-        target_uids: Optional[Set[str]] = None,
-    ) -> int:
-        """Swap out to db."""
-        int_ids_to_swap: Set[int] = (
-            set(self._uids_to_internal_ids(list(target_uids), create=False))
-            if target_uids is not None
-            else set(self.doc_lengths.keys())
-        )
-        int_ids_to_swap = int_ids_to_swap.intersection(self.doc_lengths.keys())
-        if not int_ids_to_swap:
-            logger.warning("swap_out_to_db: no matching documents to swap out.")
-            return 0
-
-        uid_by_int_id = {int_id: self._internal_id_to_uid(int_id) for int_id in int_ids_to_swap}
-        uid_by_int_id = {int_id: uid for int_id, uid in uid_by_int_id.items() if uid is not None}
-        uids_to_swap: Set[str] = set(uid_by_int_id.values())
-        doc_lengths_by_uid = {uid_by_int_id[int_id]: self.doc_lengths[int_id] for int_id in uid_by_int_id}
-        inverted_index_by_uid: Dict[str, Dict[str, int]] = {}
-        for term, postings in self.inverted_index.items():
-            translated = {
-                uid_by_int_id[int_id]: int(tf)
-                for int_id, tf in postings.items()
-                if int_id in uid_by_int_id
-            }
-            if translated:
-                inverted_index_by_uid[term] = translated
-
-        # Storage operations must preserve transactional consistency.
-        written = db_operator.swap_out_bm25(
-            collection_id=collection_id,
-            inverted_index=inverted_index_by_uid,
-            dfs=self.dfs,
-            doc_lengths=doc_lengths_by_uid,
-            target_uids=uids_to_swap,
-        )
-
-        logger.info(
-            f"swap_out_to_db: collection={collection_id}, "
-            f"written={written}, L1 state preserved until transaction commit cleanup"
-        )
-        return written
-
-    def swap_in_from_db(
-        self,
-        db_operator,  # DuckDBOperator
-        collection_id: str,
-    ) -> int:
-        """Swap in from db."""
-        data = db_operator.swap_in_bm25(collection_id)
-        loaded_doc_lengths: Dict[str, int] = data["doc_lengths"]
-        loaded_dfs: Dict[str, int] = data["dfs"]
-        loaded_inverted_index: Dict[str, Dict[str, int]] = data["inverted_index"]
-
-        if not loaded_doc_lengths:
-            logger.info(f"swap_in_from_db: collection={collection_id} has no data.")
-            return 0
-
-        new_count = 0
-        uid_to_int_id = {uid: self._get_or_create_internal_id(uid) for uid in loaded_doc_lengths}
-        for uid, doc_len in loaded_doc_lengths.items():
-            int_id = uid_to_int_id[uid]
-            if int_id in self.doc_lengths:
-                
-                old_len = self.doc_lengths[int_id]
-                self.total_doc_length += (doc_len - old_len)
-            else:
-                self.total_docs += 1
-                self.total_doc_length += doc_len
-                new_count += 1
-            self.doc_lengths[int_id] = doc_len
-
-        for term, postings in loaded_inverted_index.items():
-            if term not in self.inverted_index:
-                self.inverted_index[term] = {}
-            self.inverted_index[term].update({uid_to_int_id[uid]: int(tf) for uid, tf in postings.items() if uid in uid_to_int_id})
-
-        
-        for term, postings in loaded_inverted_index.items():
-            for uid, tf in postings.items():
-                int_id = uid_to_int_id.get(uid)
-                if int_id is not None:
-                    terms = self.doc_postings.get(int_id)
-                    if terms is None:
-                        terms = {}
-                        self.doc_postings[int_id] = terms
-                    terms[term] = int(tf)
-
-        for term, df in loaded_dfs.items():
-            self.dfs[term] = df
-        self._mark_terms_dirty_for_rebuild(loaded_inverted_index.keys())
-
-        self._index_built = True
-        self._invalidate_static_index()
-        avgdl = self.total_doc_length / max(1, self.total_docs)
-        logger.info(
-            f"swap_in_from_db: collection={collection_id}, "
-            f"loaded={len(loaded_doc_lengths)}, new={new_count}, "
-            f"total_docs={self.total_docs}, vocab={len(self.inverted_index)}, "
-            f"avgdl={avgdl:.1f}"
-        )
-        return len(loaded_doc_lengths)
-
 
     def get_index_stats(self) -> Dict[str, Union[int, float, bool]]:
         """Return index stats."""

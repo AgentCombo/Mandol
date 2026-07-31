@@ -7,7 +7,7 @@ import os
 import pickle
 import threading
 import traceback
-from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union, TYPE_CHECKING
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union
 
 import numpy as np
 import torch
@@ -26,9 +26,6 @@ from .cuda_stream_utils import get_thread_local_cuda_stream
 from ..core.memory_unit import MemoryUnit
 from ..utils.model_manager import global_model_manager
 from ..utils.logging_config import create_module_logger
-
-if TYPE_CHECKING:
-    from ..storage.duckdb_operator import DuckDBOperator
 
 logger = create_module_logger("splade_retriever")
 
@@ -459,13 +456,18 @@ class SPLADERetriever(BaseRetriever):
         return self.retrieval_source.get_unit(uid) if hasattr(self.retrieval_source, "get_unit") else None
 
     def _uid_exists(self, uid: str) -> bool:
-        if hasattr(self.retrieval_source, "get_unit") and self.retrieval_source.get_unit(uid) is not None:
-            return True
+        if hasattr(self.retrieval_source, "_unit_exists"):
+            return bool(self.retrieval_source._unit_exists(uid))
+        semantic_map = getattr(self.retrieval_source, "semantic_map", None)
+        if semantic_map is not None and hasattr(semantic_map, "_unit_exists"):
+            return bool(semantic_map._unit_exists(uid))
         memory_units = getattr(self.retrieval_source, "memory_units", None)
         if isinstance(memory_units, dict) and uid in memory_units:
             return True
-        semantic_map = getattr(self.retrieval_source, "semantic_map", None)
-        return bool(semantic_map is not None and uid in getattr(semantic_map, "memory_units", {}))
+        return bool(
+            hasattr(self.retrieval_source, "get_unit")
+            and self.retrieval_source.get_unit(uid) is not None
+        )
 
     def _coerce_doc_key_to_int_id(self, doc_key: Any) -> Optional[int]:
         if isinstance(doc_key, (int, np.integer)):
@@ -1744,98 +1746,6 @@ class SPLADERetriever(BaseRetriever):
         return normalized
 
     
-    
-    
-
-    def swap_out_to_db(
-        self,
-        db_operator: "DuckDBOperator",
-        target_uids: Optional[List[str]] = None,
-        evict: bool = True,
-    ) -> int:
-        """Persist SPLADE vectors to DuckDB and optionally evict them from memory.
-
-        Args:
-            db_operator: Connected DuckDB storage operator.
-            target_uids: Optional public UIDs to persist. When omitted, all
-                in-memory SPLADE documents are considered.
-            evict: Whether to remove persisted vectors from the in-memory index.
-
-        Returns:
-            Number of sparse documents written.
-        """
-        if target_uids is None:
-            int_ids_list = list(self.doc_postings.keys())
-        else:
-            int_ids_list = [int_id for int_id in self._uids_to_internal_ids(target_uids, create=False) if int_id in self.doc_postings]
-        if not int_ids_list:
-            return 0
-
-        updates: List[Dict] = []
-        for int_id in int_ids_list:
-            uid = self._internal_id_to_uid(int_id)
-            if uid is None:
-                continue
-            postings = self.doc_postings.get(int_id)
-            if postings is None:
-                continue
-            tids_arr, weights_arr = postings
-            if tids_arr.size == 0 or weights_arr.size == 0:
-                continue
-            indices = [int(tid) for tid in tids_arr.tolist()]
-            values = [float(weight) for weight in weights_arr.tolist()]
-            updates.append({"uid": uid, "splade_indices": indices, "splade_values": values})
-
-        if not updates:
-            return 0
-
-        written = db_operator.update_sparse_vectors_batch(updates)
-
-        if evict:
-            self.remove_uids([u["uid"] for u in updates])
-
-        logger.info(
-            f"swap_out_to_db: written={written}, evicted={evict}, "
-            f"remaining L1 docs={self.total_docs}"
-        )
-        return written
-
-    def swap_in_from_db(
-        self,
-        db_operator: "DuckDBOperator",
-        uids: List[str],
-    ) -> int:
-        """Swap in from db."""
-        if not uids:
-            return 0
-
-        rows = db_operator.read_sparse_vectors_batch(uids)
-        if not rows:
-            logger.info("swap_in_from_db: no matching DuckDB rows.")
-            return 0
-
-        loaded = 0
-        touched_tokens: List[int] = []
-        for uid, indices, values in rows:
-            if not indices or not values:
-                continue
-            int_id = self._get_or_create_internal_id(uid)
-            if int_id in self.doc_postings:
-                self._evict_doc(int_id, update_arrays=False, touched_tokens=touched_tokens)
-            sparse_dict = {int(t): float(w) for t, w in zip(indices, values)}
-            if self._ingest_doc(int_id, sparse_dict, update_arrays=False, touched_tokens=touched_tokens) > 0:
-                loaded += 1
-
-        self._index_built = True
-        if loaded:
-            self._mark_tokens_dirty_for_rebuild(touched_tokens)
-            self._invalidate_static_index()
-        logger.info(
-            f"swap_in_from_db: loaded={loaded}, current L1 docs={self.total_docs}, "
-            f"vocab={len(self.inverted_index)}"
-        )
-        return loaded
-
     
     
 

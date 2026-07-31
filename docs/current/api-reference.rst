@@ -111,6 +111,6 @@ Providers, storage and clustering
 ---------------------------------
 
 ``mandol.llm`` provides ``LLMClient``, ``LocalLLMClient``, provider/model
-registries and client factories. ``mandol.storage`` provides ``DuckDBOperator``
-and ``TieredStorageManager``. ``mandol.cluster`` provides the Leiden and DBSCAN
-clusterer interfaces used by the builders.
+registries and client factories. ``mandol.storage`` provides
+``RocksDBPayloadStore`` and ``TieredStorageManager``. ``mandol.cluster``
+provides the Leiden and DBSCAN clusterer interfaces used by the builders.

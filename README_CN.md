@@ -22,8 +22,9 @@
 
 - `MemoryUnit`：基础记忆记录。
 - `MemorySpace`：树形逻辑命名空间，用于组织记忆单元归属。
-- `SemanticMap`：内存单元存储、embedding 生成、FAISS 索引、稀疏检索、持久化和空间过滤相似度搜索。
-- `SemanticGraph`：记忆单元和记忆空间之上的图层，提供关系 API、图遍历、检索辅助、L2 存储支持和沙盒化持久化。
+- `SemanticMap`：内存语义索引、RocksDB-backed 自动 payload 换页、embedding
+  生成、稀疏检索、持久化和空间过滤相似度搜索。
+- `SemanticGraph`：记忆单元和记忆空间之上的图层，提供关系 API、图遍历、检索辅助、RocksDB payload 换页和沙盒化持久化。
 - `MultiRetriever`：BM25、SPLADE、余弦检索、图扩展、分数融合与 reranker 编排。
 - `triple_retrieval`：提供 `TripleTowerRetriever` 及相关配置/结果类型，用于在已构建记忆空间上执行三塔路由、调度、剪枝、统一 rerank 与结果打包。
 - `auto_builder`：高阶记忆构建流水线，将 raw 或 L0 单元转换为分层摘要、情景事实和实体关系记忆，并负责 LLM 抽取、去重与批量图写入。
@@ -40,7 +41,7 @@ README、docs 和 website 使用 `MemoryUnit`、`SemanticMap`、`SemanticGraph`�
 - 推荐使用 `uv` 管理可复现环境
 - 模型驱动的复现实验需要配置相应 provider key
 
-`pyproject.toml` 中的默认依赖有意保持完整：Torch、transformers、sentence-transformers、FAISS CPU、DuckDB、图算法库、LLM 客户端、检索/重排序工具、benchmark 依赖和可选集成客户端都会随基础环境安装。
+`pyproject.toml` 中的默认依赖有意保持完整：Torch、transformers、sentence-transformers、FAISS CPU、RocksDB、图算法库、LLM 客户端、检索/重排序工具、benchmark 依赖和可选集成客户端都会随基础环境安装。
 
 ## 环境配置
 
@@ -240,7 +241,7 @@ results = retriever.smart_search(
 
 ## 持久化
 
-完整状态快照请使用 `SemanticGraph.save_graph()` 和 `SemanticGraph.load_graph()`。它们会保留图拓扑、SemanticMap 数据、已构建的检索索引以及沙盒化 DuckDB L2 存储副本。
+完整状态快照请使用 `SemanticGraph.save_graph()` 和 `SemanticGraph.load_graph()`。它们会保留图拓扑、SemanticMap 数据、已构建的检索索引，以及启用持久化存储时的沙盒化 RocksDB payload store。
 
 ```python
 graph.save_graph("./memory_snapshot", build_sparse_vectors=False)
@@ -252,7 +253,34 @@ restored = SemanticGraph.load_graph(
 )
 ```
 
-`SemanticMap.save_map()` 与 `SemanticMap.load_map()` 也存在，但它们只保存/加载 map 层，不保存 `SemanticGraph` 拓扑。
+`SemanticMap.save_map()` 与 `SemanticMap.load_map()` 也可用于常驻的 map-only
+状态，但不保存 `SemanticGraph` 拓扑。启用 tiered paging 后，直接调用
+`SemanticMap.save_map()` 会 fail closed；应使用 `SemanticGraph.save_graph()`
+一并保存 resident 与 cold payload 状态。
+
+RocksDB 是该论文 artifact 唯一正式支持的持久化 payload 后端。
+调用 `SemanticGraph.connect_to_l2()` 后，Mandol 会启用自动分层换页：检索索引、
+UID 映射、MemorySpace membership 和图拓扑继续常驻内存，冷 `MemoryUnit`
+payload 会写入 RocksDB，并在检索结果需要时自动 page in 回 resident cache。
+high/low watermark 会自动控制换出。
+
+```python
+graph.connect_to_l2(
+    "./l2_database",
+    max_capacity=100_000,
+    high_watermark=0.85,
+    low_watermark=0.70,
+)
+```
+
+如果不调用 `connect_to_l2()`，Mandol 会正常以内存中的 payload 运行。这是未启用
+持久化时的默认状态。
+
+分层换出由现有 add 路径触发。候选选择和换出任务调度发生在 add 调用内，
+RocksDB 写入及 resident payload 删除可能由 tiered-storage executor
+异步完成；冷结果的 payload materialization 仍发生在需要该 payload 的
+search 调用内。`save_graph()` 会在快照前等待已经提交的 eviction 完成，但保存期间
+不支持其他用户线程并发修改 graph。
 
 ## 模型配置
 
@@ -376,7 +404,7 @@ src/mandol/
   quantification/      查询扩展、剪枝、语义量化
   memory_router/       LoCoMo 与 LongMemEval 塔路由器
   llm/                 LLM 客户端与 provider 封装
-  storage/             DuckDB 与分层存储辅助
+  storage/             RocksDB payload 持久化与 tiered-cache 辅助
   cluster/             Leiden 与 DBSCAN 聚类辅助
   utils/               配置、日志、模型管理
 ```

@@ -54,7 +54,7 @@ Important dependency note
 
 The default dependency list is intentionally the complete research/runtime
 stack. It includes Torch, transformers, sentence-transformers, FAISS CPU,
-DuckDB, graph libraries, LLM clients, retrieval/rerank dependencies and
+RocksDB, graph libraries, LLM clients, retrieval/rerank dependencies and
 benchmark tooling. This differs from older docs that described many optional
 ``pip install mandol[...]`` extras. In the current ``pyproject.toml``, the
 maintained extras are ``dev``, ``docs`` and ``cuda``.

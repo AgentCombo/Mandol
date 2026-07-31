@@ -171,7 +171,7 @@ class MemorySpace:
         
         try:
             semantic_map = self._get_semantic_map()
-            if uid not in semantic_map.memory_units:
+            if not semantic_map._unit_exists(uid):
                 logger.warning(
                     f"MemoryUnit '{uid}' is not present in SemanticMap; keeping the membership reference."
                 )
@@ -294,11 +294,11 @@ class MemorySpace:
 
             units = []
             for uid in unit_uids:
-                unit = semantic_map.memory_units.get(uid)
+                unit = semantic_map.get_unit(uid)
                 if unit:
                     units.append(unit)
                 else:
-                    logger.warning(f"MemoryUnit '{uid}' is not present in SemanticMap.")
+                    logger.warning(f"MemoryUnit '{uid}' is not present in payload storage.")
 
             return units
         except RuntimeError:

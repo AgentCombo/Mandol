@@ -23,11 +23,12 @@ The public Python surface is centered on:
 
 - `MemoryUnit`: the basic memory record.
 - `MemorySpace`: a tree-like logical namespace for unit membership.
-- `SemanticMap`: in-memory unit storage, embedding generation, FAISS indexing,
-  sparse retrieval support, persistence, and space-filtered similarity search.
+- `SemanticMap`: in-memory semantic indexing with RocksDB-backed automatic
+  payload paging, embedding generation, sparse retrieval support, persistence,
+  and space-filtered similarity search.
 - `SemanticGraph`: a graph layer over memory units and spaces, with relationship
-  APIs, graph traversal, retrieval helpers, L2 storage support, and sandboxed
-  persistence.
+  APIs, graph traversal, retrieval helpers, RocksDB payload paging, and
+  sandboxed persistence.
 - `MultiRetriever`: BM25, SPLADE, cosine, graph expansion, score fusion, and
   reranker orchestration.
 - `triple_retrieval`: `TripleTowerRetriever` and related result/config classes
@@ -52,7 +53,7 @@ of the current API contract. Maintained docs and examples use `MemoryUnit`,
 - Provider keys for model-backed reproduction runs
 
 The default dependency set in `pyproject.toml` is intentionally broad. It
-contains Torch, transformers, sentence-transformers, FAISS CPU, DuckDB, graph
+contains Torch, transformers, sentence-transformers, FAISS CPU, RocksDB, graph
 libraries, LLM clients, retrieval/rerank tools, benchmark dependencies, and
 optional integration clients needed by the artifact scripts.
 
@@ -285,7 +286,8 @@ results = retriever.smart_search(
 
 Use `SemanticGraph.save_graph()` and `SemanticGraph.load_graph()` for complete
 state snapshots. They preserve graph topology, semantic map data, retrieval
-indices when built, and the sandboxed DuckDB L2 storage copy.
+indices when built, and the sandboxed RocksDB payload store when persistent
+storage is enabled.
 
 ```python
 graph.save_graph("./memory_snapshot", build_sparse_vectors=False)
@@ -297,8 +299,38 @@ restored = SemanticGraph.load_graph(
 )
 ```
 
-`SemanticMap.save_map()` and `SemanticMap.load_map()` also exist, but they are
-map-only APIs and do not preserve the `SemanticGraph` topology.
+`SemanticMap.save_map()` and `SemanticMap.load_map()` also exist for resident
+map-only state and do not preserve `SemanticGraph` topology. Direct
+`SemanticMap.save_map()` calls fail closed while tiered paging is enabled;
+use `SemanticGraph.save_graph()` so resident and cold payload state are saved
+together.
+
+RocksDB is the only supported persistent payload backend in this paper
+artifact. Calling `SemanticGraph.connect_to_l2()` enables automatic tiered
+payload paging: retrieval indexes, UID mappings, MemorySpace membership, and
+graph topology remain resident, while cold `MemoryUnit` payloads are written
+to RocksDB and paged back into the resident cache when needed. High and low
+watermarks control eviction automatically.
+
+```python
+graph.connect_to_l2(
+    "./l2_database",
+    max_capacity=100_000,
+    high_watermark=0.85,
+    low_watermark=0.70,
+)
+```
+
+If `connect_to_l2()` is not called, Mandol runs normally with payloads held in
+memory. 
+
+Tiered eviction is triggered from the existing add path. Candidate selection
+and eviction scheduling occur within the add call, while RocksDB persistence
+and resident-cache removal may complete asynchronously in the tiered-storage
+executor. Cold-result materialization remains inside the search call that
+requires the payload. `save_graph()` waits for previously submitted eviction
+work before taking a snapshot, but concurrent graph mutation by another user
+thread is not supported during the save. 
 
 ## Model Configuration
 
@@ -453,7 +485,7 @@ src/mandol/
   quantification/      Query expansion, pruning, semantic quantification
   memory_router/       LoCoMo and LongMemEval tower routers
   llm/                 LLM clients and provider wrappers
-  storage/             DuckDB and tiered storage helpers
+  storage/             RocksDB payload persistence and tiered-cache helpers
   cluster/             Leiden and DBSCAN clustering helpers
   utils/               Configuration, logging, model management
 ```

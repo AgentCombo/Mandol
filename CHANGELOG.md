@@ -25,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Hierarchical, entity-relation, and episodic three-tower retrieval with router
   and semantic-quantification support.
 - High-level memory construction through `auto_builder`.
-- FAISS, DuckDB, tiered-storage, local-model, and OpenAI-compatible provider
+- FAISS, RocksDB, tiered-storage, local-model, and OpenAI-compatible provider
   integrations used by the artifact.
 - LoCoMo and LongMemEval paper-reproduction workflows, ablations, performance
   entry points, and self-host validation workflows.

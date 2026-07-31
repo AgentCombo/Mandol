@@ -1,5 +1,4 @@
 import logging
-import json
 import os
 import time
 from datetime import datetime
@@ -418,8 +417,8 @@ class SemanticMap(RetrievalInterface):
         self._int_id_to_uid: Dict[int, str] = {}
         self._modified_units = set()
         self._deleted_units = set()
-        self._last_sync_time = None
         self._external_storage = None
+        self._storage_uids: Optional[Set[str]] = None
         self._max_memory_units = 100000
         self._access_counts = {}
         self._last_accessed = {}
@@ -428,12 +427,6 @@ class SemanticMap(RetrievalInterface):
         self._space_membership_version = 0
         self._space_filter_cache: Dict[Tuple[Tuple[str, ...], int], np.ndarray] = {}
 
-        # Preserve ghost-node metadata so evicted units remain traceable.
-        self._on_swap_out_hooks: List[callable] = []
-        
-        self._on_swap_in_hooks: List[callable] = []
-
-        
         self._multi_retriever = None
         
         
@@ -534,74 +527,73 @@ class SemanticMap(RetrievalInterface):
     
     
 
-    def register_swap_out_hook(self, callback: callable) -> None:
-        """Register swap out hook."""
-        if callback not in self._on_swap_out_hooks:
-            self._on_swap_out_hooks.append(callback)
-            logger.debug(f"Registered swap_out hook: {getattr(callback, '__qualname__', repr(callback))}")
-
-    def unregister_swap_out_hook(self, callback: callable) -> None:
-        """Unregister swap out hook."""
-        try:
-            self._on_swap_out_hooks.remove(callback)
-        except ValueError:
-            pass
-
-    def _fire_swap_out_hooks(self, evicted_uids: List[str]) -> None:
-        """Fire swap out hooks."""
-        for hook in self._on_swap_out_hooks:
-            hook(evicted_uids)
-
-    
-    
-
-    def register_swap_in_hook(self, callback: callable) -> None:
-        """Register swap in hook."""
-        if callback not in self._on_swap_in_hooks:
-            self._on_swap_in_hooks.append(callback)
-            logger.debug(f"Registered swap_in hook: {getattr(callback, '__qualname__', repr(callback))}")
-
-    def unregister_swap_in_hook(self, callback: callable) -> None:
-        """Unregister swap in hook."""
-        try:
-            self._on_swap_in_hooks.remove(callback)
-        except ValueError:
-            pass
-
-    def _fire_swap_in_hooks(self, loaded_units: List['MemoryUnit']) -> None:
-        """Fire swap in hooks."""
-        for hook in self._on_swap_in_hooks:
-            hook(loaded_units)
-
-    
     # Tiered L1/L2 storage callbacks
     
 
     def enable_tiered_storage(
         self,
-        duckdb_operator,
+        payload_store,
         max_capacity: Optional[int] = None,
         high_watermark: float = 0.85,
         low_watermark: float = 0.70,
         callbacks: Optional[Dict[str, callable]] = None,
         l1_mutation_lock=None,
     ):
-        """Attach a TieredStorageManager and delegate L1/L2 paging to it."""
+        """Attach RocksDB-backed automatic payload paging.
+
+        Args:
+            payload_store: Open RocksDB payload-store instance.
+            max_capacity: Maximum resident payload count before paging.
+            high_watermark: Resident count or capacity fraction that starts
+                eviction.
+            low_watermark: Resident count or capacity fraction reached after
+                eviction.
+            callbacks: Optional graph-aware payload cache callbacks.
+            l1_mutation_lock: Optional lock shared with the graph callback path.
+        """
         from ..storage.tiered_storage_manager import TieredStorageManager
 
-        self._external_storage = duckdb_operator
+        existing_manager = getattr(self, "tiered_storage_manager", None)
+        if existing_manager is not None:
+            raise RuntimeError("Tiered payload storage is already enabled.")
+        self._external_storage = payload_store
+        stored_uids = (
+            payload_store.list_uids()
+            if hasattr(payload_store, "list_uids")
+            else []
+        )
+        self._storage_uids = set(self.memory_units).union(stored_uids)
         if max_capacity is not None:
             self._max_memory_units = int(max_capacity)
         callback_map = callbacks or self._build_tiered_storage_callbacks()
-        self.tiered_storage_manager = TieredStorageManager(
-            duckdb_operator=duckdb_operator,
-            callbacks=callback_map,
-            max_capacity=self._max_memory_units,
-            high_watermark=high_watermark,
-            low_watermark=low_watermark,
-            l1_mutation_lock=l1_mutation_lock,
-        )
+        try:
+            self.tiered_storage_manager = TieredStorageManager(
+                payload_store=payload_store,
+                callbacks=callback_map,
+                max_capacity=self._max_memory_units,
+                high_watermark=high_watermark,
+                low_watermark=low_watermark,
+                l1_mutation_lock=l1_mutation_lock,
+            )
+        except Exception:
+            self._external_storage = None
+            self._storage_uids = None
+            self.tiered_storage_manager = None
+            raise
+        self._trigger_tiered_eviction_if_needed()
         return self.tiered_storage_manager
+
+    def _close_tiered_storage(self) -> None:
+        """Close paging resources without materializing cold payloads."""
+        manager = getattr(self, "tiered_storage_manager", None)
+        if manager is not None:
+            manager.shutdown(wait=True)
+        store = self._external_storage
+        if store is not None and hasattr(store, "close"):
+            store.close()
+        self.tiered_storage_manager = None
+        self._external_storage = None
+        self._storage_uids = None
 
     def _build_tiered_storage_callbacks(self) -> Dict[str, callable]:
         return {
@@ -616,33 +608,12 @@ class SemanticMap(RetrievalInterface):
             manager.check_and_trigger_eviction(len(self.memory_units))
 
     def _get_l1_data_for_tiered_swap_out(self, count: int) -> Dict[str, Any]:
-        """Select cold L1 units and assemble a DuckDB-compatible batch payload."""
+        """Select cold resident payloads without touching retrieval indexes."""
         selected_uids = self._select_cold_l1_uids(count)
         units = [self.memory_units[uid] for uid in selected_uids if uid in self.memory_units]
-        uid_order = [unit.uid for unit in units]
-        dense_matrix = self._build_dense_matrix_for_units(units)
-        splade_indices, splade_values = self._collect_splade_columns_for_uids(uid_order)
-        bm25_terms, bm25_tfs = self._collect_bm25_columns_for_uids(uid_order)
-        node_columns = self._build_tiered_node_columns(
-            units,
-            uid_order,
-            dense_matrix,
-            splade_indices,
-            splade_values,
-            bm25_terms,
-            bm25_tfs,
-        )
         return {
             "units": units,
-            "dense_matrix": dense_matrix,
-            "node_columns": node_columns,
-            "nodes_arrow": self._build_tiered_nodes_arrow(node_columns),
-            "splade_indices": splade_indices,
-            "splade_values": splade_values,
-            "uid_order": uid_order,
-            "edges": [],
-            "bm25_terms": bm25_terms,
-            "bm25_tfs": bm25_tfs,
+            "uid_order": [unit.uid for unit in units],
         }
 
     def _select_cold_l1_uids(self, count: int) -> List[str]:
@@ -658,24 +629,9 @@ class SemanticMap(RetrievalInterface):
         return candidates[: min(count, len(candidates))]
 
     def _remove_from_l1_for_tiered_swap(self, uids: List[str]) -> int:
-        """Remove L1 payload and indexes while preserving MemorySpace UID membership."""
+        """Remove payloads while preserving all resident retrieval and graph state."""
         if not uids:
             return 0
-
-        faiss_rebuild_needed = False
-        int_ids = [self._uid_to_int_id[uid] for uid in uids if uid in self._uid_to_int_id]
-        faiss_index = getattr(self, "faiss_index", None)
-        if int_ids and faiss_index is not None:
-            try:
-                if hasattr(faiss_index, "remove_ids"):
-                    faiss_index.remove_ids(np.asarray(int_ids, dtype=np.int64))
-                else:
-                    faiss_rebuild_needed = True
-            except Exception as exc:
-                logger.warning(f"FAISS batch remove_ids failed: {exc}; will rebuild after cleanup")
-                faiss_rebuild_needed = True
-
-        self._remove_aux_retriever_uids(uids)
 
         removed_count = 0
         for uid in uids:
@@ -685,178 +641,52 @@ class SemanticMap(RetrievalInterface):
             self._modified_units.discard(uid)
             self._access_counts.pop(uid, None)
             self._last_accessed.pop(uid, None)
-
-        if faiss_rebuild_needed:
-            self.build_index()
+            if self._storage_uids is not None:
+                self._storage_uids.add(uid)
 
         if removed_count:
-            logger.info(f"TieredStorage: removed {removed_count} nodes from L1; MemorySpace references are preserved")
+            logger.info(
+                "Tiered storage evicted %d payloads; indexes, UID mappings, "
+                "MemorySpace membership, and graph topology remain resident.",
+                removed_count,
+            )
         return removed_count
 
     def _add_to_l1_from_tiered_swap(
         self,
         recovered_units: List[MemoryUnit],
-        faiss_embs=None,
-        splade_dicts: Optional[Dict[str, Dict[int, float]]] = None,
     ) -> int:
-        """Mount recovered L2 units back into L1 dictionaries and retrievers."""
+        """Publish recovered payloads without rebuilding resident indexes."""
         if not recovered_units:
             return 0
-        splade_dicts = splade_dicts or {}
         now = datetime.now().timestamp()
 
-        for index, unit in enumerate(recovered_units):
-            if faiss_embs is not None and index < getattr(faiss_embs, "shape", (0,))[0]:
-                embedding = np.asarray(faiss_embs[index], dtype=np.float32)
-                if np.linalg.norm(embedding) > 1e-6:
-                    unit.embedding = embedding
-            sparse = splade_dicts.get(unit.uid)
-            if sparse:
-                unit.sparse_embedding = sparse
+        for unit in recovered_units:
             self.memory_units[unit.uid] = unit
             self._access_counts[unit.uid] = self._access_counts.get(unit.uid, 0) + 1
             self._last_accessed[unit.uid] = now
 
-        self._incremental_faiss_add_many(recovered_units)
-        self._incremental_aux_retriever_add(recovered_units)
         self._trigger_tiered_eviction_if_needed()
         return len(recovered_units)
 
-    def _build_dense_matrix_for_units(self, units: List[MemoryUnit]):
-        if not units:
-            return None
-        embeddings = []
-        for unit in units:
-            embedding = unit.embedding
-            if embedding is None or getattr(embedding, "shape", (None,))[0] != self.embedding_dim:
-                return None
-            embeddings.append(np.asarray(embedding, dtype=np.float32))
-        return np.ascontiguousarray(np.stack(embeddings, axis=0).astype(np.float32))
+    def _unit_exists(self, uid: str) -> bool:
+        """Check resident or persistent payload membership without materializing."""
+        if uid in self.memory_units:
+            return True
+        if self._storage_uids is not None:
+            return uid in self._storage_uids
+        return False
 
-    def _collect_splade_columns_for_uids(self, uids: List[str]) -> Tuple[List[Optional[np.ndarray]], List[Optional[np.ndarray]]]:
-        multi_retriever = getattr(self, "_multi_retriever", None)
-        empty_indices: List[Optional[np.ndarray]] = [None] * len(uids)
-        empty_values: List[Optional[np.ndarray]] = [None] * len(uids)
-        if multi_retriever is None:
-            return empty_indices, empty_values
-        try:
-            from ..retrieval.retrieval_interface import RetrievalMethod
+    def _all_known_uids(self) -> Set[str]:
+        """Return the resident UID catalog used by retrieval filters."""
+        if self._storage_uids is None:
+            return set(self.memory_units)
+        return set(self._storage_uids).union(self.memory_units)
 
-            splade = multi_retriever.retrievers.get(RetrievalMethod.SPLADE)
-            if splade is None or not hasattr(splade, "doc_postings"):
-                return empty_indices, empty_values
-            for row_index, uid in enumerate(uids):
-                int_id = self._uid_to_int_id.get(uid)
-                postings = splade.doc_postings.get(int_id) if int_id is not None else None
-                if not postings:
-                    continue
-                token_ids, weights = postings
-                if getattr(token_ids, "size", 0) <= 0:
-                    continue
-                empty_indices[row_index] = np.ascontiguousarray(token_ids, dtype=np.uint64)
-                empty_values[row_index] = np.ascontiguousarray(weights, dtype=np.float32)
-            return empty_indices, empty_values
-        except Exception as exc:
-            logger.debug(f"Failed to collect SPLADE columnar payload: {exc}")
-            return [None] * len(uids), [None] * len(uids)
-
-    def _collect_bm25_columns_for_uids(self, uids: List[str]) -> Tuple[List[Optional[List[str]]], List[Optional[np.ndarray]]]:
-        multi_retriever = getattr(self, "_multi_retriever", None)
-        bm25_terms: List[Optional[List[str]]] = [None] * len(uids)
-        bm25_tfs: List[Optional[np.ndarray]] = [None] * len(uids)
-        if multi_retriever is None:
-            return bm25_terms, bm25_tfs
-        try:
-            from ..retrieval.retrieval_interface import RetrievalMethod
-
-            bm25 = multi_retriever.retrievers.get(RetrievalMethod.BM25)
-            if bm25 is None or not hasattr(bm25, "doc_postings"):
-                return bm25_terms, bm25_tfs
-            for row_index, uid in enumerate(uids):
-                int_id = self._uid_to_int_id.get(uid)
-                postings = bm25.doc_postings.get(int_id) if int_id is not None else None
-                if not postings:
-                    continue
-                bm25_terms[row_index] = list(postings)
-                bm25_tfs[row_index] = np.fromiter(
-                    postings.values(), dtype=np.int32, count=len(postings)
-                )
-            return bm25_terms, bm25_tfs
-        except Exception as exc:
-            logger.debug(f"Failed to collect BM25 columnar payload: {exc}")
-            return [None] * len(uids), [None] * len(uids)
-
-    def _build_tiered_node_columns(
-        self,
-        units: List[MemoryUnit],
-        uid_order: List[str],
-        dense_matrix: Optional[np.ndarray],
-        splade_indices: List[Optional[np.ndarray]],
-        splade_values: List[Optional[np.ndarray]],
-        bm25_terms: List[Optional[List[str]]],
-        bm25_tfs: List[Optional[np.ndarray]],
-    ) -> Dict[str, Any]:
-        try:
-            import pyarrow as pa
-        except Exception as exc:
-            logger.debug(f"pyarrow is unavailable; skipping tiered node_columns preassembly: {exc}")
-            return {}
-
-        n = len(units)
-        now = datetime.now()
-        if dense_matrix is not None and getattr(dense_matrix, "shape", (0,))[0] == n:
-            dense_rows = [dense_matrix[row_index] for row_index in range(n)]
-        else:
-            dense_rows = []
-            for unit in units:
-                embedding = getattr(unit, "embedding", None)
-                if embedding is None or getattr(embedding, "shape", (None,))[0] != self.embedding_dim:
-                    dense_rows.append(None)
-                else:
-                    dense_rows.append(np.ascontiguousarray(embedding, dtype=np.float32))
-
-        return {
-            "uid": pa.array(uid_order, type=pa.utf8()),
-            "raw_data": pa.array([self._json_dumps_for_l2(unit.raw_data) for unit in units], type=pa.utf8()),
-            "metadata": pa.array([self._json_dumps_for_l2(unit.metadata or {}) for unit in units], type=pa.utf8()),
-            "content_type": pa.array([self._infer_l2_content_type(unit.raw_data) for unit in units], type=pa.utf8()),
-            "dense_embedding": pa.array(dense_rows, type=pa.list_(pa.float32())),
-            "splade_indices": pa.array(splade_indices, type=pa.list_(pa.uint64())),
-            "splade_values": pa.array(splade_values, type=pa.list_(pa.float32())),
-            "bm25_terms": pa.array(bm25_terms, type=pa.list_(pa.utf8())),
-            "bm25_tfs": pa.array(bm25_tfs, type=pa.list_(pa.int32())),
-            "memory_spaces": pa.array([None] * n, type=pa.list_(pa.utf8())),
-            "embedding_model": pa.array(["default"] * n, type=pa.utf8()),
-            "created_at": pa.array([now] * n, type=pa.timestamp("us")),
-            "updated_at": pa.array([now] * n, type=pa.timestamp("us")),
-            "access_count": pa.array([0] * n, type=pa.int64()),
-        }
-
-    def _build_tiered_nodes_arrow(self, node_columns: Dict[str, Any]):
-        if not node_columns:
-            return None
-        try:
-            import pyarrow as pa
-
-            return pa.Table.from_pydict(node_columns)
-        except Exception as exc:
-            logger.debug(f"Failed to build tiered nodes_arrow; falling back to DuckDB-side from_pydict: {exc}")
-            return None
-
-    def _json_dumps_for_l2(self, value: Any) -> str:
-        try:
-            return orjson.dumps(value if value is not None else {}, option=orjson.OPT_SERIALIZE_NUMPY).decode("utf-8")
-        except Exception:
-            return json.dumps(value if value is not None else {}, ensure_ascii=False, default=str)
-
-    @staticmethod
-    def _infer_l2_content_type(raw_data: Dict[str, Any]) -> str:
-        if isinstance(raw_data, dict):
-            if "text_content" in raw_data:
-                return "text"
-            if "image_path" in raw_data:
-                return "image"
-        return "mixed"
+    def _total_unit_count(self) -> int:
+        if self._storage_uids is None:
+            return len(self.memory_units)
+        return len(self._storage_uids.union(self.memory_units))
 
     def _remove_aux_retriever_uids(self, uids: List[str]) -> None:
         multi_retriever = getattr(self, "_multi_retriever", None)
@@ -1152,7 +982,7 @@ class SemanticMap(RetrievalInterface):
                 f"add_unit_to_space() expected str(UID) or MemoryUnit, got {type(unit_or_uid)}"
             )
 
-        if uid not in self.memory_units:
+        if not self._unit_exists(uid):
             logger.warning(f"Attempted to add missing memory unit '{uid}' to space '{space_name}'")
             return
 
@@ -1220,11 +1050,11 @@ class SemanticMap(RetrievalInterface):
         
         units = []
         for uid in all_uids:
-            unit = self.memory_units.get(uid)
+            unit = self.get_unit(uid)
             if unit:
                 units.append(unit)
             else:
-                logger.warning(f"MemoryUnit '{uid}' is not present in memory")
+                logger.warning(f"MemoryUnit '{uid}' is not present in payload storage")
 
         return units
 
@@ -1241,199 +1071,6 @@ class SemanticMap(RetrievalInterface):
                 self._last_accessed = {}
             self._access_counts[uid] = self._access_counts.get(uid, 0) + 1
             self._last_accessed[uid] = datetime.now().timestamp()
-
-    def _sync_unit_to_external(self, uid: str) -> bool:
-        """Sync unit to external."""
-        if not self._external_storage:
-            return False
-
-        unit = self.memory_units.get(uid)
-        if not unit:
-            logger.warning(f"Cannot sync missing unit '{uid}'")
-            return False
-
-        try:
-            space_names = []
-            for space_name, space in self.memory_spaces.items():
-                if space.contains_unit(uid):
-                    space_names.append(space_name)
-
-            success = self._external_storage.add_unit(unit, space_names)
-            if success:
-                logger.debug(f"Unit '{uid}' has been synced to external storage")
-                return True
-            else:
-                logger.error(f"Failed to sync unit '{uid}' to external storage")
-                return False
-        except Exception as e:
-            logger.error(f"Syncing unit '{uid}' to external storage raised an error: {e}")
-            return False
-
-    def sync_to_external(self, force_full_sync: bool = False):
-        """Sync to external."""
-        if not self._external_storage:
-            logger.error("External storage is not connected; cannot sync.")
-            return 0, 0
-
-        success_count = 0
-        fail_count = 0
-
-        sync_mode = "full" if force_full_sync else "incremental"
-
-        if not force_full_sync and (
-            not hasattr(self, "_last_sync_time") or self._last_sync_time is None
-        ):
-            try:
-                sample_units = self._external_storage.get_units_batch([])
-                if len(sample_units) == 0:
-                    force_full_sync = True
-                    sync_mode = "auto_full"
-                    logger.info("First sync detected; running a full sync.")
-            except Exception as e:
-                logger.warning(f"Failed to inspect external storage state: {e}, using incremental sync")
-
-        if force_full_sync:
-            logger.info(f"Starting full sync to external storage... (mode: {sync_mode})")
-        else:
-            logger.info("Starting incremental sync to external storage...")
-
-        units_to_sync = (
-            list(self.memory_units.keys())
-            if force_full_sync
-            else list(self._modified_units)
-        )
-
-        for uid in units_to_sync:
-            if uid in self.memory_units:
-                if self._sync_unit_to_external(uid):
-                    success_count += 1
-                    if uid in self._modified_units:
-                        self._modified_units.remove(uid)
-                else:
-                    fail_count += 1
-
-        deleted_uids = list(self._deleted_units)
-        for uid in deleted_uids:
-            try:
-                if self._external_storage.delete_unit(uid):
-                    self._deleted_units.remove(uid)
-                    success_count += 1
-                else:
-                    fail_count += 1
-            except Exception as e:
-                logger.error(f"Failed to delete unit '{uid}' from external storage: {e}")
-                fail_count += 1
-
-        if success_count > 0:
-            self._last_sync_time = datetime.now()
-            if force_full_sync:
-                self._modified_units.clear()
-                self._deleted_units.clear()
-
-        logger.info(
-            f"Sync complete ({sync_mode}).success: {success_count}, failed: {fail_count}"
-        )
-        return success_count, fail_count
-
-    def incremental_sync(self):
-        """Synchronize only units marked as modified or deleted."""
-        return self.sync_to_external(force_full_sync=False)
-
-    def full_sync(self):
-        """Synchronize the complete in-memory payload to external storage."""
-        return self.sync_to_external(force_full_sync=True)
-
-    def load_from_external(
-        self,
-        filter_space: Optional[str] = None,
-        limit: int = 1000,
-        replace_existing: bool = False,
-    ):
-        """Load from external."""
-        if not self._external_storage:
-            logger.error("External storage is not connected; cannot load.")
-            return 0
-
-        try:
-            
-            if filter_space:
-                units = self._external_storage.get_units_by_space(filter_space)[:limit]
-            else:
-                
-                logger.warning(
-                    "Loading all units from external storage may consume substantial memory; specify a space filter."
-                )
-                return 0
-
-            load_count = 0
-            
-            for unit in units:
-                if unit.uid not in self.memory_units or replace_existing:
-                    if len(self.memory_units) >= self._max_memory_units:
-                        self.swap_out(count=int(self._max_memory_units * 0.1))
-
-                    self.memory_units[unit.uid] = unit
-                    self._access_counts[unit.uid] = 0
-                    load_count += 1
-
-                    if hasattr(unit, "metadata") and isinstance(unit.metadata, dict):
-                        space_info = unit.metadata.get("spaces", [])
-                        for space_name in space_info:
-                            self.add_unit_to_space(unit.uid, space_name)
-
-            
-            if load_count > 0:
-                logger.info(f"Loaded {load_count} units from external storage")
-                self.build_index()
-
-            return load_count
-
-        except Exception as e:
-            logger.error(f"Failed to load unit from external storagefailed: {e}")
-            return 0
-
-    def swap_out(
-        self,
-        count: int = 100,
-        strategy: str = "LRU",
-        query_context: Optional[str] = None,
-    ) -> List[str]:
-        """Compatibility wrapper; real two-phase eviction lives in TieredStorageManager."""
-        manager = getattr(self, "tiered_storage_manager", None)
-        if manager is None:
-            logger.warning("TieredStorageManager is not configured; cannot page units.")
-            return []
-        result = manager.evict_once(current_size=len(self.memory_units), count=count)
-        return result.selected_uids[: result.persisted_count]
-
-    def cleanup_l1_after_swap_out(self, evicted_uids: List[str]) -> int:
-        """
-        Compatibility wrapper for legacy callers.
-
-        TieredStorageManager normally calls _remove_from_l1_for_tiered_swap()
-        under its L1 mutation lock after L2 commit.
-        """
-        return self._remove_from_l1_for_tiered_swap(evicted_uids)
-
-    def _load_unit_from_external(self, uid: str) -> Optional[MemoryUnit]:
-        """Load unit from external."""
-        if not self._external_storage:
-            return None
-
-        try:
-            
-            unit = self._external_storage.get_unit(uid)
-            if unit:
-                logger.debug(f"Unit '{uid}' has been loaded from external storage into memory")
-                return unit
-        except Exception as e:
-            logger.error(f"Failed to load unit '{uid}' from external storage: {e}")
-
-        return None
-
-    
-    
-    
 
     def _incremental_faiss_add(self, unit: MemoryUnit):
         """Update FAISS for one unit while preserving UID/int-id mappings.
@@ -1681,8 +1318,8 @@ class SemanticMap(RetrievalInterface):
             raise TypeError(f"add_unit() got unexpected keyword arguments: {list(legacy_kwargs.keys())}")
         index_update_mode = self._normalize_index_update_mode(index_update_mode)
 
-        if unit.uid in self.memory_units:
-            existing = self.memory_units[unit.uid]
+        if self._unit_exists(unit.uid):
+            existing = self.get_unit(unit.uid)
             if existing == unit:
                 logger.info(f"Memory unit '{unit.uid}' already exists with identical content; skipping insertion.")
                 if space_names:
@@ -1853,8 +1490,8 @@ class SemanticMap(RetrievalInterface):
                 continue
             unit_space_names = spaces_for_index(index)
             
-            if unit.uid in self.memory_units:
-                existing = self.memory_units[unit.uid]
+            if self._unit_exists(unit.uid):
+                existing = self.get_unit(unit.uid)
                 if existing == unit:
                     logger.debug(f"Unit '{unit.uid}' already exists with identical content; skipping.")
                     stats["skipped"] += 1
@@ -2069,7 +1706,7 @@ class SemanticMap(RetrievalInterface):
             self.add_unit_to_space(uid, space_name)
 
     def get_unit(self, uid: str) -> Optional[MemoryUnit]:
-        """Return unit."""
+        """Return a payload, paging it from RocksDB when it is not resident."""
         unit = self.memory_units.get(uid)
         if unit:
             self._record_unit_access(uid)
@@ -2082,33 +1719,6 @@ class SemanticMap(RetrievalInterface):
                 if unit:
                     self._record_unit_access(uid)
                     return unit
-        elif self._external_storage:
-            
-            unit = self._load_unit_from_external(uid)
-            if unit:
-                if len(self.memory_units) >= self._max_memory_units:
-                    self.swap_out(count=1)
-
-                self.memory_units[uid] = unit
-                self._record_unit_access(uid)
-
-                
-                if self._on_swap_in_hooks:
-                    self._fire_swap_in_hooks([unit])
-
-                
-                if unit.embedding is not None and self.faiss_index:
-                    try:
-                        internal_id = self._get_or_create_int_id(uid)
-
-                        vector = unit.embedding.reshape(1, -1).astype(np.float32)
-                        ids = np.array([internal_id], dtype=np.int64)
-                        self.faiss_index.add_with_ids(vector, ids)
-                        logger.debug(f"Unit '{uid}' embedding added to the FAISS index")
-                    except Exception as e:
-                        logger.error(f"Failed to add embedding to the FAISS index: {e}")
-
-                return unit
         return None
     
     def get_units_by_spaces(
@@ -2150,7 +1760,11 @@ class SemanticMap(RetrievalInterface):
             
             common_uids = set.intersection(*space_unit_sets)
             
-            return [self.memory_units[uid] for uid in common_uids if uid in self.memory_units]
+            return [
+                unit
+                for uid in common_uids
+                if (unit := self.get_unit(uid)) is not None
+            ]
         
         elif mode == "difference":
             if len(normalized_names) < 2:
@@ -2168,7 +1782,11 @@ class SemanticMap(RetrievalInterface):
             
             diff_uids = first_space_uids - other_space_uids
             
-            return [self.memory_units[uid] for uid in diff_uids if uid in self.memory_units]
+            return [
+                unit
+                for uid in diff_uids
+                if (unit := self.get_unit(uid)) is not None
+            ]
         
         else:
             logger.warning(f"Unsupported query mode: {mode}, using the default union mode")
@@ -2197,41 +1815,55 @@ class SemanticMap(RetrievalInterface):
         return stats
 
     def delete_unit(self, uid: str, rebuild_index_immediately: bool = False):
-        """Remove unit."""
-        if uid in self.memory_units:
-            del self.memory_units[uid]
-
-            for space_name, space_obj in self.memory_spaces.items():
-                if space_obj.contains_unit(uid):
-                    space_obj.remove_unit(uid)
-
-            
-            if self.faiss_index and uid in self._uid_to_int_id:
-                internal_id_to_remove = self._uid_to_int_id[uid]
-                try:
-                    if hasattr(self.faiss_index, "remove_ids"):
-                        self.faiss_index.remove_ids(
-                            np.array([internal_id_to_remove], dtype=np.int64)
-                        )
-                        logger.debug(f"Memory unit '{uid}' removed from the FAISS index")
-                except Exception as e:
-                    logger.error(f"Failed to remove unit '{uid}' from the FAISS index: {e}")
-
-            logger.info(f"Memory unit '{uid}' deleted from SemanticMap")
-            if rebuild_index_immediately:
-                self.build_index()
-        else:
+        """Remove a payload and its retrieval membership from resident and persistent storage."""
+        if not self._unit_exists(uid):
             logger.warning(f"Attempted to delete missing memory unit ID '{uid}'")
+            return
 
-        self._deleted_units.add(uid)
+        self.memory_units.pop(uid, None)
+        if self._external_storage is not None:
+            self._external_storage.delete_unit(uid)
+        if self._storage_uids is not None:
+            self._storage_uids.discard(uid)
+
+        for space_obj in self.memory_spaces.values():
+            if space_obj.contains_unit(uid):
+                space_obj.remove_unit(uid)
+
+        if self.faiss_index and uid in self._uid_to_int_id:
+            internal_id_to_remove = self._uid_to_int_id[uid]
+            try:
+                if hasattr(self.faiss_index, "remove_ids"):
+                    self.faiss_index.remove_ids(
+                        np.array([internal_id_to_remove], dtype=np.int64)
+                    )
+                    logger.debug(f"Memory unit '{uid}' removed from the FAISS index")
+            except Exception as e:
+                logger.error(f"Failed to remove unit '{uid}' from the FAISS index: {e}")
+        self._remove_aux_retriever_uids([uid])
+
+        logger.info(f"Memory unit '{uid}' deleted from SemanticMap")
+        if rebuild_index_immediately:
+            self.build_index()
+
+        if self._external_storage is None:
+            self._deleted_units.add(uid)
+        else:
+            self._deleted_units.discard(uid)
         if uid in self._modified_units:
             self._modified_units.remove(uid)
         if uid in self._access_counts:
             del self._access_counts[uid]
 
     def get_all_units(self) -> List[MemoryUnit]:
-        """Return all units."""
-        return list(self.memory_units.values())
+        """Return all payloads, paging cold records into the resident cache."""
+        if self.tiered_storage_manager is None:
+            return list(self.memory_units.values())
+        return [
+            unit
+            for uid in self._all_known_uids()
+            if (unit := self.get_unit(uid)) is not None
+        ]
 
     
     # Compatibility helpers retained for the public Mandol API.
@@ -2260,7 +1892,7 @@ class SemanticMap(RetrievalInterface):
             unit_uids = list(space.get_unit_uids())
             unit_fields = set()
             for uid in unit_uids:
-                unit = self.memory_units.get(uid)
+                unit = self.get_unit(uid)
                 if unit:
                     unit_fields.update(unit.raw_data.keys())
 
@@ -2337,12 +1969,16 @@ class SemanticMap(RetrievalInterface):
         if isinstance(obj, MemoryUnit):
             result.append(obj)
         elif isinstance(obj, str):
-            ms = self.memory_spaces.get(obj)
+            space_name = obj[3:] if obj.startswith("ms:") else obj
+            ms = self.memory_spaces.get(space_name)
             if ms:
-                result.extend(ms.get_all_units())
+                result.extend(
+                    unit
+                    for uid in ms.get_all_unit_uids(recursive=True)
+                    if (unit := self.get_unit(uid)) is not None
+                )
             else:
-                
-                u = self.memory_units.get(obj)
+                u = self.get_unit(obj)
                 if u:
                     result.append(u)
         elif hasattr(obj, "get_all_units"):
@@ -2366,7 +2002,12 @@ class SemanticMap(RetrievalInterface):
 
     def build_index(self):
         """Build index."""
-        if not self.memory_units:
+        source_units = (
+            list(self.memory_units.values())
+            if self.tiered_storage_manager is None
+            else self.get_all_units()
+        )
+        if not source_units:
             logger.info("No memory units are available for index construction.")
             if self.faiss_index:
                 self.faiss_index.reset()  
@@ -2375,7 +2016,8 @@ class SemanticMap(RetrievalInterface):
         valid_embeddings: List[np.ndarray] = []
         internal_faiss_ids_for_index: List[int] = []
 
-        for uid, unit in self.memory_units.items():
+        for unit in source_units:
+            uid = unit.uid
             if (
                 unit.embedding is not None
                 and unit.embedding.shape[0] == self.embedding_dim
@@ -2566,7 +2208,11 @@ class SemanticMap(RetrievalInterface):
         if pure_space_filter and candidate_int_ids is not None:
             candidate_count = int(candidate_int_ids.size)
         else:
-            candidate_count = len(candidate_uids_set) if candidate_uids_set is not None else len(self.memory_units)
+            candidate_count = (
+                len(candidate_uids_set)
+                if candidate_uids_set is not None
+                else self._total_unit_count()
+            )
         logger.debug(f"Global index search: candidate_count={candidate_count}, filtered={candidate_uids_set is not None or pure_space_filter}")
 
         
@@ -2623,7 +2269,10 @@ class SemanticMap(RetrievalInterface):
                 similarities, internal_faiss_indices, None
             )
 
-        if candidate_uids_set is not None and len(candidate_uids_set) >= len(self.memory_units):
+        if (
+            candidate_uids_set is not None
+            and len(candidate_uids_set) >= self._total_unit_count()
+        ):
             similarities, internal_faiss_indices = self.faiss_index.search(query_embedding_np, k)
             return self._process_cosine_search_results(
                 similarities, internal_faiss_indices, candidate_uids_set
@@ -2725,8 +2374,20 @@ class SemanticMap(RetrievalInterface):
         self, query_embedding_np: np.ndarray, normalized_query: np.ndarray, k: int, candidate_uids_set: Optional[Set[str]]
     ) -> List[Tuple[MemoryUnit, float]]:
         """Search with brute force cosine."""
-        candidate_uid_iterable = candidate_uids_set if candidate_uids_set is not None else self.memory_units.keys()
-        candidate_count = len(candidate_uids_set) if candidate_uids_set is not None else len(self.memory_units)
+        candidate_uid_iterable = (
+            candidate_uids_set
+            if candidate_uids_set is not None
+            else (
+                self.memory_units.keys()
+                if self.tiered_storage_manager is None
+                else self._all_known_uids()
+            )
+        )
+        candidate_count = (
+            len(candidate_uids_set)
+            if candidate_uids_set is not None
+            else self._total_unit_count()
+        )
         logger.debug(f"Using brute-force cosine similarity search (candidate_count: {candidate_count})")
 
         
@@ -2899,24 +2560,44 @@ class SemanticMap(RetrievalInterface):
     def _get_candidate_uids_set(
         self, ms_names: Optional[List[str]], candidate_uids: Optional[List[str]]
     ) -> Optional[Set[str]]:
-        """Get candidate UIDs set."""
-        
+        """Resolve retrieval filters without materializing payloads."""
+        space_uids: Optional[Set[str]] = None
         if ms_names and candidate_uids:
-            units = self.units_intersection(ms_names, candidate_uids)
-            logger.debug(f"Intersection mode: spaces{ms_names} ∩ candidate units,result_count={len(units)}")
-            return set(u.uid for u in units)
+            space_uids = set()
+            for raw_name in ms_names:
+                name = raw_name[3:] if raw_name.startswith("ms:") else raw_name
+                space = self.memory_spaces.get(name)
+                if space is not None:
+                    space_uids.update(space.get_all_unit_uids(recursive=True))
+            result = space_uids.intersection(str(uid) for uid in candidate_uids)
+            logger.debug(
+                "Intersection mode: spaces%s and candidate units, result_count=%d",
+                ms_names,
+                len(result),
+            )
+            return result
         elif ms_names:
-            units = self.units_union(*ms_names)
-            logger.debug(f"Union mode: spaces{ms_names},result_count={len(units)}")
-            return set(u.uid for u in units)
-        
+            space_uids = set()
+            for raw_name in ms_names:
+                name = raw_name[3:] if raw_name.startswith("ms:") else raw_name
+                space = self.memory_spaces.get(name)
+                if space is not None:
+                    space_uids.update(space.get_all_unit_uids(recursive=True))
+            logger.debug(
+                "Union mode: spaces%s, result_count=%d", ms_names, len(space_uids)
+            )
+            return space_uids
         elif candidate_uids:
-            units = self.units_union(candidate_uids)
-            logger.debug(f"candidate-unit mode: {len(candidate_uids)}candidates,result_count={len(units)}")
-            return set(u.uid for u in units)
-        
+            known_uids = self._all_known_uids()
+            result = {str(uid) for uid in candidate_uids if str(uid) in known_uids}
+            logger.debug(
+                "Candidate-unit mode: candidates=%d, result_count=%d",
+                len(candidate_uids),
+                len(result),
+            )
+            return result
         else:
-            logger.debug(f"Global mode: all units,result_count={len(self.memory_units)}")
+            logger.debug("Global mode: all units, result_count=%d", self._total_unit_count())
             return None
 
     def _search_with_global_index(
@@ -2928,7 +2609,7 @@ class SemanticMap(RetrievalInterface):
         if self.faiss_index is None or self.faiss_index.ntotal <= 0:
             return []
 
-        if len(candidate_uids_set) >= len(self.memory_units):
+        if len(candidate_uids_set) >= self._total_unit_count():
             distances, internal_faiss_indices = self.faiss_index.search(query_embedding_np, k)
             return self._process_search_results(
                 distances, internal_faiss_indices, candidate_uids_set
@@ -3101,6 +2782,41 @@ class SemanticMap(RetrievalInterface):
     
     
     def save_map(
+        self,
+        directory_path: str,
+        freeze_retrievers: bool = False,
+        build_sparse_vectors: bool = True,
+    ):
+        """Persist a complete resident SemanticMap checkpoint.
+
+        Tiered maps must be saved through ``SemanticGraph.save_graph()`` so the
+        resident state and RocksDB payload catalog are captured together.
+        """
+        if self.tiered_storage_manager is not None:
+            raise RuntimeError(
+                "SemanticMap.save_map() cannot create a complete checkpoint "
+                "while tiered paging is enabled; use SemanticGraph.save_graph()."
+            )
+        return self._save_map_impl(
+            directory_path,
+            freeze_retrievers=freeze_retrievers,
+            build_sparse_vectors=build_sparse_vectors,
+        )
+
+    def _save_map_for_graph_snapshot(
+        self,
+        directory_path: str,
+        freeze_retrievers: bool = False,
+        build_sparse_vectors: bool = True,
+    ):
+        """Save resident map state inside a graph-managed tiered snapshot."""
+        return self._save_map_impl(
+            directory_path,
+            freeze_retrievers=freeze_retrievers,
+            build_sparse_vectors=build_sparse_vectors,
+        )
+
+    def _save_map_impl(
         self,
         directory_path: str,
         freeze_retrievers: bool = False,

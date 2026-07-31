@@ -742,11 +742,7 @@ class UnifiedGraphBuilder:
 
     def _cleanup_source_graph(self, graph: SemanticGraph) -> None:
         try:
-            duckdb_connection = getattr(graph, "_duckdb_connection", None)
-            if duckdb_connection is not None and getattr(duckdb_connection, "is_connected", False):
-                duckdb_connection.close()
-            graph._duckdb_connection = None
-            graph.semantic_map._external_storage = None
+            graph.close()
 
             if getattr(graph.semantic_map, "faiss_index", None) is not None:
                 try:

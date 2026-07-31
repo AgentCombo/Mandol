@@ -2,7 +2,6 @@ import logging
 from datetime import datetime
 import os
 import pickle
-import shutil
 import uuid
 import orjson
 from typing import TYPE_CHECKING, Dict, Any, Optional, List, Set, Tuple, Union
@@ -18,9 +17,9 @@ import rustworkx as rx
 if TYPE_CHECKING:
     from ..retrieval.advance_retriever import MultiRetriever
     from ..retrieval.retrieval_interface import RetrievalMethod
+    from ..storage.rocksdb_payload_store import RocksDBPayloadStore
 
 from .semantic_map import SemanticMap
-from ..storage.duckdb_operator import DuckDBOperator
 from .memory_unit import MemoryUnit
 from .memory_space import MemorySpace
 from ..utils.logging_config import create_module_logger
@@ -61,8 +60,9 @@ class SemanticGraph:
         # self._graph_expander: Optional[GraphContextExpander] = None
 
         
-        self._duckdb_connection: Optional[DuckDBOperator] = None
-        self._l2_storage_mode: str = "none"  # "none" | "duckdb"
+        self._payload_store: Optional["RocksDBPayloadStore"] = None
+        self._tiered_storage_config: Optional[Dict[str, Any]] = None
+        self._closed = False
         self._modified_relationships = (
             set()
         )
@@ -182,58 +182,113 @@ class SemanticGraph:
     def connect_to_l2(
         self,
         l2_base_path: Optional[str] = None,
+        max_capacity: Optional[int] = None,
+        high_watermark: float = 0.85,
+        low_watermark: float = 0.70,
     ) -> bool:
-        """Connect the graph to the DuckDB-backed L2 storage layer.
+        """Enable RocksDB-backed automatic payload paging.
 
         Args:
-            l2_base_path: Directory where the DuckDB database should be opened.
+            l2_base_path: Directory where RocksDB should be opened.
                 When omitted, a timestamped directory under ``./l2_database`` is
                 created.
+            max_capacity: Optional resident payload-cache capacity.
+            high_watermark: Resident-cache eviction trigger.
+            low_watermark: Resident-cache target after eviction.
 
         Returns:
-            True when the DuckDB connection and tiered-storage hooks are ready;
-            False when initialization fails.
+            True when RocksDB and automatic paging are ready; False on
+            initialization failure. A failed initialization leaves the graph
+            usable with resident in-memory payloads.
         """
-        try:
-            if l2_base_path is None:
-                ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-                short_id = uuid.uuid4().hex[:8]
-                l2_base_path = os.path.join(
-                    ".", "l2_database", f"graph_{ts}_{short_id}"
-                )
-            os.makedirs(l2_base_path, exist_ok=True)
+        self._ensure_open()
+        if l2_base_path is None:
+            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+            short_id = uuid.uuid4().hex[:8]
+            l2_base_path = os.path.join(
+                ".", "l2_database", f"graph_{ts}_{short_id}"
+            )
 
-            
-            duckdb_path = os.path.join(l2_base_path, "hippo_l2.duckdb")
-            self._duckdb_connection = DuckDBOperator(db_path=duckdb_path)
-            if not self._duckdb_connection.is_connected:
-                logger.error("DuckDB connection failed.")
-                self._duckdb_connection = None
+        resolved_base_path = os.path.realpath(os.path.abspath(l2_base_path))
+        rocksdb_path = os.path.join(resolved_base_path, "payloads.rocksdb")
+        effective_capacity = int(
+            max_capacity if max_capacity is not None else self._max_nodes_in_memory
+        )
+        requested_config = {
+            "rocksdb_path": rocksdb_path,
+            "max_capacity": effective_capacity,
+            "high_watermark": high_watermark,
+            "low_watermark": low_watermark,
+        }
+
+        if self.tiered_storage_manager is not None:
+            if self._tiered_storage_config == requested_config:
+                return True
+            raise RuntimeError(
+                "RocksDB tiered storage is already connected with a different "
+                "path or capacity/watermark configuration."
+            )
+
+        payload_store = None
+        try:
+            os.makedirs(resolved_base_path, exist_ok=True)
+
+            from ..storage.rocksdb_payload_store import RocksDBPayloadStore
+
+            payload_store = RocksDBPayloadStore(db_path=rocksdb_path)
+            if not payload_store.is_connected:
+                logger.error("RocksDB payload-store connection failed.")
+                payload_store.close()
                 return False
 
-            
-            self.enable_tiered_storage(self._duckdb_connection)
-            self._l2_storage_mode = "duckdb"
-            logger.info(f"L2 DuckDB storage connected: {duckdb_path}")
+            self.enable_tiered_storage(
+                payload_store,
+                max_capacity=effective_capacity,
+                high_watermark=high_watermark,
+                low_watermark=low_watermark,
+            )
+            self._tiered_storage_config = requested_config
+            logger.info(
+                "RocksDB-backed tiered payload storage connected: %s",
+                rocksdb_path,
+            )
             return True
         except Exception as e:
             logger.error(f"Failed to initialize L2 storage: {e}")
-            self._duckdb_connection = None
-            self._l2_storage_mode = "none"
+            self._reset_tiered_storage_after_failure(payload_store)
             return False
+
+    def _reset_tiered_storage_after_failure(self, payload_store=None) -> None:
+        """Release a partially initialized store without changing payloads."""
+        manager = getattr(self.semantic_map, "tiered_storage_manager", None)
+        if manager is not None:
+            manager.shutdown(wait=True)
+        map_store = getattr(self.semantic_map, "_external_storage", None)
+        stores = {store for store in (payload_store, self._payload_store, map_store) if store}
+        for store in stores:
+            store.close()
+        self.semantic_map.tiered_storage_manager = None
+        self.semantic_map._external_storage = None
+        self.semantic_map._storage_uids = None
+        self._payload_store = None
+        self.tiered_storage_manager = None
+        self._tiered_storage_config = None
 
     def enable_tiered_storage(
         self,
-        duckdb_operator,
+        payload_store,
         max_capacity: Optional[int] = None,
         high_watermark: float = 0.85,
         low_watermark: float = 0.70,
     ):
-        """Attach graph-aware tiered storage callbacks to SemanticMap."""
+        """Attach graph-aware RocksDB payload callbacks to SemanticMap."""
+        self._ensure_open()
+        if self.tiered_storage_manager is not None:
+            raise RuntimeError("RocksDB tiered storage is already enabled.")
         if max_capacity is not None:
             self._max_nodes_in_memory = int(max_capacity)
         self.tiered_storage_manager = self.semantic_map.enable_tiered_storage(
-            duckdb_operator=duckdb_operator,
+            payload_store=payload_store,
             max_capacity=self._max_nodes_in_memory,
             high_watermark=high_watermark,
             low_watermark=low_watermark,
@@ -243,7 +298,28 @@ class SemanticGraph:
                 "add_to_l1_cb": self._add_to_l1_from_tiered_swap,
             },
         )
+        self._payload_store = payload_store
         return self.tiered_storage_manager
+
+    def _ensure_open(self) -> None:
+        if self._closed:
+            raise RuntimeError("SemanticGraph is closed.")
+
+    def close(self) -> None:
+        """Finish background paging and close the RocksDB payload store.
+
+        Closing ends this graph's lifecycle and does not materialize cold
+        payloads into resident memory. Repeated calls are safe.
+        """
+        if self._closed:
+            return
+        try:
+            self.semantic_map._close_tiered_storage()
+        finally:
+            self._payload_store = None
+            self.tiered_storage_manager = None
+            self._tiered_storage_config = None
+            self._closed = True
 
     def _trigger_tiered_eviction_if_needed(self) -> None:
         manager = getattr(self, "tiered_storage_manager", None)
@@ -251,9 +327,7 @@ class SemanticGraph:
             manager.check_and_trigger_eviction(len(self.semantic_map.memory_units))
 
     def _get_l1_data_for_tiered_swap_out(self, count: int) -> Dict[str, Any]:
-        data = self.semantic_map._get_l1_data_for_tiered_swap_out(count)
-        data["edges"] = self._collect_edges_for_tiered_uids(data.get("uid_order", []))
-        return data
+        return self.semantic_map._get_l1_data_for_tiered_swap_out(count)
 
     def _remove_from_l1_for_tiered_swap(self, uids: List[str]) -> int:
         removed_count = self.semantic_map._remove_from_l1_for_tiered_swap(uids)
@@ -271,12 +345,8 @@ class SemanticGraph:
                 self.rx_graph[idx] = node_attrs
         return removed_count
 
-    def _add_to_l1_from_tiered_swap(self, recovered_units, faiss_embs=None, splade_dicts=None) -> int:
-        restored_count = self.semantic_map._add_to_l1_from_tiered_swap(
-            recovered_units,
-            faiss_embs,
-            splade_dicts,
-        )
+    def _add_to_l1_from_tiered_swap(self, recovered_units) -> int:
+        restored_count = self.semantic_map._add_to_l1_from_tiered_swap(recovered_units)
         now = datetime.now()
         timestamp = now.timestamp()
         for unit in recovered_units:
@@ -302,36 +372,6 @@ class SemanticGraph:
             self._nodes_access_counts[unit.uid] = self._nodes_access_counts.get(unit.uid, 0) + 1
             self._nodes_last_accessed[unit.uid] = timestamp
         return restored_count
-
-    def _collect_edges_for_tiered_uids(self, uids: List[str]) -> List[Dict[str, Any]]:
-        edges: List[Dict[str, Any]] = []
-        seen = set()
-        for uid in uids:
-            if uid not in self._uid_to_index:
-                continue
-            idx = self._uid_to_index[uid]
-            try:
-                edge_iterables = (self.rx_graph.out_edges(idx), self.rx_graph.in_edges(idx))
-            except Exception:
-                continue
-            for edge_iterable in edge_iterables:
-                for src_idx, tgt_idx, edge_data in edge_iterable:
-                    src_uid = self._index_to_uid.get(src_idx)
-                    tgt_uid = self._index_to_uid.get(tgt_idx)
-                    if not src_uid or not tgt_uid:
-                        continue
-                    edge_type = edge_data.get("type", edge_data.get("relation_type", "RELATED")) if isinstance(edge_data, dict) else "RELATED"
-                    key = (src_uid, tgt_uid, edge_type, repr(edge_data))
-                    if key in seen:
-                        continue
-                    seen.add(key)
-                    edges.append({
-                        "source": src_uid,
-                        "target": tgt_uid,
-                        "relation_type": edge_type,
-                        "properties": dict(edge_data) if isinstance(edge_data, dict) else {},
-                    })
-        return edges
 
     def add_unit(
         self,
@@ -359,6 +399,7 @@ class SemanticGraph:
                 SPLADE sparse embedding during insertion.
             **legacy_kwargs: Backward-compatible aliases accepted by older code.
         """
+        self._ensure_open()
         if len(self.semantic_map.memory_units) >= self._max_nodes_in_memory:
             self._trigger_tiered_eviction_if_needed()
 
@@ -454,6 +495,7 @@ class SemanticGraph:
             A statistics dictionary covering SemanticMap insertion, graph node
             updates, and elapsed time.
         """
+        self._ensure_open()
         import time
         
         if not units:
@@ -518,7 +560,7 @@ class SemanticGraph:
             if not isinstance(unit, MemoryUnit):
                 continue
             
-            if unit.uid not in self.semantic_map.memory_units:
+            if not self.semantic_map._unit_exists(unit.uid):
                 continue
             
             node_attrs = {
@@ -576,7 +618,7 @@ class SemanticGraph:
         """Add relationship."""
 
         def get_node_id(uid):
-            if uid in self.semantic_map.memory_units:
+            if self.semantic_map._unit_exists(uid):
                 return uid, "memory_unit"
             elif uid in self.semantic_map.memory_spaces:
                 return f"ms:{uid}", "memory_space"
@@ -590,12 +632,12 @@ class SemanticGraph:
         tgt_id, tgt_type = get_node_id(target_uid)
 
         src_exists = (
-            src_type == "memory_unit" and self.semantic_map.get_unit(src_id) is not None
+            src_type == "memory_unit" and self.semantic_map._unit_exists(src_id)
         ) or (
             src_type == "memory_space" and src_id[3:] in self.semantic_map.memory_spaces
         )
         tgt_exists = (
-            tgt_type == "memory_unit" and self.semantic_map.get_unit(tgt_id) is not None
+            tgt_type == "memory_unit" and self.semantic_map._unit_exists(tgt_id)
         ) or (
             tgt_type == "memory_space" and tgt_id[3:] in self.semantic_map.memory_spaces
         )
@@ -608,16 +650,14 @@ class SemanticGraph:
 
         if src_id not in self._uid_to_index:
             if src_type == "memory_unit":
-                unit = self.semantic_map.get_unit(src_id)
-                if unit is not None:
-                    node_attrs = {
-                        "uid": unit.uid,
-                        "type": "memory_unit",
-                        "created": str(datetime.now()),
-                    }
-                    idx = self.rx_graph.add_node(node_attrs)
-                    self._uid_to_index[src_id] = idx
-                    self._index_to_uid[idx] = src_id
+                node_attrs = {
+                    "uid": src_id,
+                    "type": "memory_unit",
+                    "created": str(datetime.now()),
+                }
+                idx = self.rx_graph.add_node(node_attrs)
+                self._uid_to_index[src_id] = idx
+                self._index_to_uid[idx] = src_id
             elif src_type == "memory_space":
                 ms = self.semantic_map.memory_spaces.get(src_id[3:])
                 if ms is not None:
@@ -632,16 +672,14 @@ class SemanticGraph:
                     
         if tgt_id not in self._uid_to_index:
             if tgt_type == "memory_unit":
-                unit = self.semantic_map.get_unit(tgt_id)
-                if unit is not None:
-                    node_attrs = {
-                        "uid": unit.uid,
-                        "type": "memory_unit",
-                        "created": str(datetime.now()),
-                    }
-                    idx = self.rx_graph.add_node(node_attrs)
-                    self._uid_to_index[tgt_id] = idx
-                    self._index_to_uid[idx] = tgt_id
+                node_attrs = {
+                    "uid": tgt_id,
+                    "type": "memory_unit",
+                    "created": str(datetime.now()),
+                }
+                idx = self.rx_graph.add_node(node_attrs)
+                self._uid_to_index[tgt_id] = idx
+                self._index_to_uid[idx] = tgt_id
             elif tgt_type == "memory_space":
                 ms = self.semantic_map.memory_spaces.get(tgt_id[3:])
                 if ms is not None:
@@ -696,7 +734,7 @@ class SemanticGraph:
     def get_relationship(
         self, source_uid: str, target_uid: str, relationship_type: str
         ) -> Optional[Dict[str, Any]]:
-        """Return relationship properties from cache, graph, or L2 storage."""
+        """Return relationship properties from the cache or resident graph."""
         try:
             # The cache stores public UIDs rather than rustworkx node indices.
             rel_key = (source_uid, target_uid, relationship_type)
@@ -847,19 +885,13 @@ class SemanticGraph:
             return True
 
     def get_unit(self, uid: str) -> Optional[MemoryUnit]:
-        """Return a unit, swapping it back from L2 storage when necessary."""
+        """Return a unit, automatically paging in a cold payload if needed."""
+        self._ensure_open()
         unit = self.semantic_map.get_unit(uid)
         if unit:
             self._nodes_access_counts[uid] = self._nodes_access_counts.get(uid, 0) + 1
             self._nodes_last_accessed[uid] = datetime.now().timestamp()
             return unit
-
-        
-        loaded_count = self.swap_in_nodes([uid])
-        if loaded_count > 0:
-            unit = self.semantic_map.get_unit(uid)
-            if unit:
-                return unit
 
         logger.warning(f"Node '{uid}' is missing from both memory and external storage.")
         return None
@@ -922,106 +954,6 @@ class SemanticGraph:
 
         return self.semantic_map.get_units_in_memory_space(ms_names, recursive=recursive)
 
-    def _register_bm25_swap_out_hook(self, RetrievalMethod) -> None:
-        """Register bm25 swap out hook."""
-        multi_retriever = self._multi_retriever
-        graph_ref = self
-
-        def _on_swap_out(evicted_uids):
-            bm25 = multi_retriever.retrievers.get(RetrievalMethod.BM25)
-            if bm25 is None:
-                return
-            db = graph_ref._duckdb_connection
-            if db is None or not db.is_connected:
-                return
-
-            
-            uid_terms_list: list = []
-            uid_tfs_list: list = []
-            uid_list: list = []
-            df_deltas: dict = {}  # Preserve ghost-node metadata so evicted units remain traceable.
-
-            for uid in evicted_uids:
-                int_id = graph_ref.semantic_map._get_uid_to_int_id_map().get(uid)
-                if int_id is None:
-                    continue
-                terms = []
-                tfs = []
-                for term, postings in bm25.inverted_index.items():
-                    if int_id in postings:
-                        terms.append(term)
-                        tfs.append(postings[int_id])
-                        # Preserve ghost-node metadata so evicted units remain traceable.
-                        df_deltas[term] = df_deltas.get(term, 0) - 1
-                if terms:
-                    uid_list.append(uid)
-                    uid_terms_list.append(terms)
-                    uid_tfs_list.append(tfs)
-
-            
-            if uid_list:
-                for i, uid in enumerate(uid_list):
-                    db._execute(
-                        "UPDATE memory_nodes SET bm25_terms = ?, bm25_tfs = ? WHERE uid = ?",
-                        [uid_terms_list[i], uid_tfs_list[i], uid],
-                    )
-
-            if df_deltas:
-                db.update_bm25_global_stats(df_deltas)
-
-        self.semantic_map.register_swap_out_hook(_on_swap_out)
-        logger.debug("Registered BM25 swap_out lifecycle hook (columnar TF plus global DF).")
-
-    def _register_bm25_swap_in_hook(self, RetrievalMethod) -> None:
-        """Register bm25 swap in hook."""
-        multi_retriever = self._multi_retriever
-        graph_ref = self
-
-        def _on_swap_in(loaded_units):
-            bm25 = multi_retriever.retrievers.get(RetrievalMethod.BM25)
-            if bm25 is None:
-                return
-
-            db = graph_ref._duckdb_connection
-            if db is None or not db.is_connected:
-                # When DuckDB is unavailable, rebuild BM25 state from loaded units.
-                if hasattr(bm25, 'add_units'):
-                    bm25.add_units(loaded_units)
-                return
-
-            unit_ids = [u.uid for u in loaded_units]
-            bm25_data = db.get_bm25_node_data(unit_ids)
-
-            df_deltas: dict = {}
-            restored_count = 0
-            for uid, (terms, tfs) in bm25_data.items():
-                int_id = graph_ref.semantic_map._get_or_create_int_id(uid)
-                doc_len = 0
-                for term, tf in zip(terms, tfs):
-                    
-                    if term not in bm25.inverted_index:
-                        bm25.inverted_index[term] = {}
-                    bm25.inverted_index[term][int_id] = tf
-                    doc_len += tf
-                    df_deltas[term] = df_deltas.get(term, 0) + 1
-                bm25.doc_lengths[int_id] = doc_len
-                bm25.doc_postings[int_id] = {term: int(tf) for term, tf in zip(terms, tfs)}
-                restored_count += 1
-
-            
-            missing_units = [u for u in loaded_units if u.uid not in bm25_data]
-            if missing_units and hasattr(bm25, 'add_units'):
-                bm25.add_units(missing_units)
-
-            if df_deltas:
-                db.update_bm25_global_stats(df_deltas)
-
-            if restored_count > 0:
-                logger.debug(f"BM25 swap_in: {restored_count} node TF entries restored from columnar storage")
-
-        self.semantic_map.register_swap_in_hook(_on_swap_in)
-        logger.debug("Registered BM25 swap_in lifecycle hook (columnar TF restore).")
-
     def get_multi_retriever(self) -> 'MultiRetriever':
         """Return multi retriever."""
         if self._multi_retriever is not None:
@@ -1032,19 +964,6 @@ class SemanticGraph:
 
         self._multi_retriever = MultiRetriever(self)
 
-        
-        # Preserve ghost-node metadata so evicted units remain traceable.
-        
-        self._register_bm25_swap_out_hook(RetrievalMethod)
-
-        
-        
-        self._register_bm25_swap_in_hook(RetrievalMethod)
-        
-        
-        
-        
-        
         retrieval_indices_dir = getattr(self, '_index_loading_root', None)
         
         if not retrieval_indices_dir and hasattr(self, 'storage_path') and self.storage_path:
@@ -1299,45 +1218,6 @@ class SemanticGraph:
     
     
 
-    def swap_out_nodes(
-        self,
-        count: int = 100,
-        strategy: str = "LRU",
-        query_context: Optional[str] = None,
-    ) -> int:
-        """Compatibility wrapper; eviction policy lives in TieredStorageManager."""
-        manager = getattr(self, "tiered_storage_manager", None)
-        if manager is None:
-            logger.warning("TieredStorageManager is not configured; cannot swap out nodes.")
-            return 0
-        result = manager.evict_once(
-            current_size=len(self.semantic_map.memory_units),
-            count=count,
-        )
-        return result.removed_count
-
-    def _cleanup_bm25_l1(self, evicted_uids: List[str]) -> None:
-        """Release associated resources."""
-        if self._multi_retriever is None:
-            return
-        try:
-            from ..retrieval.retrieval_interface import RetrievalMethod
-            bm25 = self._multi_retriever.retrievers.get(RetrievalMethod.BM25)
-            if bm25 is not None and hasattr(bm25, 'remove_uids'):
-                bm25.remove_uids(evicted_uids)
-        except Exception as e:
-            logger.error(f"BM25 L1 cleanup failed; data may be inconsistent: {e}")
-
-    def swap_in_nodes(self, node_ids: List[str]) -> int:
-        """Batch page-fault wrapper backed by TieredStorageManager."""
-        manager = getattr(self, "tiered_storage_manager", None)
-        if manager is None:
-            logger.warning("TieredStorageManager is not configured; cannot load nodes from external storage.")
-            return 0
-        ids_to_load = [uid for uid in node_ids if uid not in self.semantic_map.memory_units]
-        loaded_units = manager.handle_page_fault_batch(ids_to_load)
-        return len(loaded_units)
-
     def swap_in_relationship(
         self, source_uid: str, target_uid: str, relationship_type: str, properties: dict
     ):
@@ -1352,16 +1232,9 @@ class SemanticGraph:
             self.swap_out_relationship(int(self._max_relationships_in_memory * 0.2))
 
     def swap_out_relationship(self, count: int = 100, strategy: str = "LRU"):
-        """Evict relationship-cache entries while leaving graph edges intact."""
+        """Evict relationship-cache entries while graph edges remain resident."""
         if not self._relationship_cache:
             logger.debug("Relationship cache is empty; nothing to swap out.")
-            return
-
-        has_duckdb = self._duckdb_connection and self._duckdb_connection.is_connected
-
-        if not has_duckdb:
-            logger.warning("L2 database (DuckDB) is not connected; cannot swap out relationships.")
-            self._clear_relationship_cache_fallback(count)
             return
 
         if strategy == "LRU":
@@ -1381,217 +1254,20 @@ class SemanticGraph:
                 key=lambda k: self._relationships_last_accessed.get(k, 0),
             )
 
-        actual_count = min(count, len(sorted_rels))
-        relationships_to_swap_out = sorted_rels[:actual_count]
-
-        synced_count = 0
         removed_count = 0
-
-        # Storage operations must preserve transactional consistency.
-        for rel_key in relationships_to_swap_out:
-            source_uid, target_uid, rel_type = rel_key
-
-            try:
-                properties = self._relationship_cache.get(rel_key, {})
-
-                if self._duckdb_connection.add_relationship(
-                    source_uid, target_uid, rel_type, properties=properties
-                ):
-                    synced_count += 1
-                    logger.debug(
-                        f"Relationship ({source_uid} -[{rel_type}]-> {target_uid}) synced to DuckDB"
-                    )
-
-                if rel_key in self._relationship_cache:
-                    del self._relationship_cache[rel_key]
-                    removed_count += 1
-                if rel_key in self._relationships_access_counts:
-                    del self._relationships_access_counts[rel_key]
-                if rel_key in self._relationships_last_accessed:
-                    del self._relationships_last_accessed[rel_key]
-
-                logger.debug(
-                    f"Relationship ({source_uid} -[{rel_type}]-> {target_uid}) removed from the in-memory cache"
-                )
-
-            except Exception as e:
-                logger.error(
-                    f"Error while swapping out relationship ({source_uid} -[{rel_type}]-> {target_uid}): {e}"
-                )
+        for rel_key in sorted_rels[: min(count, len(sorted_rels))]:
+            self._relationship_cache.pop(rel_key, None)
+            self._relationships_access_counts.pop(rel_key, None)
+            self._relationships_last_accessed.pop(rel_key, None)
+            removed_count += 1
 
         logger.info(
-            f"Swapped out {removed_count} relationships from memory with strategy {strategy}; {synced_count} were synced to DuckDB"
+            "Evicted %d relationship-cache entries with %s; rustworkx edges "
+            "remain resident.",
+            removed_count,
+            strategy,
         )
 
-    def _clear_relationship_cache_fallback(self, count: int = 100):
-        """Clear relationship cache fallback."""
-        if not self._relationship_cache:
-            return
-
-        
-        sorted_rels = sorted(
-            self._relationship_cache.keys(),
-            key=lambda k: self._relationships_last_accessed.get(k, 0),
-        )
-
-        
-        removed_count = 0
-        for rel_key in sorted_rels[:count]:
-            if rel_key in self._relationship_cache:
-                del self._relationship_cache[rel_key]
-                removed_count += 1
-            if rel_key in self._relationships_access_counts:
-                del self._relationships_access_counts[rel_key]
-            if rel_key in self._relationships_last_accessed:
-                del self._relationships_last_accessed[rel_key]
-
-        logger.debug(f"Cleared {removed_count} relationship cache entries in fallback mode.")
-
-    
-    
-    
-
-    def sync_to_external(
-        self,
-        force_full_sync: bool = False,
-        auto_detect_first_sync: bool = True,
-        sync_nodes: bool = True,
-        sync_relationships: bool = True,
-    ) -> Dict[str, int]:
-        """Sync to external."""
-        stats = {
-            "nodes_synced": 0,
-            "nodes_failed": 0,
-            "relationships_synced": 0,
-            "relationships_failed": 0,
-            "sync_mode": "incremental",
-        }
-
-        if sync_nodes and self.semantic_map._external_storage:
-            semantic_map_stats = self.semantic_map.sync_to_external(force_full_sync)
-            stats["nodes_synced"] = (
-                semantic_map_stats[0]
-                if isinstance(semantic_map_stats, tuple)
-                else semantic_map_stats.get("nodes_synced", 0)
-            )
-            stats["nodes_failed"] = (
-                semantic_map_stats[1]
-                if isinstance(semantic_map_stats, tuple)
-                else semantic_map_stats.get("nodes_failed", 0)
-            )
-
-        # Storage operations must preserve transactional consistency.
-        if sync_relationships:
-            if self._duckdb_connection and self._duckdb_connection.is_connected:
-                rel_stats = self._sync_relationships_to_l2(force_full_sync)
-                stats["relationships_synced"] += rel_stats["relationships_synced"]
-                stats["relationships_failed"] += rel_stats["relationships_failed"]
-
-        if stats["nodes_synced"] > 0 or stats["relationships_synced"] > 0:
-            if force_full_sync:
-                self._clear_all_dirty_flags()
-
-        total_success = stats["nodes_synced"] + stats["relationships_synced"]
-        total_failed = stats["nodes_failed"] + stats["relationships_failed"]
-
-        sync_mode = "full" if force_full_sync else "incremental"
-        stats["sync_mode"] = sync_mode
-
-        logger.info(
-            f"SemanticGraph sync complete ({sync_mode})."
-            f"nodes: success={stats['nodes_synced']}, failed={stats['nodes_failed']}; "
-            f"relationships: success={stats['relationships_synced']}, failed={stats['relationships_failed']}; "
-            f"total: success={total_success}, failed={total_failed}"
-        )
-
-        return stats
-
-    def _sync_relationships_to_l2(self, force_full_sync: bool) -> Dict[str, int]:
-        """Sync relationships to L2."""
-        stats = {"relationships_synced": 0, "relationships_failed": 0}
-        if not self._duckdb_connection or not self._duckdb_connection.is_connected:
-            return stats
-
-        if force_full_sync:
-            relationships_to_sync = []
-            for edge_idx in self.rx_graph.edge_indices():
-                src_idx, tgt_idx = self.rx_graph.get_edge_endpoints_by_index(edge_idx)
-                data = self.rx_graph.get_edge_data_by_index(edge_idx)
-                source = self._index_to_uid.get(src_idx, "")
-                target = self._index_to_uid.get(tgt_idx, "")
-                if source and target:
-                    rel_type = data.get("type", "RELATED_TO")
-                    relationships_to_sync.append((source, target, rel_type))
-            logger.info(f"Full sync: preparing to sync {len(relationships_to_sync)} relationships to DuckDB")
-        else:
-            relationships_to_sync = list(self._modified_relationships)
-            logger.info(f"Incremental sync: preparing to sync {len(relationships_to_sync)} modified relationships to DuckDB")
-
-        # Storage operations must preserve transactional consistency.
-        batch = []
-        for source_uid, target_uid, rel_type in relationships_to_sync:
-            edge_data = None
-            if source_uid in self._uid_to_index and target_uid in self._uid_to_index:
-                src_idx = self._uid_to_index[source_uid]
-                tgt_idx = self._uid_to_index[target_uid]
-                try:
-                    edge_data_list = self.rx_graph.get_all_edge_data(src_idx, tgt_idx)
-                except Exception:
-                    edge_data_list = []
-                for ed in edge_data_list:
-                    if ed.get("type") == rel_type:
-                        edge_data = ed
-                        break
-
-            if not edge_data:
-                stats["relationships_failed"] += 1
-                continue
-
-            properties = {k: v for k, v in edge_data.items() if k not in ["type", "created", "updated"]}
-            batch.append((source_uid, target_uid, rel_type, properties))
-
-        # Storage operations must preserve transactional consistency.
-        if batch:
-            written = self._duckdb_connection.add_relationships_batch(batch)
-            stats["relationships_synced"] += written
-            stats["relationships_failed"] += len(batch) - written
-            for src, tgt, rt, _ in batch[:written]:
-                self._modified_relationships.discard((src, tgt, rt))
-
-        if self._deleted_relationships:
-            deleted_list = list(self._deleted_relationships)
-            for source_uid, target_uid, rel_type in deleted_list:
-                try:
-                    if self._duckdb_connection.delete_relationship(source_uid, target_uid, rel_type):
-                        stats["relationships_synced"] += 1
-                        self._deleted_relationships.discard((source_uid, target_uid, rel_type))
-                    else:
-                        stats["relationships_failed"] += 1
-                except Exception as e:
-                    stats["relationships_failed"] += 1
-                    logger.error(f"Failed to delete relationship from DuckDB: {e}")
-
-        return stats
-
-    def _clear_all_dirty_flags(self):
-        """Clear all dirty flags."""
-        self._nodes_dirty_flag.clear()
-        self._modified_units.clear()
-        self._deleted_units.clear()
-        self._modified_relationships.clear()
-        self._deleted_relationships.clear()
-        logger.debug("Cleared all modification markers.")
-
-    def incremental_export(self) -> Dict[str, int]:
-        """Export only units and relationships marked as modified or deleted."""
-        return self.sync_to_external(
-            force_full_sync=False, auto_detect_first_sync=False
-        )
-
-    def full_export(self) -> Dict[str, int]:
-        """Export all graph and map state to the configured L2 storage."""
-        return self.sync_to_external(force_full_sync=True, auto_detect_first_sync=False)
-    
     def get_all_relations_with_samples(self, samples_per_type: int = 2) -> dict:
         rel_samples = {}
         seen_pairs = set()
@@ -1816,7 +1492,7 @@ class SemanticGraph:
             f"  - modified relationships pending sync: {num_modified_relationships}\n"
             f"  - deleted relationships pending sync: {num_deleted_relationships}\n"
             f"external storage connection:\n"
-            f"  - DuckDB L2: {'connected' if self._duckdb_connection and self._duckdb_connection.is_connected else 'not connected'}\n"
+            f"  - RocksDB payload store: {'connected' if self._payload_store and self._payload_store.is_connected else 'not connected'}\n"
             f"---------------------------\n"
         )
         print(summary)
@@ -1969,13 +1645,50 @@ class SemanticGraph:
                 used.
             build_sparse_vectors: Whether missing SPLADE vectors should be
                 generated before SemanticMap persistence.
+
+        Notes:
+            The method waits for tiered eviction work submitted before the
+            snapshot. Concurrent graph mutation from another user thread is
+            not supported while a snapshot is being created.
         """
+        self._ensure_open()
+        manager = self.tiered_storage_manager
+        if manager is None:
+            return self._save_graph_snapshot(
+                directory_path,
+                freeze_retrievers=freeze_retrievers,
+                force_rebuild_retrievers=force_rebuild_retrievers,
+                retriever_methods_to_build=retriever_methods_to_build,
+                build_sparse_vectors=build_sparse_vectors,
+            )
+
+        with manager.quiesce(lambda: len(self.semantic_map.memory_units)):
+            return self._save_graph_snapshot(
+                directory_path,
+                freeze_retrievers=freeze_retrievers,
+                force_rebuild_retrievers=force_rebuild_retrievers,
+                retriever_methods_to_build=retriever_methods_to_build,
+                build_sparse_vectors=build_sparse_vectors,
+            )
+
+    def _save_graph_snapshot(
+        self,
+        directory_path: str,
+        freeze_retrievers: bool = False,
+        force_rebuild_retrievers: bool = False,
+        retriever_methods_to_build: Optional[List[Any]] = None,
+        build_sparse_vectors: bool = True,
+    ):
+        """Write graph and payload state while tiered eviction is quiescent."""
         os.makedirs(directory_path, exist_ok=True)
         logger.info(f"Saving SemanticGraph to sandbox directory: {directory_path}")
 
         
         semantic_map_dir = os.path.join(directory_path, "semantic_map_data")
-        self.semantic_map.save_map(semantic_map_dir, build_sparse_vectors=build_sparse_vectors)
+        self.semantic_map._save_map_for_graph_snapshot(
+            semantic_map_dir,
+            build_sparse_vectors=build_sparse_vectors,
+        )
 
         
         graph_path = os.path.join(directory_path, "rx_graph.pkl")
@@ -2063,51 +1776,27 @@ class SemanticGraph:
             except Exception as e:
                 logger.warning(f"Exception while saving retriever indexes: {e}")
 
-        # Storage operations must preserve transactional consistency.
-        l2_relative_path = "l2_database/hippo_l2.duckdb"
-        target_duckdb_path = os.path.join(directory_path, l2_relative_path)
+        l2_relative_path = "l2_database/payloads.rocksdb"
+        target_rocksdb_path = os.path.join(directory_path, l2_relative_path)
+        rocksdb_enabled = bool(
+            self._payload_store is not None
+            and self._payload_store.is_connected
+        )
+        paging_manager = self.semantic_map.tiered_storage_manager
 
-        if self._duckdb_connection is not None and self._duckdb_connection.is_connected:
-            src_db_path = os.path.abspath(self._duckdb_connection.db_path)
-            dst_db_path = os.path.abspath(target_duckdb_path)
-
-            if src_db_path != dst_db_path:
-                logger.info(f"L2 DuckDB sandbox copy: {src_db_path} -> {dst_db_path}")
-                try:
-                    self._duckdb_connection.close()
-                    self._duckdb_connection = None
-                    self.semantic_map._external_storage = None
-
-                    os.makedirs(os.path.dirname(dst_db_path), exist_ok=True)
-                    shutil.copy2(src_db_path, dst_db_path)
-                    src_wal = src_db_path + ".wal"
-                    if os.path.exists(src_wal):
-                        shutil.copy2(src_wal, dst_db_path + ".wal")
-
-                    l2_base = os.path.dirname(dst_db_path)
-                    self.connect_to_l2(l2_base_path=l2_base)
-                    logger.info(f"L2 DuckDB sandboxed and reconnected: {dst_db_path}")
-                except Exception as e:
-                    logger.error(f"L2 DuckDB sandbox copy failed: {e}")
-                    try:
-                        src_base = os.path.dirname(src_db_path)
-                        self.connect_to_l2(l2_base_path=src_base)
-                    except Exception:
-                        logger.error("L2 DuckDB reconnect also failed; engine unavailable.")
-            else:
-                logger.info("L2 DuckDB is already in the target directory; flushing WAL.")
-                try:
-                    self._duckdb_connection.close()
-                    self._duckdb_connection = None
-                    self.semantic_map._external_storage = None
-                    l2_base = os.path.dirname(dst_db_path)
-                    self.connect_to_l2(l2_base_path=l2_base)
-                except Exception as e:
-                    logger.error(f"L2 DuckDB reconnect failed after WAL flush: {e}")
+        if rocksdb_enabled:
+            destination_path = os.path.abspath(target_rocksdb_path)
+            try:
+                self._payload_store.copy_to(destination_path)
+                logger.info(
+                    "RocksDB payload checkpoint ready: %s", destination_path
+                )
+            except Exception as e:
+                logger.error(f"RocksDB payload checkpoint copy failed: {e}")
 
         
         state = {
-            "version": "2.1_sandboxed",
+            "version": "3.0_rocksdb",
             "saved_time": datetime.now().isoformat(),
             "management": {
                 "_nodes_access_counts": self._nodes_access_counts,
@@ -2132,9 +1821,23 @@ class SemanticGraph:
                 "frozen_matrices_saved": static_index_status,
             },
             "l2_storage": {
-                "mode": self._l2_storage_mode,
-                "duckdb_relative_path": l2_relative_path,
-                "duckdb_path": self._duckdb_connection.db_path if self._duckdb_connection else None,
+                "enabled": rocksdb_enabled,
+                "backend": "rocksdb" if rocksdb_enabled else None,
+                "rocksdb_relative_path": (
+                    l2_relative_path if rocksdb_enabled else None
+                ),
+                "rocksdb_path": (
+                    self._payload_store.db_path if rocksdb_enabled else None
+                ),
+                "max_capacity": (
+                    paging_manager.max_capacity if paging_manager is not None else None
+                ),
+                "high_watermark": (
+                    paging_manager.high_watermark if paging_manager is not None else None
+                ),
+                "low_watermark": (
+                    paging_manager.low_watermark if paging_manager is not None else None
+                ),
             },
             "high_level_memory_build": self.get_high_level_memory_build_state(),
         }
@@ -2168,6 +1871,13 @@ class SemanticGraph:
 
         with open(state_path, "rb") as f:
             state = orjson.loads(f.read())
+
+        legacy_placement = state.get("l2_storage", {}).get("mode")
+        if legacy_placement == "store_only":
+            raise ValueError(
+                "This checkpoint uses the removed store_only payload placement "
+                "and cannot be loaded by this release."
+            )
 
         
         map_dir = os.path.join(directory_path, "semantic_map_data")
@@ -2237,22 +1947,46 @@ class SemanticGraph:
         except Exception as e:
             logger.warning(f"Failed to load management state: {e}")
 
-        # Storage operations must preserve transactional consistency.
         try:
             l2_info = state.get("l2_storage", {})
-            l2_mode = l2_info.get("mode", "none")
-            if l2_mode == "duckdb":
-                relative_path = l2_info.get("duckdb_relative_path")
-                resolved_db_path = os.path.join(directory_path, relative_path) if relative_path else None
+            persistent_payloads_enabled = bool(l2_info.get("enabled")) or (
+                legacy_placement == "tiered_cache"
+            )
+            if persistent_payloads_enabled:
+                relative_path = l2_info.get("rocksdb_relative_path")
+                resolved_db_path = (
+                    os.path.join(directory_path, relative_path)
+                    if relative_path
+                    else None
+                )
 
-                if resolved_db_path and os.path.exists(resolved_db_path):
-                    logger.info(f"L2 DuckDB uses sandbox-relative path: {relative_path}")
+                if resolved_db_path and os.path.isdir(resolved_db_path):
+                    logger.info(
+                        "Restoring RocksDB payload store from: %s", relative_path
+                    )
                     l2_base = os.path.dirname(resolved_db_path)
-                    instance.connect_to_l2(l2_base_path=l2_base)
+                    paging_kwargs = {
+                        key: l2_info[key]
+                        for key in (
+                            "max_capacity",
+                            "high_watermark",
+                            "low_watermark",
+                        )
+                        if l2_info.get(key) is not None
+                    }
+                    connected = instance.connect_to_l2(
+                        l2_base_path=l2_base,
+                        **paging_kwargs,
+                    )
+                    if not connected:
+                        logger.warning(
+                            "RocksDB payload restore failed; cold checkpoint "
+                            "payloads are unavailable in the loaded graph."
+                        )
                 else:
                     logger.warning(
-                        "graph_state.json records L2 DuckDB, but the sandbox file is missing; "
-                        "skipping L2 connection restore"
+                        "graph_state.json records RocksDB payload storage, but "
+                        "the checkpoint directory is missing; skipping restore."
                     )
         except Exception as e:
             logger.warning(f"Failed to restore L2 storage connection (non-fatal): {e}")

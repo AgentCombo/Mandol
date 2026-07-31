@@ -75,7 +75,8 @@ Common methods:
 * ``search_similarity_by_vector(query_embedding, k=5, ms_names=None,
   candidate_uids=None)``
 * ``get_multi_retriever()``
-* ``save_map(directory_path)`` and ``load_map(directory_path)``
+* ``save_map(directory_path)`` and ``load_map(directory_path)`` for resident
+  map-only state; use graph snapshots when tiered paging is enabled
 
 SemanticGraph
 -------------
@@ -100,6 +101,7 @@ Common methods:
   query_image_path=None, top_k=5, ms_names=None, return_score=False)``
 * ``get_multi_retriever()``
 * ``save_graph(directory_path)`` and ``load_graph(directory_path)``
+* ``connect_to_l2(...)`` and ``close()`` for RocksDB tiered-paging lifecycle
 
 Canonical tower spaces
 ----------------------

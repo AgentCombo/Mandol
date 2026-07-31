@@ -1,73 +1,46 @@
-"""Package exports for storage."""
+"""RocksDB payload persistence and tiered-cache orchestration."""
 
-import logging
 from ..utils.logging_config import create_module_logger
 
 try:
-    from .duckdb_operator import DuckDBOperator
-    DUCKDB_AVAILABLE = True
+    from .rocksdb_payload_store import RocksDBPayloadStore
+    ROCKSDB_AVAILABLE = True
 except ImportError:
-    DuckDBOperator = None
-    DUCKDB_AVAILABLE = False
+    RocksDBPayloadStore = None
+    ROCKSDB_AVAILABLE = False
 
 from .tiered_storage_manager import TieredEvictionResult, TieredStorageManager
 
 __all__ = [
-    'DuckDBOperator',
-    'TieredStorageManager',
-    'TieredEvictionResult',
-    'create_duckdb_operator',
-    'get_storage_status',
-    'DUCKDB_AVAILABLE',
+    "RocksDBPayloadStore",
+    "TieredStorageManager",
+    "TieredEvictionResult",
+    "create_rocksdb_payload_store",
+    "get_storage_status",
+    "ROCKSDB_AVAILABLE",
 ]
 
 logger = create_module_logger("storage")
 
 
-def create_duckdb_operator(
-    db_path: str = ":memory:",
-    **kwargs
+def create_rocksdb_payload_store(
+    db_path: str = "./l2_database/payloads.rocksdb",
 ):
-    """Build duckdb operator."""
-    if not DUCKDB_AVAILABLE:
-        raise ImportError("DuckDB dependencies are not installed. Run: pip install duckdb pyarrow")
-    return DuckDBOperator(db_path=db_path, **kwargs)
+    """Open the RocksDB store used by automatic payload paging."""
+    if not ROCKSDB_AVAILABLE:
+        raise ImportError("RocksDB support is unavailable. Install the rocksdict package.")
+    return RocksDBPayloadStore(db_path=db_path)
 
 
 def get_storage_status() -> dict:
     """Return storage status."""
     status = {
-        "duckdb_available": DUCKDB_AVAILABLE,
+        "rocksdb_available": ROCKSDB_AVAILABLE,
     }
-    
-    if DUCKDB_AVAILABLE:
-        logger.info("Unified L2 storage is available (DuckDB)")
+
+    if ROCKSDB_AVAILABLE:
+        logger.info("RocksDB payload persistence is available.")
     else:
-        logger.warning("DuckDB is unavailable; L2 storage support is limited")
-    
+        logger.warning("RocksDB is unavailable; persistent payload paging is disabled.")
+
     return status
-
-# def get_default_configs():
-#     return {
-#         'milvus': DEFAULT_MILVUS_CONFIG.copy(),
-#         'neo4j': DEFAULT_NEO4J_CONFIG.copy()
-#     }
-
-# def create_default_milvus_operator():
-#     return create_milvus_operator(**DEFAULT_MILVUS_CONFIG)
-
-# def create_default_neo4j_operator():
-#     return create_neo4j_operator(**DEFAULT_NEO4J_CONFIG)
-
-# import warnings
-
-# if not MILVUS_AVAILABLE:
-#     warnings.warn(
-
-#         ImportWarning
-#     )
-
-# if not NEO4J_AVAILABLE:
-#     warnings.warn(
-#         ImportWarning
-#     )

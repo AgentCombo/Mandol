@@ -89,4 +89,5 @@ Save and load
    )
 
 Use ``SemanticGraph.save_graph`` for complete snapshots. ``SemanticMap.save_map``
-is available for map-only persistence, but it does not preserve graph topology.
+is available for resident map-only persistence, but it does not preserve graph
+topology and fails closed while tiered paging is enabled.
