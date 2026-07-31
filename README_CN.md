@@ -3,7 +3,9 @@
 > Mandol：一种面向长对话的智能体内存记忆系统
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
+[![PyPI](https://img.shields.io/badge/PyPI-0.1.0a2-blue)](https://pypi.org/project/mandol/)
+[![Downloads](https://img.shields.io/pypi/dm/mandol?label=Downloads&color=blue)](https://pypi.org/project/mandol/)
 [![Homepage](https://img.shields.io/badge/Homepage-agentcombo.github.io%2FMandol-blue)](https://agentcombo.github.io/Mandol)
 [![Docs](https://img.shields.io/badge/Docs-agentcombo.github.io%2FMandol%2Fdocs-green)](https://agentcombo.github.io/Mandol/docs)
 [![Paper](https://img.shields.io/badge/Paper-arXiv:2606.29778-red.svg)](https://arxiv.org/abs/2606.29778)
@@ -11,9 +13,14 @@
 [English](README.md) | [中文](README_CN.md)
 
 > [!IMPORTANT]
-> `main` 分支目前处于持续重构状态。若需要精确复现论文实验结果，请使用
-> [`paper-repro`](https://github.com/AgentCombo/Mandol/tree/paper-repro) 分支。
-> 当前公开的 PyPI 包 `mandol==0.1.0a1` 与 GitHub release 对应论文复现版本。
+> `main` 分支现在承载 Mandol 当前公开的 Python 实现。迁移前原 `main`
+> 分支中的历史实现保存在
+> [`legacy/original`](https://github.com/AgentCombo/Mandol/tree/legacy/original)
+> 分支中，仅供历史参考。
+>
+> 论文中报告的实验结果由冻结的
+> [`paper-repro`](https://github.com/AgentCombo/Mandol/tree/paper-repro)
+> artifact 生成。如需精确复现论文实验，请继续使用 `paper-repro` 分支。
 
 ![Mandol Overview](README.assets/Mandol-overview.png)
 
@@ -24,16 +31,16 @@
 <details>
 <summary><b>展开/收起</b></summary>
 
-- [📖 Mandol 是什么？](#mandol-是什么)
-- [💡 核心创新](#核心创新)
-- [✨ 关键特性](#关键特性)
-- [📊 与主流记忆系统对比](#与主流记忆系统对比)
-- [🏆 应用案例](#应用案例)
+- [📖 Mandol 是什么？](#-mandol-是什么)
+- [💡 核心创新](#-核心创新)
+- [✨ 关键特性](#-关键特性)
+- [📊 与主流记忆系统对比](#-与主流记忆系统对比)
+- [🏆 应用案例](#-应用案例)
 - [🔬 论文复现](#-论文复现)
-- [⚡ 快速开始](#快速开始)
-- [📚 文档与社区](#文档与社区)
-- [📄 引用](#引用)
-- [📄 许可](#许可)
+- [⚡ 快速开始](#-快速开始)
+- [📚 文档与社区](#-文档与社区)
+- [📄 引用](#-引用)
+- [📄 许可](#-许可)
 
 </details>
 
@@ -43,14 +50,14 @@
 
 Mandol 是一套以内存为核心、具备高效精确检索能力的智能体分层记忆系统，实现复杂记忆信息的统一表示、高效存储与高效精确检索，为下一代智能体认知架构提供理论支撑与技术方案。
 
-系统基于纯 Python 内存数据结构，融合键值、向量与图三种索引范式，提供统一的存储与混合检索接口，无需外部依赖即可运行。向下可按需桥接 Milvus、Neo4j 等外部存储引擎，向上提供 `add()` → `holistic_retrieve()` 的极简操作模型。其核心创新在于将传统「被动召回-排序」检索范式转变为「智能路由 → 量化去噪 → 高质量上下文生成」主动检索新范式。
+系统采用 Python 实现的进程内检索与存储栈，通过 `SemanticMap` 与 `SemanticGraph` 融合记忆单元访问、稠密与稀疏索引、MemorySpace membership 和图拓扑。公开 API 提供基础语义检索、多方法融合检索和三塔检索，并可通过 RocksDB-backed tiered cache 自动管理冷 payload。其核心创新在于将传统「被动召回-排序」检索范式转变为「智能路由 → 量化去噪 → 高质量上下文生成」主动检索新范式。
 
 **在主流对话记忆基准上，Mandol 以较低的 Token 消耗实现了 SOTA 级别的综合表现：**
 
 | **维度** | **Mem0** | **Zep** | **MemOS** | **EverMemOS** | **Mandol** |
 |---|---|---|---|---|---|
 | **记忆组织与表示** | 文本向量 + 元数据 | 文本向量 + 时序知识图谱 | 文本向量 + 图/树摘要 | 文本向量 + 高层摘要 | **结构化语义图 + 抽象高阶记忆 + 层级化记忆** |
-| **存储架构** | 单一关系数据库（含向量扩展） | 关系数据库 + 自定义图引擎 + 图数据库 | 图数据库 + 向量数据库组合 | 混合多组件数据库（文档、检索、向量、缓存） | **内存语义数据结构 + 进程内数据库 DuckDB/DuckPGQ** |
+| **存储架构** | 单一关系数据库（含向量扩展） | 关系数据库 + 自定义图引擎 + 图数据库 | 图数据库 + 向量数据库组合 | 混合多组件数据库（文档、检索、向量、缓存） | **SemanticMap/Graph 与 RocksDB-backed 自动 payload 换页** |
 | **检索与查询机制** | 向量语义检索 + 关键词过滤 | 多步图遍历拓扑搜索 + 重排序 | 向量检索 + 动态图节点召回 | 多路径路由 + LLM 多轮查询改写 | **内存多路并行召回 + 智能路由 + 量化去噪 + 上下文优化** |
 | **I/O 开销与资源** | 中等：受限于传统数据库的行级更新与单路径索引 | 高：频繁的事实提取与跨服务通信导致系统延迟高 | 高：多数据库导致沉重的 I/O 开销 | 极高：极度碎片化的组件栈导致严重的跨存储网络与序列化开销 | **极低：核心算子均在进程内原生执行，完全消除跨存储网络与通信瓶颈** |
 | | | | | | |
@@ -67,19 +74,19 @@ Mandol 是一套以内存为核心、具备高效精确检索能力的智能体�
 
 提出分层式理论记忆模型，将记忆系统划分为基础记忆层、高阶记忆层和智能查询层。通过结构化语义图统一表征多模态、关联复杂的记忆信息，引入隐式语义边按需生成策略兼顾结构化精确性与语义灵活性，并建立基础与高阶记忆的双向可追溯机制。该模型实现了复杂记忆信息的统一表示，并为后续存储和智能量化检索提供了理论基础。相比现有向量表示难以刻画结构关系、知识图谱对多模态和语义相似支持不足的局限，该模型构建了从原始信息存储、抽象知识提炼到查询调度的统一理论框架。
 
-![分层架构示意](README.assets/分层式理论记忆模型.png)
+![分层架构示意](README.assets/memory-model.svg)
 
 ### （二）存储架构创新：基于内存语义数据结构的统一存储架构
 
 提出基于内存语义数据结构的统一存储架构，设计 SemanticMap 与 SemanticGraph 协同的内存语义数据结构，在物理层面实现键值存储、向量索引与图结构的原生融合，消除多库碎片化问题。该架构通过原子化混合检索算子将向量匹配、图遍历等操作统一封装为内存原子操作，有效降低查询延迟，为上层智能量化查询提供了标准化、可组合的执行单元；同时，采用「内存活跃态-数据库持久态」协同架构，实现性能与存储容量的有效平衡。
 
-![统一存储框架](README.assets/基于内存语义数据结构的统一存储架构.png)
+![统一存储框架](README.assets/Data-structure.svg)
 
 ### （三）检索机制创新：智能路由与量化检索方法
 
 提出一种智能路由与量化检索方法，将检索过程从被动「召回-排序」模式，转变为「智能路由-量化去噪-高质量上下文生成」新范式。通过查询意图驱动的智能路由、量化去噪和冲突消解、以及 Token 约束下的高质量上下文生成等创新设计，在有限的计算与 Token 预算下，实现对复杂多源记忆的高效精确检索。
 
-![量化检索管线](README.assets/智能路由与量化检索.png)
+![量化检索管线](README.assets/Retrieval.svg)
 
 ---
 
@@ -87,31 +94,11 @@ Mandol 是一套以内存为核心、具备高效精确检索能力的智能体�
 
 ### 轻量级架构
 
-纯 Python 实现，核心逻辑采用六边形架构（端口-适配器模式），`MemorySystem()` 无参构造即可启动完整记忆系统，零外部依赖。通过 YAML 配置即可切换 FAISS、Milvus、Neo4j 等外部引擎，无需修改业务代码。
+当前实现以 `core` 中的 `SemanticMap` / `SemanticGraph` 为基础，`retrieval` 与 `triple_retrieval` 负责检索管线，`auto_builder` 负责高阶记忆构建，`memory_router` 与 `quantification` 负责路由和充分性判断，`storage` 负责 RocksDB-backed 分层换页。运行依赖和可选加速项以 `pyproject.toml` 为准。
 
 ### 简单易用
 
-三步操作模型覆盖核心流程：`add()` 写入记忆 → `build_high_level()` 构建高阶结构 → `holistic_retrieve()` 混合检索。`save()` / `load()` 一键持久化与恢复。远程 API 模式下无需下载本地模型，仅需配置 API 端点即可快速体验。
-
-```python
-from mandol import MemorySystem, MemoryUnit, Uid
-
-system = MemorySystem.from_yaml_config("config.yaml")
-
-system.add(MemoryUnit(
-    uid=Uid("msg_001"),
-    raw_data={"text_content": "张三今天去北京出差了"},
-    metadata={"timestamp": "2024-01-15T10:00:00"},
-))
-
-system.build_high_level(mode="auto")
-
-hits = system.holistic_retrieve("张三去了哪里？", top_k=5)
-for hit in hits:
-    print(f"[{hit.final_score:.3f}] {hit.unit.raw_data['text_content']}")
-
-system.save("./memory_snapshot")
-```
+基础流程直接使用公开的 `MemoryUnit`、`SemanticMap` 和 `SemanticGraph` API：写入后即可进行语义检索，并通过 `save_graph()` / `load_graph()` 保存和恢复完整图快照。融合检索、高阶记忆构建和论文中的 router + quantification 工作流由对应模块显式提供，而不是在基础写入过程中隐式触发。
 
 ### 统一记忆表示
 
@@ -119,25 +106,13 @@ system.save("./memory_snapshot")
 
 ### 层级化记忆结构
 
-- **基础记忆层（Base）**：原始数据片段，`add()` 后立即可检索
-- **高阶记忆层（High-Level）**：系统自动完成会话分割（LLM 驱动）、实体提取与去重、事件提取与去重、实体关系构建、事件因果链构建、多类型摘要生成（情景 / 知识 / 情感 / 过程）及全局洞察提取
-- **跨会话共指消解**：自动合并跨会话的同一实体和事件，维护一致的知识表示
+- **基础记忆层（Base）**：原始 `MemoryUnit` 通过 `add_unit()` / `batch_add_units()` 写入后即可检索
+- **高阶记忆层（High-Level）**：`mandol.auto_builder` 通过显式编排构建层级摘要、情景事实和实体关系结构
+- **跨会话处理**：构建器可执行会话分配、实体与事件提取及去重，并保留到基础记忆的可追溯关系
 
-### 多底层数据库支持
+### 进程内检索与分层持久化
 
-六边形架构实现核心逻辑与存储后端的完全解耦。同一套 API 可切换不同的底层基础设施：向量索引（内存精确搜索 → FAISS ANN 自适应切换）、图存储（内存 → Neo4j）、单元存储（内存 → Milvus）、Embedding / Reranker（本地模型 → 远程 OpenAI 兼容 API）。所有后端切换仅需修改 YAML 配置文件，业务代码零改动。
-
-```yaml
-# 示例：从本地模型切换至远程 API
-embedder:
-  use_remote: true
-  base_url: "https://api.example.com/v1"
-
-# 切换图存储至 Neo4j
-graph_store:
-  backend: neo4j
-  uri: "bolt://localhost:7687"
-```
+FAISS 稠密索引、BM25/SPLADE 稀疏索引、UID 映射、MemorySpace membership 和图拓扑常驻进程内。未调用 `connect_to_l2()` 时，`MemoryUnit` payload 正常驻留内存；调用后，RocksDB-backed tiered cache 会在达到高水位线时异步换出冷 payload，并在检索结果需要时 page in 回 resident cache。RocksDB 是当前论文 artifact 唯一正式支持的 persistent payload backend。
 
 ---
 
@@ -145,9 +120,9 @@ graph_store:
 
 Mandol 与现有记忆系统的本质区别在于检索范式：传统系统将检索视为单向流水线（Embedding 召回 → Rerank 排序 → Top-K），检索过程被动且缺乏对噪声的控制。Mandol 将这一范式重构为三阶段主动检索流水线——首先依据查询意图动态路由到最相关的记忆源，然后在各源内部及跨源之间进行多级量化过滤与冲突消解，最后在 Token 约束下生成高信息密度上下文。这一范式转变使检索从被动的「匹配-返回」升级为主动的「理解-筛选-归纳」。
 
-在架构层面，Mandol 采用六边形架构（端口-适配器模式），核心检索逻辑与底层存储引擎完全解耦，支持从纯内存模式到 FAISS、Milvus、Neo4j 等外部引擎的灵活切换（详见上文「多底层数据库支持」）。
+在架构层面，Mandol 将检索索引与图拓扑保留在进程内，并可使用 RocksDB 自动管理冷 payload。当前公开实现不提供通用的存储后端切换契约。
 
-> 详细的基准对比数据见上方「[Mandol 是什么？](#mandol-是什么)」章节中的性能表格。
+> 详细的基准对比数据见上方「[Mandol 是什么？](#-mandol-是什么)」章节中的性能表格。
 
 ---
 
@@ -193,21 +168,39 @@ cd Mandol
 - [LoCoMo 论文复现](https://github.com/AgentCombo/Mandol/blob/paper-repro/benchmark_locomo/REPRODUCE.md)
 - [LongMemEval 论文复现](https://github.com/AgentCombo/Mandol/blob/paper-repro/benchmark_longmemeval/REPRODUCE.md)
 
-`main` 分支及其中的 `experimental/self_host_benchmarks/` 工作流目前仍在持续重构，不是生成论文报告结果时使用的精确复现入口。数据集、实验配置和中间产物的获取方式，请以 `paper-repro` 分支中的对应文档为准。
+`main` 分支承载当前持续维护的公开实现。其中的 [`benchmark_self_host/`](benchmark_self_host/) 用于当前 self-host 集成验证和工作流开发，但不是生成论文表格时使用的冻结入口。[`legacy/original`](https://github.com/AgentCombo/Mandol/tree/legacy/original) 仅保存迁移前的历史实现，不属于当前 API 或推荐复现入口。数据集、实验配置和中间产物的获取方式，请以 `paper-repro` 分支中的对应文档为准。
 
 ## ⚡ 快速开始
 
 ### 安装
 
-#### 已发布的 paper-repro 包
+Mandol `0.1.0a2` 要求 Python `>=3.12,<3.13`。
 
-当前已发布的 PyPI 包对应 `paper-repro` 分支：
+#### 已发布包
+
+当前预发布版本可从稳定的 [PyPI 项目主页](https://pypi.org/project/mandol/) 安装：
 
 ```bash
-pip install mandol==0.1.0a1
+python -m pip install "mandol==0.1.0a2"
 ```
 
-如果需要完整论文复现环境，请使用 `paper-repro` 源码分支，并安装 artifact stack：
+严格复现论文时，应使用 `paper-repro` 源码及其基准专项说明，而不是仅依赖安装包。
+
+#### 源码环境
+
+基础源码环境：
+
+```bash
+uv sync
+```
+
+日常开发和文档环境：
+
+```bash
+uv sync --extra dev --extra docs --group spacy-model
+```
+
+完整论文复现和性能环境请在 `paper-repro` 工作树中安装：
 
 ```bash
 uv sync --extra dev --extra cuda --group spacy-model
@@ -219,17 +212,15 @@ uv sync --extra dev --extra cuda --group spacy-model
 uv sync --extra dev --group spacy-model
 ```
 
-#### main 分支可选后端
+`cuda` extra 针对论文 artifact 固定到 Linux x86_64 / Python 3.12 /
+Torch 2.8 / CUDA 12 的 flash-attention wheel。如果该 wheel 与本机环境不匹配，
+请去掉 `--extra cuda`，或手动安装兼容版本的 `flash-attn`。
 
-以下可选依赖组属于 `main` 分支开发版本，可能与已发布的 `paper-repro` 包不完全一致：
+验证本地包版本和构建发行归档：
 
 ```bash
-pip install mandol[faiss]                 # FAISS 向量索引加速
-pip install mandol[sentence-transformers] # 本地 Embedding/Reranker 模型
-pip install mandol[openai]                # OpenAI API 支持
-pip install mandol[milvus]                # Milvus 向量数据库
-pip install mandol[neo4j]                 # Neo4j 图数据库
-pip install mandol[all]                   # 安装所有可选依赖
+uv run python -c "import mandol; print(mandol.__version__)"
+uv build
 ```
 
 > 如需严格复现论文实验结果，请使用 [`paper-repro`](https://github.com/AgentCombo/Mandol/tree/paper-repro) 分支。
@@ -237,63 +228,73 @@ pip install mandol[all]                   # 安装所有可选依赖
 
 ### 配置
 
-复制环境变量模板并填入 API Key：
+复制环境变量模板，并只填写当前工作流需要的 provider key：
 
 ```bash
-cp .env.example .env
+cp env.template .env
 ```
 
-或通过 YAML 配置文件进行完整配置：
+`env.template` 列出了 OpenAI-compatible provider key、base URL、Embedding /
+Reranker 端点和可选运行参数。`CLOSEAI_*` 是论文 artifact 使用的
+OpenAI-compatible provider alias；若不使用该网关，可以配置
+`OPENAI_API_KEY`，或在 provider 配置中将模型 alias 映射到自己的服务。
+模型和索引选择通过当前组件构造参数及 benchmark 配置对象传入；仓库不提供用于构造
+完整系统的统一 YAML facade。
 
-```yaml
-llm:
-  model: "gpt-4o-mini"
-  base_url: "https://api.openai.com/v1"
-  api_key: "sk-..."
-
-embedder:
-  model: "Qwen/Qwen3-Embedding-4B"
-  device: "cpu"
-  use_remote: false
-
-reranker:
-  model: "Qwen/Qwen3-Reranker-4B"
-  device: "cpu"
-  use_remote: false
-
-system:
-  chunk_max_tokens: 512
-  bfs_expansion_hops: 1
-  max_context_units: 20
-```
-
-远程 API 模式下无需下载本地模型（约 8 GB），仅需将 `use_remote` 设置为 `true` 并配置 API 端点即可快速体验。
-
-### 三步使用
+### 核心用法
 
 ```python
-from mandol import MemorySystem, MemoryUnit, Uid
+from mandol import MemoryUnit, SemanticGraph, SemanticMap
 
-system = MemorySystem.from_yaml_config("config.yaml")
+semantic_map = SemanticMap(
+    embedding_model_name="all-MiniLM-L6-v2",
+    use_flash_attention=False,
+)
+graph = SemanticGraph(semantic_map_instance=semantic_map)
 
-# 1. 写入记忆
-system.add(MemoryUnit(
-    uid=Uid("msg_001"),
-    raw_data={"text_content": "张三今天去北京出差了"},
-    metadata={"timestamp": "2024-01-15T10:00:00"},
-))
+graph.add_unit(
+    MemoryUnit(
+        uid="msg_001",
+        raw_data={"text_content": "张三今天去了北京。"},
+        metadata={"timestamp": "2026-06-21T09:00:00"},
+    ),
+    space_names=["demo"],
+    generate_sparse_embedding=False,
+)
 
-# 2. 构建高阶记忆结构
-system.build_high_level(mode="auto")
+results = graph.search_similarity_in_graph(
+    query_text="张三去了哪里？",
+    top_k=3,
+    ms_names=["demo"],
+    return_score=True,
+)
 
-# 3. 混合检索
-hits = system.holistic_retrieve("张三去了哪里？", top_k=5)
+for unit, score in results:
+    print(score, unit.uid, unit.text_cached)
 
-system.save("./memory_snapshot")          # 持久化
-system2 = MemorySystem.load("./memory_snapshot")  # 恢复
+graph.save_graph("./memory_snapshot", build_sparse_vectors=False)
+restored = SemanticGraph.load_graph(
+    "./memory_snapshot",
+    embedding_model_name="all-MiniLM-L6-v2",
+    use_flash_attention=False,
+)
 ```
 
-> **提示**：系统在 `add()` 时会自动检测会话边界并触发高阶记忆构建。插入少量数据后建议手动调用 `build_high_level()` 以确保高阶记忆可用。更多配置选项和进阶用法请参阅 [在线文档](https://agentcombo.github.io/Mandol/docs)。
+创建 `SemanticMap` 会加载所选 Embedding 模型，首次使用时可能需要下载。
+高阶记忆构建由 `mandol.auto_builder` 单独提供。
+
+对于更大的记忆集合，可启用 RocksDB-backed 自动 payload 换页：
+
+```python
+graph.connect_to_l2(
+    "./l2_database",
+    max_capacity=100_000,
+    high_watermark=0.85,
+    low_watermark=0.70,
+)
+```
+
+如果不调用 `connect_to_l2()`，payload 会正常驻留内存。启用后，候选选择和换出任务调度发生在 add 路径中，RocksDB 写入及 resident cache 删除可能异步完成；冷结果的 payload materialization 发生在需要该 payload 的 search 调用内。
 
 ---
 
@@ -301,14 +302,14 @@ system2 = MemorySystem.load("./memory_snapshot")  # 恢复
 
 ### 文档
 
-完整的 API 参考、架构设计和最佳实践指南已通过 Sphinx 构建，涵盖基础用户、高级用户和开发者三个入口：
+当前维护的 API 参考、架构说明和使用指南通过 Sphinx 构建：
 
-> 🔗 在线文档：[https://agentcombo.github.io/Mandol/docs](https://agentcombo.github.io/Mandol/docs)（即将上线）
+> 🔗 在线文档：[https://agentcombo.github.io/Mandol/docs](https://agentcombo.github.io/Mandol/docs)
 
 本地构建文档：
 
 ```bash
-cd docs && make html
+make docs
 ```
 
 ### 参与贡献

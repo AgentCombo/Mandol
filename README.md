@@ -3,8 +3,8 @@
 > Mandol: An In-Memory Agent Memory System
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://www.python.org/)
-[![PyPI](https://img.shields.io/pypi/v/mandol?label=PyPI&color=blue)](https://pypi.org/project/mandol/)
+[![Python](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
+[![PyPI](https://img.shields.io/badge/PyPI-0.1.0a2-blue)](https://pypi.org/project/mandol/)
 [![Downloads](https://img.shields.io/pypi/dm/mandol?label=Downloads&color=blue)](https://pypi.org/project/mandol/)
 [![Homepage](https://img.shields.io/badge/Homepage-agentcombo.github.io%2FMandol-blue)](https://agentcombo.github.io/Mandol)
 [![Docs](https://img.shields.io/badge/Docs-agentcombo.github.io%2FMandol%2Fdocs-green)](https://agentcombo.github.io/Mandol/docs)
@@ -13,7 +13,16 @@
 [English](README.md) | [中文](README_CN.md)
 
 > [!IMPORTANT]
-> The `main` branch is under active refactoring and may differ from the released artifact. For exact paper reproduction, use the [`paper-repro`](https://github.com/AgentCombo/Mandol/tree/paper-repro) branch. The current public PyPI package [`mandol==0.1.0a1`](https://pypi.org/project/mandol/0.1.0a1/) and the GitHub release are built from, and aligned with, `paper-repro`.
+> The `main` branch now contains the current public Mandol Python
+> implementation. The pre-migration implementation previously hosted on
+> `main` is preserved in
+> [`legacy/original`](https://github.com/AgentCombo/Mandol/tree/legacy/original)
+> for historical reference.
+>
+> The results reported in the paper were produced with the frozen
+> [`paper-repro`](https://github.com/AgentCombo/Mandol/tree/paper-repro)
+> artifact. Use `paper-repro` when exact reproduction of the reported
+> experiments is required.
 
 ![Mandol Overview](README.assets/Mandol-overview-v2.png)
 
@@ -55,7 +64,7 @@ On the LoCoMo and LongMemEval long-term conversation benchmarks, Mandol achieves
 | Zep | Text vectors + temporal knowledge graph | GraphDB + vector/full-text indexes | Multi-step graph traversal + reranking | High |
 | MemOS | Text vectors + graph/tree summaries | VectorDB + GraphDB | Vector retrieval + graph node matching | High |
 | EverMemOS | Text vectors + memory summaries | Multi-DB stack | Multi-turn retrieval + query rewriting | Very high |
-| Mandol | Basic + high-level memories represented as a structured semantic graph | SemanticMap/Graph; DuckDB fallback | Hybrid recall + smart quantitative retrieval | Low |
+| Mandol | Basic + high-level memories represented as a structured semantic graph | SemanticMap/Graph with RocksDB-backed tiered payload paging | Hybrid recall + smart quantitative retrieval | Low |
 
 **LoCoMo accuracy (%) comparison among different memory systems:**
 
@@ -176,13 +185,17 @@ Notably, rather than using large-parameter models such as Qwen3-Embedding-4B and
 
 Memory is organized into a basic memory layer and a high-level abstract memory layer, both uniformly represented as a structured semantic graph.
 The basic layer represents raw memory through memory units, spaces, and explicit/implicit relationships.
-The abstract layer automatically derives episodic memory (event chains), semantic memory (entity graphs), and emotional memory (user preferences) from basic memories, with traceable links that ensure evidence grounding while supporting abstract reasoning.
+The abstract layer models episodic memory (event chains), semantic memory
+(entity graphs), and emotional memory (user preferences), with traceable links
+that support evidence grounding and abstract reasoning. In the current public
+implementation, `mandol.auto_builder` exposes explicit workflows for
+hierarchical summaries, episodic facts, and entity-relation structures.
 
 ![Layered Memory Model](README.assets/memory-model.svg)
 
 ### (II) In-Memory Semantic Data Structures
 
-*SemanticMap* and *SemanticGraph* form a unified in-memory data structure that natively fuses key-value storage, vector indexes, and graph representations, eliminating multi-database fragmentation. Hybrid retrieval operators combine vector matching and graph traversal through a single API surface, removing the I/O latency inherent in heterogeneous storage architectures. The data structures also connect to an underlying persistent database for cold storage and long-term retention.
+*SemanticMap* and *SemanticGraph* form a unified in-process data structure that combines memory-unit access, vector and sparse indexes, MemorySpace membership, and graph topology. Hybrid retrieval operators combine vector matching and graph traversal through one API surface. For larger memory collections, RocksDB-backed tiered paging can move cold `MemoryUnit` payloads out of the resident cache while keeping retrieval indexes and graph state in memory.
 
 ![Unified Storage Architecture](README.assets/Data-structure.svg)
 
@@ -195,30 +208,34 @@ The RAG-style recall-then-rank paradigm is replaced with a proactive pipeline of
 ---
 
 ## ✨ Implementation
+The maintained package is organized around `core` data structures,
+`retrieval` and `triple_retrieval` pipelines, `auto_builder` high-level memory
+construction, `memory_router` and `quantification` policies, and the `storage`
+tiered-paging layer.
+
 **Core APIs exposed by Mandol:**
 
 | Scope | API |
 |-------|-----|
-| Memory unit operation | `add/delete/update(space, [unit])` |
-| Explicit relationship | `add/delete/update_relationship(`<br>`unit_src, unit_target, [type])` |
-| Unit retrieval | `search_unit(query, memory_space, type)` |
-| Graph traversal | `traverse_explicit_nodes(unit, [type])` |
-| Semantic traversal | `traverse_implicit_nodes(unit, [top_k])` |
-| Quantitative retrieval | `smart_search_with_`<br>`quantification(query, [params])` |
-| Persistence | `save_graph([dir, build_index])` |
-| Memory construction | `build_memory_from_raw(sample_id,`<br>`extraction_style, [session_date])` |
+| Memory units | `SemanticGraph.add_unit()` / `batch_add_units()` / `delete_unit()` |
+| Explicit relationships | `SemanticGraph.add_relationship()` / `delete_relationship()` |
+| Dense graph search | `SemanticGraph.search_similarity_in_graph()` |
+| Multi-method retrieval | `MultiRetriever.smart_search()` |
+| Three-tower retrieval | `TripleTowerRetriever.search()` / `smart_search()` |
+| Retrieval sufficiency | `SemanticQuantifier` |
+| Persistence | `SemanticGraph.save_graph()` / `load_graph()` / `connect_to_l2()` |
+| High-level construction | `MemoryOrchestrator` / `build_high_level_memory()` |
 
 ### Memory Construction and Storage
 
-When new content is inserted, the system automatically chunks, embeds, and segments the raw data. It extracts events and causal relationships to form episodic memory, entities and their relations to form semantic memory, and user preferences and long-term states to form emotional memory. These high-level memories coexist with the underlying base memories as the system's complete memory state.
+`SemanticGraph.add_unit()` and `batch_add_units()` insert base `MemoryUnit` objects and update the configured dense and sparse indexes. High-level construction is an explicit workflow provided by `mandol.auto_builder`; its orchestrator and builders can derive hierarchical summaries, episodic facts, and entity-relation structures while retaining links to the base memories.
 
 ### Memory Retrieval
 
-Queries are served through the smart quantitative search API. For each query, Query-Adaptive Routing first allocates a token budget across memory spaces (basic, episodic, semantic, emotional). The system then performs algorithmic fusion, resolves conflicts, and selects high-quality memory entries within the assigned token budget.
+Applications can use `SemanticGraph.search_similarity_in_graph()` for direct dense retrieval, `MultiRetriever.smart_search()` for fused BM25/SPLADE/cosine retrieval, or `TripleTowerRetriever` for the paper's hierarchical, graph, and episodic retrieval paths. Router and quantification components compose these paths for the benchmark workflows; they are separate from base unit insertion and indexing.
 
 ### Memory Persistence
-By default, Mandol keeps memory content in the in-memory SemanticMap/Graph to support low-latency retrieval. Mandol can also persist selected memory units and graphs for checkpointing, recovery, and later reloading into the in-memory runtime. Persistence can be triggered automatically by the runtime for database-backed checkpointing, while the save_graph API explicitly exports the current in-memory graph to local storage for
-inspection, backup, or later restoration.
+By default, payloads remain resident in `SemanticMap`, and `SemanticGraph.save_graph()` / `load_graph()` provide complete local snapshots. RocksDB is the only supported persistent payload backend in this artifact. Calling `connect_to_l2()` enables automatic tiered paging: dense, BM25, and SPLADE indexes, UID mappings, MemorySpace membership, and graph topology remain resident, while cold payloads are evicted asynchronously after the high watermark is reached and paged back into the resident cache when a retrieval result requires them.
 
 ---
 
@@ -226,7 +243,7 @@ inspection, backup, or later restoration.
 
 The fundamental distinction between Mandol and existing memory systems lies in the retrieval paradigm: traditional systems treat retrieval as a unidirectional pipeline (embedding recall → rerank → top-K), where the process is passive and lacks explicit noise control. Mandol restructures this into a three-stage proactive retrieval pipeline — dynamically routing to the most relevant memory sources based on query intent, performing multi-level quantitative filtering and conflict resolution within and across sources, and finally generating high-information-density context under token constraints. This paradigm upgrade transforms retrieval from passive "match–return" to proactive "understand–filter–summarize."
 
-At the architectural level, Mandol adopts a hexagonal architecture (ports-adapters pattern), fully decoupling core retrieval logic from underlying storage engines and enabling flexible switching from pure in-memory mode to external engines such as FAISS, Milvus, and Neo4j (see the optional backend dependencies under [Installation](#installation)).
+At the architectural level, Mandol keeps retrieval indexes and graph topology in process and optionally uses RocksDB for automatic cold-payload paging. This public implementation does not expose a general-purpose storage-backend switching contract.
 
 > For detailed benchmark comparison data, see the performance table in the [What is Mandol?](#-what-is-mandol) section above.
 
@@ -250,7 +267,7 @@ In multi-turn customer service dialogues, when a user asks "What can I do about 
 
 ### Software Development
 
-When a developer requests "Analyze the correlation between payment module anomalies and features shipped this week," the relevant information is scattered across PR discussions, issue comments, changelogs, and design documents. Mandol performs parallel retrieval across four memory spaces (BASE / ENTITY / EVENT / SUMMARY), while `SemanticGraph` automatically constructs a module–function–developer–version association graph. The retrieval results encompass code changes, discussion context, and temporal associations, shortening root cause analysis from days to minutes.
+When a developer requests "Analyze the correlation between payment module anomalies and features shipped this week," the relevant information is scattered across PR discussions, issue comments, changelogs, and design documents. Mandol performs parallel retrieval across four memory spaces (BASE / ENTITY / EVENT / SUMMARY), while `SemanticGraph` represents module–function–developer–version relationships explicitly. The retrieval results encompass code changes, discussion context, and temporal associations, shortening root cause analysis from days to minutes.
 
 ### Healthcare
 
@@ -274,24 +291,49 @@ Use the benchmark-specific instructions in the `paper-repro` branch:
 - [LoCoMo reproduction](https://github.com/AgentCombo/Mandol/blob/paper-repro/benchmark_locomo/REPRODUCE.md)
 - [LongMemEval reproduction](https://github.com/AgentCombo/Mandol/blob/paper-repro/benchmark_longmemeval/REPRODUCE.md)
 
-The `main` branch and its `experimental/self_host_benchmarks/` workflows are under active refactoring
-and are not the exact entry point used to produce the reported paper results.
-Please obtain the datasets, configurations, and intermediate artifacts according
-to the corresponding documentation in `paper-repro`.
+The `main` branch contains the maintained public implementation. Its
+[`benchmark_self_host/`](benchmark_self_host/) workflows support current
+self-host integration and development, but they are not the frozen entry point
+used to produce the paper tables. The
+[`legacy/original`](https://github.com/AgentCombo/Mandol/tree/legacy/original)
+branch is historical and is neither the current API nor a recommended
+reproduction path. Obtain datasets, configurations, and intermediate artifacts
+according to the corresponding documentation in `paper-repro`.
 
 ## ⚡ Quick Start
 
 ### Installation
 
-#### Released paper-repro package
+Mandol `0.1.0a2` requires Python `>=3.12,<3.13`.
 
-The currently released PyPI package corresponds to the `paper-repro` branch:
+#### Published package
+
+The current published prerelease is available from the stable
+[PyPI project page](https://pypi.org/project/mandol/):
 
 ```bash
-pip install mandol==0.1.0a1
+python -m pip install "mandol==0.1.0a2"
 ```
 
-For the full paper reproduction environment, use the `paper-repro` source checkout and install the artifact stack with:
+For exact paper reproduction, use the `paper-repro` source checkout and its
+benchmark-specific instructions rather than relying on the package alone.
+
+#### Source environments
+
+Create the base source environment with:
+
+```bash
+uv sync
+```
+
+For daily development and documentation work:
+
+```bash
+uv sync --extra dev --extra docs --group spacy-model
+```
+
+For the full paper reproduction and performance environment, run the following
+inside a `paper-repro` checkout:
 
 ```bash
 uv sync --extra dev --extra cuda --group spacy-model
@@ -303,84 +345,95 @@ If CUDA or flash-attention is not available on your platform, omit `--extra cuda
 uv sync --extra dev --group spacy-model
 ```
 
-#### Main branch optional backends
+The `cuda` extra is pinned to a Linux x86_64 / Python 3.12 / Torch 2.8 /
+CUDA 12 flash-attention wheel for the paper artifact. If this wheel does not
+match your platform, omit `--extra cuda` or install a compatible
+`flash-attn` build manually.
 
-The following optional dependency groups are intended for the `main` branch development version and may not match the released `paper-repro` package:
+Verify the local package version and build distribution archives with:
 
 ```bash
-pip install mandol[faiss]                 # FAISS vector index acceleration
-pip install mandol[sentence-transformers] # Local Embedding/Reranker models
-pip install mandol[openai]                # OpenAI API support
-pip install mandol[milvus]                # Milvus vector database
-pip install mandol[neo4j]                 # Neo4j graph database
-pip install mandol[all]                   # Install all optional dependencies
+uv run python -c "import mandol; print(mandol.__version__)"
+uv build
 ```
 
-> For exact paper reproduction, please use the [`paper-repro`](https://github.com/AgentCombo/Mandol/tree/paper-repro) branch.
-> For complete installation guides, configuration details, and advanced usage, see the [online documentation](https://agentcombo.github.io/Mandol/docs).
+> For exact paper reproduction, use the [`paper-repro`](https://github.com/AgentCombo/Mandol/tree/paper-repro) branch. Complete installation guides, configuration details, and advanced usage are available in the [online documentation](https://agentcombo.github.io/Mandol/docs).
 
 ### Configuration
 
-Copy the environment variable template and fill in your API key:
+Copy the environment variable template and fill in only the provider keys used
+by your workflow:
 
 ```bash
-cp .env.example .env
+cp env.template .env
 ```
 
-Or configure fully via a YAML configuration file:
+`env.template` lists the supported OpenAI-compatible provider keys, base URLs,
+embedding/reranking endpoints, and optional runtime settings. `CLOSEAI_*` is
+an OpenAI-compatible provider alias used by the paper artifact configuration;
+users of another gateway can configure `OPENAI_API_KEY` or map model aliases to
+their own provider. Model and index choices are passed through the current
+component constructors and benchmark configuration objects; there is no
+repository-wide YAML facade for constructing the full system.
 
-```yaml
-llm:
-  model: "gpt-4o-mini"
-  base_url: "https://api.openai.com/v1"
-  api_key: "sk-..."
-
-embedder:
-  model: "Qwen/Qwen3-Embedding-0.6B"
-  device: "cpu"
-  use_remote: false
-
-reranker:
-  model: "BAAI/bge-reranker-v2-m3"
-  # model: "Qwen/Qwen3-Reranker-4B"
-  device: "cpu"
-  use_remote: false
-
-system:
-  chunk_max_tokens: 512
-  bfs_expansion_hops: 1
-  max_context_units: 20
-```
-
-In remote API mode, no local model download (~8 GB) is needed — just set `use_remote` to `true` and configure the API endpoint to get started quickly.
-
-### Three-Step Usage
+### Core Usage
 
 ```python
-from mandol import MemorySystem, MemoryUnit, Uid
+from mandol import MemoryUnit, SemanticGraph, SemanticMap
 
-system = MemorySystem.from_yaml_config("config.yaml")
+semantic_map = SemanticMap(
+    embedding_model_name="all-MiniLM-L6-v2",
+    use_flash_attention=False,
+)
+graph = SemanticGraph(semantic_map_instance=semantic_map)
 
-# 1. Write memories
-system.add(MemoryUnit(
-    uid=Uid("msg_001"),
-    raw_data={"text_content": "Zhang San went to Beijing on a business trip today"},
-    metadata={"timestamp": "2024-01-15T10:00:00"},
-))
+graph.add_unit(
+    MemoryUnit(
+        uid="msg_001",
+        raw_data={"text_content": "Zhang San travelled to Beijing today."},
+        metadata={"timestamp": "2026-06-21T09:00:00"},
+    ),
+    space_names=["demo"],
+    generate_sparse_embedding=False,
+)
 
-# 2. Build high-level memory structures
-system.build_high_level(mode="auto")
+results = graph.search_similarity_in_graph(
+    query_text="Where did Zhang San go?",
+    top_k=3,
+    ms_names=["demo"],
+    return_score=True,
+)
 
-# 3. Hybrid retrieval
-hits = system.holistic_retrieve("Where did Zhang San go?", top_k=5)
-for hit in hits:
-    print(f"[{hit.final_score:.3f}] {hit.unit.raw_data['text_content']}")
+for unit, score in results:
+    print(score, unit.uid, unit.text_cached)
 
-system.save("./memory_snapshot")                        # Persist
-system2 = MemorySystem.load("./memory_snapshot")        # Restore
+graph.save_graph("./memory_snapshot", build_sparse_vectors=False)
+restored = SemanticGraph.load_graph(
+    "./memory_snapshot",
+    embedding_model_name="all-MiniLM-L6-v2",
+    use_flash_attention=False,
+)
 ```
 
-> **Tip**: The system automatically detects session boundaries during `add()` and triggers high-level memory construction. After inserting a small batch of data, it is recommended to manually call `build_high_level()` to ensure high-level memories are populated. For further configuration options and advanced usage, see the [online documentation](https://agentcombo.github.io/Mandol/docs).
+Creating `SemanticMap` loads the selected embedding model and may download it
+on first use. High-level memory construction is available separately through
+`mandol.auto_builder`.
+
+To enable RocksDB-backed automatic payload paging for larger collections:
+
+```python
+graph.connect_to_l2(
+    "./l2_database",
+    max_capacity=100_000,
+    high_watermark=0.85,
+    low_watermark=0.70,
+)
+```
+
+If `connect_to_l2()` is not called, payloads remain resident in memory. When it
+is enabled, eviction scheduling occurs in the add path, RocksDB writes and
+resident-cache removal may complete asynchronously, and cold-result
+materialization occurs inside the search call that requires the payload.
 
 ---
 
@@ -388,14 +441,15 @@ system2 = MemorySystem.load("./memory_snapshot")        # Restore
 
 ### Documentation
 
-Complete API reference, architecture design, and best practice guides are built with Sphinx and organized around three entry points — basic users, advanced users, and developers:
+The maintained API reference, architecture notes, and usage guides are built
+with Sphinx:
 
-> 🔗 Online documentation: [https://agentcombo.github.io/Mandol/docs](https://agentcombo.github.io/Mandol/docs) (coming soon)
+> 🔗 Online documentation: [https://agentcombo.github.io/Mandol/docs](https://agentcombo.github.io/Mandol/docs)
 
 Build the documentation locally:
 
 ```bash
-cd docs && make html
+make docs
 ```
 
 ### Contributing
