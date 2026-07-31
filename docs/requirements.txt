@@ -1,5 +1,0 @@
-sphinx>=7.0
-furo
-myst-parser
-sphinxcontrib-mermaid
-sphinx-autobuild
