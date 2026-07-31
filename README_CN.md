@@ -7,7 +7,7 @@
 [![Homepage](https://img.shields.io/badge/Homepage-agentcombo.github.io%2FMandol-blue)](https://agentcombo.github.io/Mandol)
 [![Docs](https://img.shields.io/badge/Docs-agentcombo.github.io%2FMandol%2Fdocs-green)](https://agentcombo.github.io/Mandol/docs)
 [![Paper](https://img.shields.io/badge/arXiv-2606.29778-b31b1b.svg)](https://arxiv.org/abs/2606.29778)
-[![PyPI](https://img.shields.io/badge/PyPI-0.1.0a1-blue)](https://pypi.org/project/mandol/0.1.0a1/)
+[![PyPI](https://img.shields.io/badge/PyPI-0.1.0a2-blue)](https://pypi.org/project/mandol/0.1.0a2/)
 
 [English](README.md) | [中文](README_CN.md)
 
@@ -94,10 +94,10 @@ uv run python -c "from mandol import MemoryUnit, SemanticGraph, SemanticMap; pri
 ```
 
 Mandol 已正式发布到 PyPI。当前公开 alpha 版本是
-[`mandol==0.1.0a1`](https://pypi.org/project/mandol/0.1.0a1/)：
+[`mandol==0.1.0a2`](https://pypi.org/project/mandol/0.1.0a2/)：
 
 ```bash
-python -m pip install mandol==0.1.0a1
+python -m pip install mandol==0.1.0a2
 ```
 
 建议在当前 alpha artifact 阶段固定版本安装，避免安装到 PyPI 上的其他历史版本。

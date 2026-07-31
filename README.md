@@ -7,7 +7,7 @@
 [![Homepage](https://img.shields.io/badge/Homepage-agentcombo.github.io%2FMandol-blue)](https://agentcombo.github.io/Mandol)
 [![Docs](https://img.shields.io/badge/Docs-agentcombo.github.io%2FMandol%2Fdocs-green)](https://agentcombo.github.io/Mandol/docs)
 [![Paper](https://img.shields.io/badge/arXiv-2606.29778-b31b1b.svg)](https://arxiv.org/abs/2606.29778)
-[![PyPI](https://img.shields.io/badge/PyPI-0.1.0a1-blue)](https://pypi.org/project/mandol/0.1.0a1/)
+[![PyPI](https://img.shields.io/badge/PyPI-0.1.0a2-blue)](https://pypi.org/project/mandol/0.1.0a2/)
 
 [English](README.md) | [Chinese](README_CN.md)
 
@@ -117,10 +117,10 @@ uv run python -c "from mandol import MemoryUnit, SemanticGraph, SemanticMap; pri
 ```
 
 Mandol is published on PyPI. The current public alpha release is
-[`mandol==0.1.0a1`](https://pypi.org/project/mandol/0.1.0a1/):
+[`mandol==0.1.0a2`](https://pypi.org/project/mandol/0.1.0a2/):
 
 ```bash
-python -m pip install mandol==0.1.0a1
+python -m pip install mandol==0.1.0a2
 ```
 
 Pinning the version is recommended for this alpha artifact release.

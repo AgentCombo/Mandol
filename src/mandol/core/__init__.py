@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 else:
     MemorySystemType = Any
 
-__version__ = "0.1.0a1"
+__version__ = "0.1.0a2"
 __author__ = "Mandol Team"
 
 DEFAULT_EMBEDDING_DIM = 1024

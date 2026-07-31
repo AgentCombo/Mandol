@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mandol"
-version = "0.1.0a1"
+version = "0.1.0a2"
 description = "Mandol — Agent Memory System with hierarchical, episodic and entity-relation triple-tower retrieval."
 readme = "README.md"
 requires-python = ">=3.12, <3.13"
@@ -131,7 +131,7 @@ Repository = "https://github.com/AgentCombo/Mandol"
 Issues = "https://github.com/AgentCombo/Mandol/issues"
 Documentation = "https://agentcombo.github.io/Mandol/docs"
 Paper = "https://arxiv.org/abs/2606.29778"
-PyPI = "https://pypi.org/project/mandol/0.1.0a1/"
+PyPI = "https://pypi.org/project/mandol/"
 
 [tool.setuptools]
 package-dir = { "" = "src" }
