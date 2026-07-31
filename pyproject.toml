@@ -109,7 +109,7 @@ cuda = [
 
 # Dev / test / build tooling only — no runtime additions.
 dev = [
-    "pytest>=8.0",
+    "pytest>=9.1.1",
     "build>=1.2",
     "datasets>=2.20",
     "ruff>=0.6",
