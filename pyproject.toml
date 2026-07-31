@@ -118,7 +118,7 @@ dev = [
 ]
 
 docs = [
-    "sphinx>=7.0",
+    "sphinx>=9.1.0",
     "furo",
     "myst-parser",
     "sphinxcontrib-mermaid",
