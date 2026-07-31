@@ -1,0 +1,449 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===== Docusaurus Infima overrides ===== */
+:root {
+  --ifm-color-primary: #3b82f6;
+  --ifm-color-primary-dark: #2563eb;
+  --ifm-color-primary-darker: #1d4ed8;
+  --ifm-color-primary-darkest: #1e40af;
+  --ifm-color-primary-light: #60a5fa;
+  --ifm-color-primary-lighter: #93c5fd;
+  --ifm-color-primary-lightest: #bfdbfe;
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+  --ifm-font-family-base: 'Inter', system-ui, -apple-system, sans-serif;
+  --ifm-font-family-monospace: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #60a5fa;
+  --ifm-color-primary-dark: #3b82f6;
+  --ifm-color-primary-darker: #2563eb;
+  --ifm-color-primary-darkest: #1d4ed8;
+  --ifm-color-primary-light: #93c5fd;
+  --ifm-color-primary-lighter: #bfdbfe;
+  --ifm-color-primary-lightest: #dbeafe;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+}
+
+/* Hide default Docusaurus footer on homepage — we use our own */
+.homepage-layout .theme-doc-footer {
+  display: none;
+}
+
+/* ===== Mandol Design System ===== */
+
+/* Gradient text utility */
+.gradient-text {
+  background: linear-gradient(135deg, #60a5fa 0%, #06b6d4 50%, #a78bfa 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-blue {
+  background: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Section backgrounds */
+.section-hero {
+  background: linear-gradient(180deg, #0a1628 0%, #0f2038 50%, #0a1628 100%);
+}
+
+.section-dark {
+  background: linear-gradient(180deg, #0a1628 0%, #0f1f38 100%);
+}
+
+.section-darker {
+  background: #060f1a;
+}
+
+/* Card styles */
+.card-glow {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.02) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-glow:hover {
+  border-color: rgba(96, 165, 250, 0.35);
+  background: linear-gradient(180deg, rgba(59, 130, 246, 0.06) 0%, rgba(255, 255, 255, 0.03) 100%);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 40px rgba(59, 130, 246, 0.1);
+}
+
+/* Stat card variant */
+.stat-card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+  transform: translateY(-2px);
+}
+
+/* Code window chrome */
+.code-window {
+  background: #060f1a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.3);
+  transition: box-shadow 0.4s ease;
+}
+
+.code-window:hover {
+  box-shadow: 0 4px 40px rgba(59, 130, 246, 0.12);
+}
+
+.code-window-bar {
+  background: #0d1a2d;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.code-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.code-dot-red {
+  background: #ff5f57;
+}
+
+.code-dot-yellow {
+  background: #febc2e;
+}
+
+.code-dot-green {
+  background: #28c840;
+}
+
+.code-content {
+  padding: 20px 24px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #e8ecf4;
+  overflow-x: auto;
+}
+
+.code-content .comment {
+  color: #6b7fa8;
+}
+
+.code-content .keyword {
+  color: #c792ea;
+}
+
+.code-content .string {
+  color: #c3e88d;
+}
+
+.code-content .function {
+  color: #82aaff;
+}
+
+.code-content .number {
+  color: #f78c6c;
+}
+
+/* Tab styles for quick start */
+.tab-button {
+  padding: 8px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.5);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tab-button:hover {
+  color: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.tab-button.active {
+  color: #60a5fa;
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.25);
+}
+
+/* Benchmark table styles */
+.bench-table {
+  border-collapse: collapse;
+  border-spacing: 0;
+  font-size: 14px;
+  display: table;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.bench-table th {
+  padding: 10px 14px;
+  text-align: center;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.4);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.bench-table th:first-child {
+  text-align: left;
+}
+
+.bench-table td {
+  padding: 9px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.5);
+  text-align: center;
+  font-size: 13px;
+}
+
+.bench-table td.sys-name {
+  text-align: left;
+  font-weight: 500;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* Last row — no inner border */
+.bench-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* Mandol row highlight — bigger, bolder, blue */
+.bench-table tr.mandol-row td {
+  font-weight: 700;
+  font-size: 14px;
+  color: #60a5fa;
+  background: rgba(59, 130, 246, 0.08);
+  border-bottom-color: rgba(59, 130, 246, 0.15);
+}
+
+.bench-table tr.mandol-row td.sys-name {
+  font-weight: 700;
+  font-size: 14px;
+  color: #93c5fd;
+}
+
+.bench-table tr.mandol-row:last-child td {
+  border-bottom: none;
+}
+
+.bench-table tr:hover td {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.bench-table tr.mandol-row:hover td {
+  background: rgba(59, 130, 246, 0.14);
+}
+
+/* Glow border for Mandol column */
+@keyframes glowBorder {
+  0%, 100% {
+    box-shadow: inset 0 0 8px rgba(59, 130, 246, 0.15);
+  }
+  50% {
+    box-shadow: inset 0 0 16px rgba(59, 130, 246, 0.3);
+  }
+}
+
+.mandol-glow {
+  animation: glowBorder 2.5s ease-in-out infinite;
+  border-radius: 0;
+}
+
+/* Section divider */
+.section-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.06) 50%, transparent 100%);
+  border: none;
+}
+
+/* CTA button styles */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 28px;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  text-decoration: none;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+  box-shadow: 0 4px 20px rgba(59, 130, 246, 0.35);
+  transform: translateY(-1px);
+  color: white;
+  text-decoration: none;
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 28px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  font-weight: 500;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  text-decoration: none;
+}
+
+.btn-secondary:hover {
+  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.04);
+  color: white;
+  text-decoration: none;
+}
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.9);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Copy button */
+.copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.copy-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.copy-btn.copied {
+  background: rgba(34, 197, 94, 0.15);
+  border-color: rgba(34, 197, 94, 0.3);
+  color: #4ade80;
+}
+
+/* Badge row */
+.badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+
+.badge-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.badge-item:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.9);
+  text-decoration: none;
+}
+
+/* Staggered animation delays */
+.delay-100 { animation-delay: 0.1s; }
+.delay-200 { animation-delay: 0.2s; }
+.delay-300 { animation-delay: 0.3s; }
+.delay-400 { animation-delay: 0.4s; }
+.delay-500 { animation-delay: 0.5s; }
+.delay-600 { animation-delay: 0.6s; }
+.delay-700 { animation-delay: 0.7s; }
+
+/* Fade-in-up with initial opacity 0 (paired with animate-fade-in-up) */
+.animate-initial {
+  opacity: 0;
+}
+
+/* Inter & JetBrains Mono font imports via Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Mobile responsive utilities */
+@media (max-width: 768px) {
+  .hide-mobile {
+    display: none !important;
+  }
+}

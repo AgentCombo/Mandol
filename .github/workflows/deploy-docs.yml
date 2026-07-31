@@ -1,0 +1,61 @@
+name: Deploy Docusaurus to gh-pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "website/**"
+      - "docs/**"
+      - "src/mandol/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".github/workflows/deploy-docs.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: website-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv and Python 3.12
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: website
+
+      - name: Build Sphinx documentation
+        run: uv run --extra docs sphinx-build -W --keep-going -b html docs docs/_build/html
+
+      - name: Build website
+        run: npm run build
+        working-directory: website
+
+      - name: Add Sphinx documentation to the site
+        run: cp -a docs/_build/html website/build/docs
+
+      - name: Deploy to gh-pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: website/build
+          publish_branch: gh-pages
+          commit_message: "docs: deploy docusaurus site to gh-pages"

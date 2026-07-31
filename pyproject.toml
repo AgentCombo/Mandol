@@ -1,0 +1,174 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mandol"
+version = "0.1.0a2"
+description = "Mandol — Agent Memory System with hierarchical, episodic and entity-relation triple-tower retrieval."
+readme = "README.md"
+requires-python = ">=3.12, <3.13"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{ name = "Mandol Team" }]
+keywords = ["memory", "agent", "rag", "retrieval", "llm", "knowledge-graph"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+# Default install: the complete research/runtime stack released for the paper
+# artifact. Platform-specific flash-attention remains in the cuda extra; see
+# README.md for the supported wheel constraints.
+dependencies = [
+    # --- Numerics / data ---
+    "numpy>=1.26,<2.0",
+    "numba>=0.60,<0.62",
+    "scipy>=1.13",
+    "pandas>=2.1",
+    "pyarrow>=15",
+    "openpyxl>=3.1",
+    "orjson>=3.10",
+    "tqdm>=4.66",
+    "colorlog>=6.8",
+    "requests>=2.32",
+    "httpx[socks]>=0.27",
+    "pydantic>=2.9,<3.0",
+    "pydantic-settings>=2.6,<3.0",
+    "fastapi>=0.115,<1.0",
+    "uvicorn[standard]>=0.30,<1.0",
+
+    # --- Graph stack ---
+    "networkx>=3.2",
+    "rustworkx>=0.15",
+    "igraph>=0.11",
+    "leidenalg>=0.10",
+
+    # --- Storage / vector index ---
+    "rocksdict==0.3.29",
+    "faiss-cpu>=1.8",
+
+    # --- ML / embeddings (open-box) ---
+    # "torch>=2.2",
+    "torch==2.8.0",                      # Pinned Torch runtime version.
+    "torchvision==0.23.0",               # Pinned vision runtime version.
+    "torchaudio==2.8.0",                 # Pinned audio runtime version.
+    "transformers>=4.40,<5.0",           # Keep the artifact on the Transformers 4.x API line.
+    "sentence-transformers>=5.2,<6.0",   # Allow 5.x patch releases while avoiding unknown major-version changes.
+    "safetensors>=0.4",
+    "pillow>=10.0",
+    "huggingface_hub[cli]>=0.23.0",
+
+    # --- LLM clients ---
+    "openai>=1.40",
+    "tenacity>=9.1",
+    "tiktoken>=0.7",
+    "dashscope>=1.20",
+
+    # --- NLP / text ---
+    "nltk>=3.9",
+    "regex>=2023.12",
+    "jieba>=0.42",
+    "json-repair>=0.30",
+    "rank-bm25>=0.2.2",
+    "scikit-learn>=1.4",
+    "spacy==3.8.14",
+    "langchain>=0.3",
+    "langchain-text-splitters>=0.3",
+
+    # --- Benchmark evaluation / reports ---
+    "bert-score>=0.3.13",
+    "rouge>=1.0.1",
+    "rouge-score>=0.1.2",
+    "tabulate>=0.9",
+
+    # --- Integration clients imported by public modules or examples ---
+    "python-dotenv>=1.0",
+    "gdown>=5.2",
+    "zep-cloud>=2.22",
+    "pymilvus>=2.5",
+    "neo4j>=5.20",
+    "python-pptx>=1.0",
+    "llmlingua>=0.2.2",
+]
+
+[dependency-groups]
+spacy-model = [
+    "en-core-web-lg @ https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl",
+]
+
+[project.optional-dependencies]
+cuda = [
+    "flash-attn==2.8.3",
+]
+
+# Dev / test / build tooling only — no runtime additions.
+dev = [
+    "pytest>=8.0",
+    "build>=1.2",
+    "datasets>=2.20",
+    "ruff>=0.6",
+    "matplotlib>=3.8",
+    "pre-commit>=4.0",
+]
+
+docs = [
+    "sphinx>=7.0",
+    "furo",
+    "myst-parser",
+    "sphinxcontrib-mermaid",
+    "sphinx-autobuild",
+]
+
+[project.urls]
+Homepage = "https://github.com/AgentCombo/Mandol"
+Repository = "https://github.com/AgentCombo/Mandol"
+Issues = "https://github.com/AgentCombo/Mandol/issues"
+Documentation = "https://agentcombo.github.io/Mandol/docs"
+Paper = "https://arxiv.org/abs/2606.29778"
+PyPI = "https://pypi.org/project/mandol/"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+include-package-data = false
+
+[tool.setuptools.exclude-package-data]
+"*" = [
+    "__pycache__/*",
+    "*.pyc",
+    "*.pyo",
+    "*.nbc",
+    "*.nbi",
+    "*.md",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["mandol*"]
+exclude = [
+    "mandol.deprecated*",
+    "mandol.docs*",
+    "mandol*.deprecated",
+    "mandol*.deprecated.*",
+]
+
+[tool.pytest.ini_options]
+markers = [
+    "real_model: tests that require downloading/loading external embedding models",
+]
+
+[tool.uv.extra-build-dependencies]
+flash-attn = ["torch"]
+
+[tool.uv.sources]
+flash-attn = { url = "https://github.com/Dao-AILab/flash-attention/releases/download/v2.8.3/flash_attn-2.8.3+cu12torch2.8cxx11abiTRUE-cp312-cp312-linux_x86_64.whl" }
+
+# [[tool.uv.index]]
+# name = "tuna"
+# url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+# default = true

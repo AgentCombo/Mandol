@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main, paper-repro]
+  pull_request:
+    branches: [main, paper-repro]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Install uv and Python 3.12
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      - name: Verify locked dependencies
+        run: uv lock --check
+
+      - name: Install development environment
+        run: uv sync --frozen --extra dev
+
+      - name: Run syntax checks
+        run: make syntax
+
+      - name: Run baseline Ruff checks
+        run: make lint
+
+      - name: Run low-cost tests
+        run: make test
+
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Install uv and Python 3.12
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      - name: Build distributions
+        run: uv build
+
+      - name: Validate distribution metadata
+        run: uvx twine check dist/*
+
+      - name: Upload distributions
+        uses: actions/upload-artifact@v7
+        with:
+          name: mandol-distributions
+          path: dist/
+          if-no-files-found: error
