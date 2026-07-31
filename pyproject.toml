@@ -27,7 +27,7 @@ classifiers = [
 # README.md for the supported wheel constraints.
 dependencies = [
     # --- Numerics / data ---
-    "numpy>=1.26,<2.0",
+    "numpy>=2.5.1,<3.0",
     "numba>=0.60,<0.62",
     "scipy>=1.13",
     "pandas>=2.1",
