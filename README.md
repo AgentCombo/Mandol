@@ -5,17 +5,24 @@
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
 [![Homepage](https://img.shields.io/badge/Homepage-agentcombo.github.io%2FMandol-blue)](https://agentcombo.github.io/Mandol)
-[![Docs](https://img.shields.io/badge/Docs-agentcombo.github.io%2FMandol%2Fdocs-green)](https://agentcombo.github.io/Mandol/docs)
+[![Current Docs](https://img.shields.io/badge/Current_Docs-agentcombo.github.io%2FMandol%2Fdocs-green)](https://agentcombo.github.io/Mandol/docs)
 [![Paper](https://img.shields.io/badge/arXiv-2606.29778-b31b1b.svg)](https://arxiv.org/abs/2606.29778)
 [![PyPI](https://img.shields.io/badge/PyPI-0.1.0a2-blue)](https://pypi.org/project/mandol/0.1.0a2/)
 
 [English](README.md) | [Chinese](README_CN.md)
 
+> [!IMPORTANT]
+> This branch is frozen for exact reproduction of the experiments reported in
+> the Mandol paper. Use the commands, model roles, datasets, and benchmark
+> settings documented in this checkout for paper comparisons. Current runtime
+> development and the online documentation continue on
+> [`main`](https://github.com/AgentCombo/Mandol/tree/main).
+
 ![Mandol Overview](README.assets/Mandol-overview-v2.png)
 
 ## Current Scope
 
-This repository exposes the `mandol` Python package under `src/mandol` and the
+This frozen branch exposes the `mandol` Python package under `src/mandol` and the
 paper reproduction workflows under `benchmark_locomo`,
 `benchmark_longmemeval`, and `benchmark_self_host`.
 

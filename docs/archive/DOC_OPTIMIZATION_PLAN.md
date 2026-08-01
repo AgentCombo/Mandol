@@ -317,7 +317,7 @@ python build_graph.py --config configs/base.yaml --output output/
 python retrieve.py --config configs/base.yaml --input output/ --output output/
 
 📖 完整的测试环境配置、数据集说明、消融实验及性能对比表格，
-请参阅 [LoCoMo Benchmark 文档](benchmarks/locomo/README.md)。
+请参阅 [archived LoCoMo workflow](https://github.com/AgentCombo/Mandol/blob/legacy/original/experimental/self_host_benchmarks/locomo/README.md)。
 ```
 
 **（6）常见问题 FAQ（全新章节）**

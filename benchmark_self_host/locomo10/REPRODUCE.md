@@ -1,5 +1,8 @@
 # LoCoMo10 Self-Host Reproduction Guide
 
+> This self-host guide is preserved in the frozen `paper-repro` branch, but it
+> is separate from the router + quantification workflow used for paper tables.
+
 This directory reproduces LoCoMo10 with Mandol's own high-level memory
 generation path. It is separate from the paper router + quantification workflow
 under `benchmark_locomo`.

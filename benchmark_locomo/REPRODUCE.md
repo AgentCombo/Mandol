@@ -1,5 +1,8 @@
 # LoCoMo Reproduction Guide
 
+> This guide belongs to the frozen `paper-repro` branch. Current runtime
+> development continues on `main`; use this checkout for paper comparisons.
+
 This guide documents the LoCoMo reproduction path used for the paper numbers in
 this repository. Run commands from the repository root unless noted otherwise.
 
@@ -67,7 +70,7 @@ export CLOSEAI_API_KEY=...
 `CLOSEAI_API_KEY` falls back to `OPENAI_API_KEY` in the current provider
 configuration. If you switch to OpenRouter, set `OPENROUTER_API_KEY`.
 
-## Current Code Check
+## Frozen Artifact Check
 
 Before a long run, verify the entrypoints:
 
@@ -77,7 +80,7 @@ uv run python -m benchmark_locomo.task_eval.locomo_triple_smart_search_qps --hel
 uv run python -m benchmark_locomo.task_eval.locomo_triple_router_quantification --help
 ```
 
-In the current checkout, the first two speed entrypoints import successfully.
+In this frozen checkout, the first two speed entrypoints import successfully.
 The router-quantification command should also print its CLI options without
 starting a benchmark run.
 

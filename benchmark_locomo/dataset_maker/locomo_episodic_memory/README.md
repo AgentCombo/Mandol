@@ -132,36 +132,36 @@ class FactType:
 
 ```bash
 # 方式1: Shell脚本
-bash benchmark_locomo/dataset_maker/locomo_episodic_memory/pipeline.sh
+bash benchmark_locomo/dataset_maker/locomo_episodic_memory/scripts/pipeline.sh
 
 # 方式2: Python脚本
 python benchmark_locomo/dataset_maker/locomo_episodic_memory/pipeline.py
 
 # 方式3: 分步执行
-bash step1.sh
-bash step2.sh
-bash step3.sh
+bash benchmark_locomo/dataset_maker/locomo_episodic_memory/scripts/step1.sh
+bash benchmark_locomo/dataset_maker/locomo_episodic_memory/scripts/step2.sh
+bash benchmark_locomo/dataset_maker/locomo_episodic_memory/scripts/step3.sh
 ```
 
 ### 命令行参数
 
 ```bash
 # Step 1: 事实抽取
-python step1_extract_episodic_facts.py \
+python benchmark_locomo/dataset_maker/locomo_episodic_memory/step1_extract_episodic_facts.py \
     --input-file "benchmark_locomo/dataset/locomo/locomo10.json" \
     --output-dir "benchmark_locomo/dataset/locomo/episodic_memory/step1_facts" \
-    --llm-model "deepseek-reasoner" \
+    --extract-model "qwen-3.5-plus-thinking" \
     --max-workers 6 \
     --sample-ids conv-49 conv-47  # 可选：指定处理的样本
 
 # Step 2: 去重增强
-python step2_deduplicate_and_enhance.py \
+python benchmark_locomo/dataset_maker/locomo_episodic_memory/step2_deduplicate_and_enhance.py \
     --input-dir "step1_facts" \
     --output-dir "step2_enhanced" \
-    --similarity-threshold 0.85
+    --dedup-model "deepseek-v3.2-dashscope"
 
 # Step 3: 加载索引
-python step3_load_to_retrieval.py \
+python benchmark_locomo/dataset_maker/locomo_episodic_memory/step3_load_to_retrieval_batch.py \
     --input-dir "step2_enhanced" \
     --output-dir "step3_loaded"
 ```

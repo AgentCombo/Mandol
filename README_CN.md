@@ -5,17 +5,22 @@
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
 [![Homepage](https://img.shields.io/badge/Homepage-agentcombo.github.io%2FMandol-blue)](https://agentcombo.github.io/Mandol)
-[![Docs](https://img.shields.io/badge/Docs-agentcombo.github.io%2FMandol%2Fdocs-green)](https://agentcombo.github.io/Mandol/docs)
+[![当前文档](https://img.shields.io/badge/Current_Docs-agentcombo.github.io%2FMandol%2Fdocs-green)](https://agentcombo.github.io/Mandol/docs)
 [![Paper](https://img.shields.io/badge/arXiv-2606.29778-b31b1b.svg)](https://arxiv.org/abs/2606.29778)
 [![PyPI](https://img.shields.io/badge/PyPI-0.1.0a2-blue)](https://pypi.org/project/mandol/0.1.0a2/)
 
 [English](README.md) | [中文](README_CN.md)
 
+> [!IMPORTANT]
+> 本分支冻结用于精确复现 Mandol 论文中报告的实验。进行论文对比时，请以当前
+> checkout 中记录的命令、模型角色、数据集和 benchmark 设置为准。当前运行时开发
+> 和在线文档继续由 [`main`](https://github.com/AgentCombo/Mandol/tree/main) 维护。
+
 ![Mandol Overview](README.assets/Mandol-overview-v2.png)
 
 ## 当前代码范围
 
-本仓库当前提供 `src/mandol` 下的 `mandol` Python 包，以及
+本冻结分支提供 `src/mandol` 下的 `mandol` Python 包，以及
 `benchmark_locomo`、`benchmark_longmemeval`、`benchmark_self_host` 下的论文复现流程。
 
 公开 Python 入口以以下组件为核心：

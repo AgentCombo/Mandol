@@ -1,5 +1,8 @@
 # LongMemEval Reproduction Guide
 
+> This guide belongs to the frozen `paper-repro` branch. Current runtime
+> development continues on `main`; use this checkout for paper comparisons.
+
 This guide documents the LongMemEval reproduction path used for the paper
 numbers in this repository. Run commands from the repository root unless noted
 otherwise.
@@ -62,7 +65,7 @@ export CLOSEAI_API_KEY=...
 `CLOSEAI_API_KEY` falls back to `OPENAI_API_KEY` in the current provider
 configuration. If you switch to OpenRouter, set `OPENROUTER_API_KEY`.
 
-## Current Code Check
+## Frozen Artifact Check
 
 Before a long run, verify the entrypoint:
 

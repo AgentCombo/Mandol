@@ -1,8 +1,9 @@
 Installation
 ============
 
-Mandol currently targets Python ``>=3.12,<3.13``. Use ``uv`` from the repository
-root so the environment is resolved from ``pyproject.toml`` and ``uv.lock``.
+This frozen artifact targets Python ``>=3.12,<3.13``. Use ``uv`` from the
+repository root so the environment is resolved from this branch's
+``pyproject.toml`` and ``uv.lock``.
 
 Recommended development environment
 -----------------------------------
