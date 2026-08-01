@@ -1,18 +1,17 @@
-name: Release to PyPI
+name: Build release distributions
 
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  build-and-publish:
+  build-and-check:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
     steps:
       - name: Checkout release source
         uses: actions/checkout@v7
@@ -26,7 +25,11 @@ jobs:
         run: uv build
 
       - name: Validate distribution metadata
-        run: uvx twine check dist/*
+        run: uvx twine check --strict dist/*
 
-      - name: Publish distributions to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+      - name: Upload checked distributions
+        uses: actions/upload-artifact@v7
+        with:
+          name: mandol-${{ github.ref_name }}-distributions
+          path: dist/
+          if-no-files-found: error

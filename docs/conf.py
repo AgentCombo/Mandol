@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.abspath('../src'))
 project = 'Mandol'
 copyright = '2024-2026, Mandol Contributors'
 author = 'Mandol Contributors'
-release = '0.1.0a2'
+release = '0.1.0'
 
 language = 'en'
 

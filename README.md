@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
 [![CI](https://github.com/AgentCombo/Mandol/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/AgentCombo/Mandol/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/badge/PyPI-0.1.0a2-blue)](https://pypi.org/project/mandol/)
+[![PyPI](https://img.shields.io/badge/PyPI-0.1.0-blue)](https://pypi.org/project/mandol/)
 [![Downloads](https://img.shields.io/pypi/dm/mandol?label=Downloads&color=blue)](https://pypi.org/project/mandol/)
 [![Homepage](https://img.shields.io/badge/Homepage-agentcombo.github.io%2FMandol-blue)](https://agentcombo.github.io/Mandol)
 [![Docs](https://img.shields.io/badge/Docs-agentcombo.github.io%2FMandol%2Fdocs-green)](https://agentcombo.github.io/Mandol/docs)
@@ -305,16 +305,21 @@ according to the corresponding documentation in `paper-repro`.
 
 ### Installation
 
-Mandol `0.1.0a2` requires Python `>=3.12,<3.13`.
+Mandol `0.1.0` requires Python `>=3.12,<3.13`.
 
-#### Published package
+#### PyPI package
 
-The current published prerelease is available from the stable
-[PyPI project page](https://pypi.org/project/mandol/):
+Install the current release from the stable
+[PyPI project page](https://pypi.org/project/mandol/). Pin the version when a
+reproducible package environment is required:
 
 ```bash
-python -m pip install "mandol==0.1.0a2"
+python -m pip install mandol
+python -m pip install "mandol==0.1.0"
 ```
+
+This is an early public research release. APIs may continue to evolve during
+the `0.x` series, and the package is not intended to be a production service.
 
 For exact paper reproduction, use the `paper-repro` source checkout and its
 benchmark-specific instructions rather than relying on the package alone.

@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
 [![CI](https://github.com/AgentCombo/Mandol/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/AgentCombo/Mandol/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/badge/PyPI-0.1.0a2-blue)](https://pypi.org/project/mandol/)
+[![PyPI](https://img.shields.io/badge/PyPI-0.1.0-blue)](https://pypi.org/project/mandol/)
 [![Downloads](https://img.shields.io/pypi/dm/mandol?label=Downloads&color=blue)](https://pypi.org/project/mandol/)
 [![Homepage](https://img.shields.io/badge/Homepage-agentcombo.github.io%2FMandol-blue)](https://agentcombo.github.io/Mandol)
 [![Docs](https://img.shields.io/badge/Docs-agentcombo.github.io%2FMandol%2Fdocs-green)](https://agentcombo.github.io/Mandol/docs)
@@ -175,15 +175,20 @@ cd Mandol
 
 ### 安装
 
-Mandol `0.1.0a2` 要求 Python `>=3.12,<3.13`。
+Mandol `0.1.0` 要求 Python `>=3.12,<3.13`。
 
-#### 已发布包
+#### PyPI 包
 
-当前预发布版本可从稳定的 [PyPI 项目主页](https://pypi.org/project/mandol/) 安装：
+当前版本可从稳定的 [PyPI 项目主页](https://pypi.org/project/mandol/) 安装。需要可复现的
+包环境时，请显式固定版本：
 
 ```bash
-python -m pip install "mandol==0.1.0a2"
+python -m pip install mandol
+python -m pip install "mandol==0.1.0"
 ```
+
+这是面向研究用途的早期公开版本，API 在后续 `0.x` 版本中仍可能演进，且该包不面向
+生产级在线服务。
 
 严格复现论文时，应使用 `paper-repro` 源码及其基准专项说明，而不是仅依赖安装包。
 

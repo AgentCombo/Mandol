@@ -22,6 +22,7 @@ build and are not an API contract for the current package.
    current/configuration
    current/reproduction
    current/api-reference
+   releasing
 
 Indices
 -------

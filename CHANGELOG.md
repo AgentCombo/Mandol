@@ -7,12 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-08-02
+
+Mandol 0.1.0 is the first final-version PyPI release of the maintained Python
+implementation. It remains an early public research release and does not imply
+production readiness or permanent API stability.
+
 ### Changed
 
 - Aligned root development commands, environment documentation, and release
   metadata with the current `src/mandol` package and paper artifact layout.
 - Updated GitHub Actions for Python 3.12 and `uv`, and separated maintained
   documentation from archived pre-refactor material.
+- Replaced the PyPI long description with a dedicated, renderer-compatible
+  README whose image and navigation links resolve outside GitHub.
+- Made release automation build and validate tag artifacts without uploading
+  to PyPI; publication remains an explicit manual operation.
+
+### Fixed
+
+- Completed the RocksDB-backed tiered payload-paging lifecycle and snapshot
+  consistency checks while preserving resident retrieval indexes.
+- Aligned the website theme behavior, citation metadata, public docs, and
+  package installation guidance with the maintained runtime.
 
 ## [0.1.0a1] - 2026-07-06
 
@@ -39,5 +56,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - External datasets, model downloads, and provider credentials for full
   benchmark reproduction.
 
-[Unreleased]: https://github.com/AgentCombo/Mandol/compare/v0.1.0-paper-repro...paper-repro
+[Unreleased]: https://github.com/AgentCombo/Mandol/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/AgentCombo/Mandol/releases/tag/v0.1.0
 [0.1.0a1]: https://pypi.org/project/mandol/0.1.0a1/
