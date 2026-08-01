@@ -1,14 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import { translations, type Locale } from '@site/src/translations';
+import { copyText } from '@site/src/utils/copyText';
 
-const bibtex = `@article{mandol2026,
-  title   = {Mandol: An In-Memory Layered Memory System
-             for Long-Term Conversational Agents},
-  author  = {Yuhan Zhang and Zhiyuan Guo and Ziheng Zeng
-             and Wei Wang and Wentao Wu and Lijie Xu},
-  journal = {arXiv preprint arXiv:2606.29778},
-  year    = {2026}
+const bibtex = `@misc{zhang2026mandol,
+  title={Mandol: An Agglomerative Agent Memory System for Long-Term Conversations},
+  author={Yuhan Zhang and Zhiyuan Guo and Ziheng Zeng and Wei Wang and Wentao Wu and Lijie Xu},
+  year={2026},
+  eprint={2606.29778},
+  archivePrefix={arXiv},
+  primaryClass={cs.DB},
+  doi={10.48550/arXiv.2606.29778},
+  url={https://arxiv.org/abs/2606.29778}
 }`;
 
 export default function CitationBlock(): React.JSX.Element {
@@ -33,8 +36,8 @@ export default function CitationBlock(): React.JSX.Element {
     return () => observer.disconnect();
   }, []);
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(bibtex);
+  const handleCopy = async () => {
+    if (!(await copyText(bibtex))) return;
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -44,14 +47,14 @@ export default function CitationBlock(): React.JSX.Element {
       <div className="mx-auto max-w-3xl px-6">
         <div className="mb-10 text-center">
           <h2
-            className={`text-3xl font-bold tracking-tight text-white sm:text-4xl animate-initial ${
+            className={`site-heading text-3xl font-bold tracking-tight sm:text-4xl animate-initial ${
               visible ? 'animate-fade-in-up' : ''
             }`}
           >
             {t.citationTitle}
           </h2>
           <p
-            className={`mt-3 text-sm text-white/35 animate-initial ${
+            className={`site-text-subtle mt-3 text-sm animate-initial ${
               visible ? 'animate-fade-in-up' : ''
             }`}
             style={{ animationDelay: '0.1s' }}
@@ -73,7 +76,12 @@ export default function CitationBlock(): React.JSX.Element {
             <div className="flex-1 text-center text-[11px] text-white/20 font-mono">
               mandol.bib
             </div>
-            <button onClick={handleCopy} className={`copy-btn ${copied ? 'copied' : ''}`}>
+            <button
+              type="button"
+              onClick={handleCopy}
+              className={`copy-btn ${copied ? 'copied' : ''}`}
+              aria-label={copied ? t.citationCopied : t.citationCopy}
+            >
               {copied ? (
                 <>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -92,20 +100,11 @@ export default function CitationBlock(): React.JSX.Element {
               )}
             </button>
           </div>
-          <div className="code-content font-mono text-[13px] leading-relaxed">
-            <div style={{ color: '#c792ea' }}>@article<span style={{ color: '#e8ecf4' }}>{'{'}</span><span style={{ color: '#c3e88d' }}>mandol2026</span>,</div>
-            <div className="pl-4"><span style={{ color: '#82aaff' }}>title</span>   = {'{Mandol: An In-Memory Layered Memory System'}</div>
-            <div className="pl-8">{'for Long-Term Conversational Agents},'}</div>
-            <div className="pl-4"><span style={{ color: '#82aaff' }}>author</span>  = {'{Yuhan Zhang and Zhiyuan Guo and Ziheng Zeng'}</div>
-            <div className="pl-8">{'and Wei Wang and Wentao Wu and Lijie Xu},'}</div>
-            <div className="pl-4"><span style={{ color: '#82aaff' }}>journal</span> = {'{arXiv preprint arXiv:2606.29778},'}</div>
-            <div className="pl-4"><span style={{ color: '#82aaff' }}>year</span>    = {'{2026}'}</div>
-            <div>{'}'}</div>
-          </div>
+          <pre className="code-content bibtex-content"><code>{bibtex}</code></pre>
         </div>
 
         <p
-          className={`mt-5 text-center text-[12px] text-white/20 animate-initial ${
+          className={`site-text-faint mt-5 text-center text-[12px] animate-initial ${
             visible ? 'animate-fade-in-up' : ''
           }`}
           style={{ animationDelay: '0.35s' }}

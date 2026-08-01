@@ -56,17 +56,17 @@ function InnovationCard({
     >
       <div className="mb-4 font-mono text-xs font-semibold uppercase tracking-[0.2em] text-primary-300/70">{inv.icon}</div>
       <div className="mb-2 flex items-center gap-3">
-        <h3 className="text-lg font-semibold text-white/90">{inv.title}</h3>
+        <h3 className="site-heading text-lg font-semibold">{inv.title}</h3>
       </div>
       <span
         className={`mb-4 inline-block self-start rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${inv.tagColor}`}
       >
         {inv.tag}
       </span>
-      <p className="mb-5 text-sm leading-relaxed text-white/50">{inv.description}</p>
+      <p className="site-text-muted mb-5 text-sm leading-relaxed">{inv.description}</p>
       <ul className="mt-auto space-y-2.5">
         {inv.points.map((p, i) => (
-          <li key={i} className="flex items-start gap-2.5 text-[13px] leading-relaxed text-white/45">
+          <li key={i} className="site-text-muted flex items-start gap-2.5 text-[13px] leading-relaxed">
             <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-primary-400/50" />
             {p}
           </li>
@@ -103,7 +103,7 @@ export default function InnovationCards(): React.JSX.Element {
       <div className="mx-auto max-w-6xl px-6">
         <div className="mb-16 text-center">
           <h2
-            className={`text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl animate-initial ${
+            className={`site-heading text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl animate-initial ${
               visible ? 'animate-fade-in-up' : ''
             }`}
           >
@@ -118,7 +118,7 @@ export default function InnovationCards(): React.JSX.Element {
             )}
           </h2>
           <p
-            className={`mt-3 text-sm text-white/35 animate-initial ${
+            className={`site-text-subtle mt-3 text-sm animate-initial ${
               visible ? 'animate-fade-in-up' : ''
             }`}
             style={{ animationDelay: '0.1s' }}

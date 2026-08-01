@@ -74,7 +74,7 @@ function DataTable({
         <thead>
           <tr>
             <th>
-              <span className="text-white/50 text-xs font-medium">{backbone}</span>
+              <span className="site-text-muted text-xs font-medium">{backbone}</span>
             </th>
             {cols.map((col) => (
               <th key={col}>{col}</th>
@@ -128,7 +128,7 @@ export default function BenchmarkTable(): React.JSX.Element {
         {/* Section header */}
         <div className="mb-16 text-center">
           <h2
-            className={`text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl animate-initial ${
+            className={`site-heading text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl animate-initial ${
               visible ? 'animate-fade-in-up' : ''
             }`}
           >
@@ -143,7 +143,7 @@ export default function BenchmarkTable(): React.JSX.Element {
             )}
           </h2>
           <p
-            className={`mt-3 text-sm text-white/35 animate-initial ${
+            className={`site-text-subtle mt-3 text-sm animate-initial ${
               visible ? 'animate-fade-in-up' : ''
             }`}
             style={{ animationDelay: '0.1s' }}
@@ -157,7 +157,7 @@ export default function BenchmarkTable(): React.JSX.Element {
           className={`animate-initial mb-16 ${visible ? 'animate-fade-in-up' : ''}`}
           style={{ animationDelay: '0.15s' }}
         >
-          <h3 className="mb-5 text-center text-lg font-semibold text-white/65">
+          <h3 className="site-text mb-5 text-center text-lg font-semibold">
             {t.benchmarkLocomoTitle}
           </h3>
 
@@ -171,7 +171,7 @@ export default function BenchmarkTable(): React.JSX.Element {
             />
           ))}
 
-          <p className="mt-4 text-center text-[12px] leading-relaxed text-white/20 max-w-3xl mx-auto">
+          <p className="site-text-faint mt-4 text-center text-[12px] leading-relaxed max-w-3xl mx-auto">
             {t.benchmarkLocomoNote}
           </p>
         </div>
@@ -181,7 +181,7 @@ export default function BenchmarkTable(): React.JSX.Element {
           className={`animate-initial ${visible ? 'animate-fade-in-up' : ''}`}
           style={{ animationDelay: '0.25s' }}
         >
-          <h3 className="mb-5 text-center text-lg font-semibold text-white/65">
+          <h3 className="site-text mb-5 text-center text-lg font-semibold">
             {t.benchmarkLongmemTitle}
           </h3>
 
@@ -195,7 +195,7 @@ export default function BenchmarkTable(): React.JSX.Element {
             />
           ))}
 
-          <p className="mt-4 text-center text-[12px] leading-relaxed text-white/20 max-w-3xl mx-auto">
+          <p className="site-text-faint mt-4 text-center text-[12px] leading-relaxed max-w-3xl mx-auto">
             {t.benchmarkLongmemNote}
           </p>
         </div>

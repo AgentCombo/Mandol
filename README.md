@@ -4,6 +4,7 @@
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
+[![CI](https://github.com/AgentCombo/Mandol/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/AgentCombo/Mandol/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/badge/PyPI-0.1.0a2-blue)](https://pypi.org/project/mandol/)
 [![Downloads](https://img.shields.io/pypi/dm/mandol?label=Downloads&color=blue)](https://pypi.org/project/mandol/)
 [![Homepage](https://img.shields.io/badge/Homepage-agentcombo.github.io%2FMandol-blue)](https://agentcombo.github.io/Mandol)
@@ -472,13 +473,14 @@ If this work is helpful to your research, please cite our paper:
 
 ```bibtex
 @misc{zhang2026mandol,
-      title={Mandol: An Agglomerative Agent Memory System for Long-Term Conversations}, 
-      author={Yuhan Zhang and Zhiyuan Guo and Ziheng Zeng and Wei Wang and Wentao Wu and Lijie Xu},
-      year={2026},
-      eprint={2606.29778},
-      archivePrefix={arXiv},
-      primaryClass={cs.DB},
-      url={https://arxiv.org/abs/2606.29778}, 
+  title={Mandol: An Agglomerative Agent Memory System for Long-Term Conversations},
+  author={Yuhan Zhang and Zhiyuan Guo and Ziheng Zeng and Wei Wang and Wentao Wu and Lijie Xu},
+  year={2026},
+  eprint={2606.29778},
+  archivePrefix={arXiv},
+  primaryClass={cs.DB},
+  doi={10.48550/arXiv.2606.29778},
+  url={https://arxiv.org/abs/2606.29778}
 }
 ```
 

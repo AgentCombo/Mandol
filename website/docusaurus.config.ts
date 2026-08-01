@@ -58,7 +58,7 @@ const config: Config = {
     image: 'img/mandol-overview.png',
     colorMode: {
       defaultMode: 'dark',
-      respectPrefersColorScheme: false,
+      respectPrefersColorScheme: true,
       disableSwitch: false,
     },
     navbar: {

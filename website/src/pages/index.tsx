@@ -16,16 +16,16 @@ function HomeFooter(): ReactNode {
   const t = translations[locale];
 
   return (
-    <footer className="section-darker border-t border-white/[0.04] py-12">
+    <footer className="section-darker site-footer py-12">
       <div className="mx-auto max-w-6xl px-6">
         <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-between">
-          <div className="text-[13px] text-white/25">
+          <div className="site-text-faint text-[13px]">
             &copy; {new Date().getFullYear()} {t.footerCopyright}
           </div>
           <div className="flex gap-6 text-[13px]">
             <a
               href="https://agentcombo.github.io/Mandol/docs/"
-              className="text-white/30 hover:text-white/60 transition-colors no-underline"
+              className="site-text-muted transition-colors no-underline hover:text-primary-500"
             >
               {t.footerDocs}
             </a>
@@ -33,7 +33,7 @@ function HomeFooter(): ReactNode {
               href="https://github.com/AgentCombo/Mandol"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-white/30 hover:text-white/60 transition-colors no-underline"
+              className="site-text-muted transition-colors no-underline hover:text-primary-500"
             >
               {t.footerGitHub}
             </a>
@@ -41,7 +41,7 @@ function HomeFooter(): ReactNode {
               href="https://github.com/AgentCombo/Mandol/discussions"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-white/30 hover:text-white/60 transition-colors no-underline"
+              className="site-text-muted transition-colors no-underline hover:text-primary-500"
             >
               {t.footerCommunity}
             </a>

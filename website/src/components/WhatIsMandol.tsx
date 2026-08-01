@@ -29,7 +29,7 @@ export default function WhatIsMandol(): React.JSX.Element {
         {/* Section header */}
         <div className="mb-16 text-center">
           <h2
-            className={`text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl animate-initial ${
+            className={`site-heading text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl animate-initial ${
               visible ? 'animate-fade-in-up' : ''
             }`}
           >
@@ -52,8 +52,8 @@ export default function WhatIsMandol(): React.JSX.Element {
           }`}
           style={{ animationDelay: '0.15s' }}
         >
-          <p className="text-[15px] leading-relaxed text-white/55">{t.whatIsDesc1}</p>
-          <p className="mt-4 text-[15px] leading-relaxed text-white/45">{t.whatIsDesc2}</p>
+          <p className="site-text text-[15px] leading-relaxed">{t.whatIsDesc1}</p>
+          <p className="site-text-muted mt-4 text-[15px] leading-relaxed">{t.whatIsDesc2}</p>
         </div>
 
         {/* Architecture overview image */}
@@ -66,11 +66,7 @@ export default function WhatIsMandol(): React.JSX.Element {
           <img
             src="/Mandol/img/mandol-overview.png"
             alt="Mandol System Architecture Overview"
-            className="w-full max-w-3xl rounded-2xl"
-            style={{
-              boxShadow: '0 4px 60px rgba(59, 130, 246, 0.1)',
-              border: '1px solid rgba(255, 255, 255, 0.06)',
-            }}
+            className="architecture-image w-full max-w-3xl rounded-2xl"
           />
         </div>
       </div>

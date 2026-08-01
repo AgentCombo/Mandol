@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import { translations, type Locale } from '@site/src/translations';
+import { copyText } from '@site/src/utils/copyText';
 
 const highlights = [
   { value: '3.12', labelKey: 'highlightLoCoMo' as const, color: '#60a5fa' },
@@ -22,7 +23,7 @@ export default function HeroSection(): React.JSX.Element {
   }, []);
 
   const handleCopyInstall = () => {
-    navigator.clipboard.writeText('uv sync --extra dev --group spacy-model');
+    void copyText('uv sync');
   };
 
   return (
@@ -31,14 +32,7 @@ export default function HeroSection(): React.JSX.Element {
       className="section-hero relative overflow-hidden pt-24 pb-20 sm:pt-32 sm:pb-28"
     >
       {/* Subtle grid pattern */}
-      <div
-        className="pointer-events-none absolute inset-0 opacity-[0.03]"
-        style={{
-          backgroundImage:
-            'linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)',
-          backgroundSize: '60px 60px',
-        }}
-      />
+      <div className="hero-grid pointer-events-none absolute inset-0 opacity-40" />
 
       <div className="relative z-10 mx-auto max-w-6xl px-6">
         {/* Badge row */}
@@ -91,17 +85,17 @@ export default function HeroSection(): React.JSX.Element {
 
         {/* Subtitle */}
         <p
-          className={`mx-auto mt-6 max-w-2xl text-center text-lg text-white/60 sm:text-xl animate-initial ${visible ? 'animate-fade-in-up' : ''}`}
+          className={`site-text mx-auto mt-6 max-w-2xl text-center text-lg sm:text-xl animate-initial ${visible ? 'animate-fade-in-up' : ''}`}
           style={{ animationDelay: '0.4s' }}
         >
           {t.heroTitle_sub1}
           <br />
-          <span className="text-white/35">{t.heroTitle_sub2}</span>
+          <span className="site-text-subtle">{t.heroTitle_sub2}</span>
         </p>
 
         {/* Description */}
         <p
-          className={`mx-auto mt-5 max-w-xl text-center text-sm leading-relaxed text-white/40 animate-initial ${visible ? 'animate-fade-in-up' : ''}`}
+          className={`site-text-muted mx-auto mt-5 max-w-xl text-center text-sm leading-relaxed animate-initial ${visible ? 'animate-fade-in-up' : ''}`}
           style={{ animationDelay: '0.5s' }}
         >
           {t.heroDescription}
@@ -112,7 +106,12 @@ export default function HeroSection(): React.JSX.Element {
           className={`mt-10 flex flex-wrap items-center justify-center gap-3 animate-initial ${visible ? 'animate-fade-in-up' : ''}`}
           style={{ animationDelay: '0.6s' }}
         >
-          <button onClick={handleCopyInstall} className="btn-ghost group">
+          <button
+            type="button"
+            onClick={handleCopyInstall}
+            className="btn-ghost group"
+            aria-label={`${t.quickStartCopy}: uv sync`}
+          >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="opacity-50">
               <rect x="2" y="2" width="20" height="8" rx="2" ry="2" />
               <rect x="2" y="14" width="20" height="8" rx="2" ry="2" />
@@ -150,7 +149,7 @@ export default function HeroSection(): React.JSX.Element {
               <span className="text-2xl sm:text-3xl font-extrabold tracking-tight tabular-nums" style={{ color: h.color }}>
                 {h.value}
               </span>
-              <span className="text-xs sm:text-sm text-white/35 font-medium whitespace-nowrap leading-tight">
+              <span className="site-text-subtle text-xs sm:text-sm font-medium whitespace-nowrap leading-tight">
                 {t[h.labelKey]}
               </span>
             </div>

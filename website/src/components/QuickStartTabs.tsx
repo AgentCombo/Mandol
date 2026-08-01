@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import { translations, type Locale } from '@site/src/translations';
+import { copyText } from '@site/src/utils/copyText';
 
 const codeSnippets: Record<string, string> = {
   install: `# Base source environment
@@ -89,8 +90,8 @@ export default function QuickStartTabs(): React.JSX.Element {
     return () => observer.disconnect();
   }, []);
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(codeSnippets[active]);
+  const handleCopy = async () => {
+    if (!(await copyText(codeSnippets[active]))) return;
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -116,7 +117,7 @@ export default function QuickStartTabs(): React.JSX.Element {
       <div className="mx-auto max-w-3xl px-6">
         <div className="mb-12 text-center">
           <h2
-            className={`text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl animate-initial ${
+            className={`site-heading text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl animate-initial ${
               visible ? 'animate-fade-in-up' : ''
             }`}
           >
@@ -131,7 +132,7 @@ export default function QuickStartTabs(): React.JSX.Element {
             )}
           </h2>
           <p
-            className={`mt-3 text-sm text-white/35 animate-initial ${
+            className={`site-text-subtle mt-3 text-sm animate-initial ${
               visible ? 'animate-fade-in-up' : ''
             }`}
             style={{ animationDelay: '0.1s' }}
@@ -148,6 +149,7 @@ export default function QuickStartTabs(): React.JSX.Element {
         >
           {tabs.map((tab) => (
             <button
+              type="button"
               key={tab.id}
               className={`tab-button ${active === tab.id ? 'active' : ''}`}
               onClick={() => setActive(tab.id)}
@@ -168,7 +170,12 @@ export default function QuickStartTabs(): React.JSX.Element {
             <div className="code-dot code-dot-yellow" />
             <div className="code-dot code-dot-green" />
             <div className="flex-1" />
-            <button onClick={handleCopy} className={`copy-btn ${copied ? 'copied' : ''}`}>
+            <button
+              type="button"
+              onClick={handleCopy}
+              className={`copy-btn ${copied ? 'copied' : ''}`}
+              aria-label={copied ? t.quickStartCopied : t.quickStartCopy}
+            >
               {copied ? (
                 <>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -193,17 +200,17 @@ export default function QuickStartTabs(): React.JSX.Element {
         </div>
 
         <div
-          className={`mt-8 flex items-center justify-center gap-6 text-[11px] text-white/25 animate-initial ${
+          className={`site-text-faint mt-8 flex items-center justify-center gap-6 text-[11px] animate-initial ${
             visible ? 'animate-fade-in-up' : ''
           }`}
           style={{ animationDelay: '0.45s' }}
         >
           <span className={active === 'install' ? 'text-blue-400/60' : ''}>{t.quickStartStep1}</span>
-          <span className="text-white/10">→</span>
+          <span aria-hidden="true">→</span>
           <span className={active === 'insert' ? 'text-blue-400/60' : ''}>{t.quickStartStep2}</span>
-          <span className="text-white/10">→</span>
+          <span aria-hidden="true">→</span>
           <span className={active === 'build' ? 'text-blue-400/60' : ''}>{t.quickStartStep3}</span>
-          <span className="text-white/10">→</span>
+          <span aria-hidden="true">→</span>
           <span className={active === 'save' ? 'text-blue-400/60' : ''}>{t.quickStartStep4}</span>
         </div>
       </div>
