@@ -179,6 +179,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  position: relative;
 }
 
 .code-dot {
@@ -199,13 +200,31 @@
   background: #28c840;
 }
 
-.code-content {
+.code-window .code-content {
+  margin: 0;
   padding: 20px 24px;
+  border: 0;
+  border-radius: 0;
+  background: #060f1a;
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
   font-size: 13px;
   line-height: 1.7;
   color: #e8ecf4;
+  max-width: 100%;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.code-window .code-content > code {
+  display: block;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  white-space: inherit;
 }
 
 .code-content .comment {
@@ -424,18 +443,30 @@
   align-items: center;
   gap: 6px;
   padding: 6px 14px;
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 6px;
   font-size: 12px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.code-window-bar > .copy-btn {
+  margin-left: auto;
 }
 
 .copy-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.96);
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+.copy-btn svg {
+  flex-shrink: 0;
 }
 
 .copy-btn.copied {
@@ -522,12 +553,23 @@
   white-space: pre;
 }
 
+.code-window-filename {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(255, 255, 255, 0.72);
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 11px;
+  line-height: 1;
+  pointer-events: none;
+}
+
 .btn-primary:focus-visible,
 .btn-secondary:focus-visible,
 .btn-ghost:focus-visible,
 .badge-item:focus-visible,
 .tab-button:focus-visible,
-.copy-btn:focus-visible {
+.code-window .copy-btn:focus-visible {
   outline: 3px solid var(--ifm-color-primary-light);
   outline-offset: 3px;
 }
@@ -536,6 +578,13 @@
 @media (max-width: 768px) {
   .hide-mobile {
     display: none !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .code-window .copy-btn {
+    gap: 4px;
+    padding-inline: 10px;
   }
 }
 

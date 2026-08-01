@@ -73,7 +73,7 @@ export default function CitationBlock(): React.JSX.Element {
             <div className="code-dot code-dot-red" />
             <div className="code-dot code-dot-yellow" />
             <div className="code-dot code-dot-green" />
-            <div className="flex-1 text-center text-[11px] text-white/20 font-mono">
+            <div className="code-window-filename">
               mandol.bib
             </div>
             <button
