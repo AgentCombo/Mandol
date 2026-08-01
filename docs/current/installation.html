@@ -201,7 +201,6 @@
 <li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="reproduction.html">Reproduction and Benchmarks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api-reference.html">Current API Reference</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../releasing.html">Releasing Mandol</a></li>
 </ul>
 
 </div>
@@ -242,8 +241,25 @@
         <article role="main" id="furo-main-content">
           <section id="installation">
 <h1>Installation<a class="headerlink" href="#installation" title="Link to this heading">¶</a></h1>
-<p>Mandol currently targets Python <code class="docutils literal notranslate"><span class="pre">&gt;=3.12,&lt;3.13</span></code>. Use <code class="docutils literal notranslate"><span class="pre">uv</span></code> from the repository
-root so the environment is resolved from <code class="docutils literal notranslate"><span class="pre">pyproject.toml</span></code> and <code class="docutils literal notranslate"><span class="pre">uv.lock</span></code>.</p>
+<p>Mandol <code class="docutils literal notranslate"><span class="pre">0.1.0</span></code> targets Python <code class="docutils literal notranslate"><span class="pre">&gt;=3.12,&lt;3.13</span></code> and Linux.</p>
+<section id="published-package">
+<h2>Published package<a class="headerlink" href="#published-package" title="Link to this heading">¶</a></h2>
+<p>Install the current release from PyPI. Use the explicit pin when the package
+version must remain reproducible.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>mandol
+python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;mandol==0.1.0&quot;</span>
+</pre></div>
+</div>
+<p>The package is an early public research release rather than a production
+service, and its API may evolve during the <code class="docutils literal notranslate"><span class="pre">0.x</span></code> series. Exact reproduction
+of the paper tables requires the frozen <code class="docutils literal notranslate"><span class="pre">paper-repro</span></code> source checkout and
+its benchmark-specific instructions.</p>
+</section>
+<section id="source-environments">
+<h2>Source environments<a class="headerlink" href="#source-environments" title="Link to this heading">¶</a></h2>
+<p>Use <code class="docutils literal notranslate"><span class="pre">uv</span></code> from the repository root so the source environment is resolved from
+<code class="docutils literal notranslate"><span class="pre">pyproject.toml</span></code> and <code class="docutils literal notranslate"><span class="pre">uv.lock</span></code>.</p>
+</section>
 <section id="recommended-development-environment">
 <h2>Recommended development environment<a class="headerlink" href="#recommended-development-environment" title="Link to this heading">¶</a></h2>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>sync<span class="w"> </span>--extra<span class="w"> </span>dev<span class="w"> </span>--extra<span class="w"> </span>docs<span class="w"> </span>--group<span class="w"> </span>spacy-model
@@ -347,6 +363,8 @@ maintained extras are <code class="docutils literal notranslate"><span class="pr
           <div class="toc-tree">
             <ul>
 <li><a class="reference internal" href="#">Installation</a><ul>
+<li><a class="reference internal" href="#published-package">Published package</a></li>
+<li><a class="reference internal" href="#source-environments">Source environments</a></li>
 <li><a class="reference internal" href="#recommended-development-environment">Recommended development environment</a></li>
 <li><a class="reference internal" href="#runtime-only-environment">Runtime-only environment</a></li>
 <li><a class="reference internal" href="#optional-groups-and-extras">Optional groups and extras</a></li>
