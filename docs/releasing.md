@@ -79,7 +79,7 @@ git clone \
   "$release_dir/Mandol"
 
 cd "$release_dir/Mandol"
-python3.12 -m venv .release-venv
+uv venv --python 3.12 --seed .release-venv
 source .release-venv/bin/activate
 python -m pip install --upgrade pip build twine
 python -m build
@@ -127,7 +127,7 @@ Python requirement, license, classifiers, and BibTeX.
 
 ```bash
 verify_dir="$(mktemp -d)"
-python3.12 -m venv "$verify_dir/venv"
+uv venv --python 3.12 --seed "$verify_dir/venv"
 "$verify_dir/venv/bin/python" -m pip install --upgrade pip
 "$verify_dir/venv/bin/python" -m pip install --no-cache-dir mandol==0.1.0
 "$verify_dir/venv/bin/python" -m pip check
