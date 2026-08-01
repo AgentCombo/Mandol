@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
-import { translations, type Locale } from '@site/src/data/translations';
+import { translations, type Locale } from '@site/src/translations';
 
 // ── LoCoMo table data ──────────────────────────────────────────────
 const locomoBackbones = ['GPT-4o-mini', 'GPT-4.1-mini'] as const;

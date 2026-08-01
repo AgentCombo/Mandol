@@ -29,8 +29,8 @@ enabled.
 Automatic payload paging
 ------------------------
 
-RocksDB is the only supported persistent payload backend in the paper
-artifact. Calling ``connect_to_l2`` enables automatic tiered payload paging.
+RocksDB is the only supported persistent payload backend in the current
+implementation. Calling ``connect_to_l2`` enables automatic tiered payload paging.
 Dense, BM25 and SPLADE indexes, UID mappings, MemorySpace membership and graph
 topology remain resident. Cold ``MemoryUnit`` payloads are written to RocksDB
 and paged back into the resident cache on demand.

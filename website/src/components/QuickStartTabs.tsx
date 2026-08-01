@@ -1,16 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
-import { translations, type Locale } from '@site/src/data/translations';
+import { translations, type Locale } from '@site/src/translations';
 
 const codeSnippets: Record<string, string> = {
-  install: `# Build the repository environment
-uv sync --extra dev --group spacy-model
-
-# Paper performance reproduction stack
-uv sync --extra dev --extra cuda --group spacy-model
-
-# Runtime-only install
+  install: `# Base source environment
 uv sync
+
+# Development and documentation environment
+uv sync --extra dev --extra docs --group spacy-model
+
+# Paper performance stack (run from the paper-repro branch)
+uv sync --extra dev --extra cuda --group spacy-model
 
 # Lightweight import check
 uv run python -c "import mandol; print(mandol.__version__)"`,

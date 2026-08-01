@@ -8,7 +8,7 @@ import InnovationCards from '@site/src/components/InnovationCards';
 import BenchmarkTable from '@site/src/components/BenchmarkTable';
 import QuickStartTabs from '@site/src/components/QuickStartTabs';
 import CitationBlock from '@site/src/components/CitationBlock';
-import { translations, type Locale } from '@site/src/data/translations';
+import { translations, type Locale } from '@site/src/translations';
 
 function HomeFooter(): ReactNode {
   const { i18n } = useDocusaurusContext();

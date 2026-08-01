@@ -11,7 +11,7 @@ const config: Config = {
   //   v4: true,
   // },
 
-  url: 'https://AgentCombo.github.io',
+  url: 'https://agentcombo.github.io',
   baseUrl: '/Mandol/',
 
   organizationName: 'AgentCombo',
@@ -72,6 +72,16 @@ const config: Config = {
         {
           href: 'https://agentcombo.github.io/Mandol/docs/',
           label: 'Docs',
+          position: 'left',
+        },
+        {
+          href: 'https://arxiv.org/abs/2606.29778',
+          label: 'Paper',
+          position: 'left',
+        },
+        {
+          href: 'https://github.com/AgentCombo/Mandol/tree/paper-repro',
+          label: 'Paper Artifact',
           position: 'left',
         },
         {

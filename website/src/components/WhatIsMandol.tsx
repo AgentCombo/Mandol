@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
-import { translations, type Locale } from '@site/src/data/translations';
+import { translations, type Locale } from '@site/src/translations';
 
 export default function WhatIsMandol(): React.JSX.Element {
   const [visible, setVisible] = useState(false);

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
-import { translations, type Locale } from '@site/src/data/translations';
+import { translations, type Locale } from '@site/src/translations';
 
 const highlights = [
   { value: '3.12', labelKey: 'highlightLoCoMo' as const, color: '#60a5fa' },

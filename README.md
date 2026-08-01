@@ -235,7 +235,7 @@ tiered-paging layer.
 Applications can use `SemanticGraph.search_similarity_in_graph()` for direct dense retrieval, `MultiRetriever.smart_search()` for fused BM25/SPLADE/cosine retrieval, or `TripleTowerRetriever` for the paper's hierarchical, graph, and episodic retrieval paths. Router and quantification components compose these paths for the benchmark workflows; they are separate from base unit insertion and indexing.
 
 ### Memory Persistence
-By default, payloads remain resident in `SemanticMap`, and `SemanticGraph.save_graph()` / `load_graph()` provide complete local snapshots. RocksDB is the only supported persistent payload backend in this artifact. Calling `connect_to_l2()` enables automatic tiered paging: dense, BM25, and SPLADE indexes, UID mappings, MemorySpace membership, and graph topology remain resident, while cold payloads are evicted asynchronously after the high watermark is reached and paged back into the resident cache when a retrieval result requires them.
+By default, payloads remain resident in `SemanticMap`, and `SemanticGraph.save_graph()` / `load_graph()` provide complete local snapshots. RocksDB is the only supported persistent payload backend in the current implementation. Calling `connect_to_l2()` enables automatic tiered paging: dense, BM25, and SPLADE indexes, UID mappings, MemorySpace membership, and graph topology remain resident, while cold payloads are evicted asynchronously after the high watermark is reached and paged back into the resident cache when a retrieval result requires them.
 
 ---
 

@@ -20,6 +20,7 @@ build and are not an API contract for the current package.
    current/retrieval
    current/persistence
    current/configuration
+   current/reproduction
    current/api-reference
 
 Indices

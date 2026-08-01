@@ -110,7 +110,7 @@ README_CN.md 已经在 DOC_OPTIMIZATION_PLAN.md 的指导下进行了大幅改�
 
 #### SemanticMap
 
-**代码本质**：`SemanticMapService`（[semantic_map.py](../../mandol/application/semantic_map.py)）的核心职责是：
+**代码本质**：`SemanticMapService`（[archived semantic_map.py](https://github.com/AgentCombo/Mandol/blob/legacy/original/src/mandol/application/semantic_map.py)）的核心职责是：
 - 管理 `MemoryUnit` 的存储（通过 `UnitStore`）
 - 管理向量索引（通过 `AdaptiveVectorIndex`）
 - 管理 `MemorySpace` 树形组织
@@ -132,7 +132,7 @@ README_CN.md 已经在 DOC_OPTIMIZATION_PLAN.md 的指导下进行了大幅改�
 
 #### SemanticGraph
 
-**代码本质**：`SemanticGraphService`（[semantic_graph.py](../../mandol/application/semantic_graph.py)）的核心职责是：
+**代码本质**：`SemanticGraphService`（[archived semantic_graph.py](https://github.com/AgentCombo/Mandol/blob/legacy/original/src/mandol/application/semantic_graph.py)）的核心职责是：
 - 管理节点（MemoryUnit）之间的显式关系（RELATED_TO、CAUSES、EVIDENCED_BY、COREF 等）
 - 管理隐式语义相似度边（SEMANTIC_SIMILAR）
 - BFS 图扩展检索

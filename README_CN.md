@@ -112,7 +112,7 @@ Mandol 是一套以内存为核心、具备高效精确检索能力的智能体�
 
 ### 进程内检索与分层持久化
 
-FAISS 稠密索引、BM25/SPLADE 稀疏索引、UID 映射、MemorySpace membership 和图拓扑常驻进程内。未调用 `connect_to_l2()` 时，`MemoryUnit` payload 正常驻留内存；调用后，RocksDB-backed tiered cache 会在达到高水位线时异步换出冷 payload，并在检索结果需要时 page in 回 resident cache。RocksDB 是当前论文 artifact 唯一正式支持的 persistent payload backend。
+FAISS 稠密索引、BM25/SPLADE 稀疏索引、UID 映射、MemorySpace membership 和图拓扑常驻进程内。未调用 `connect_to_l2()` 时，`MemoryUnit` payload 正常驻留内存；调用后，RocksDB-backed tiered cache 会在达到高水位线时异步换出冷 payload，并在检索结果需要时 page in 回 resident cache。RocksDB 是当前实现唯一正式支持的 persistent payload backend。
 
 ---
 
