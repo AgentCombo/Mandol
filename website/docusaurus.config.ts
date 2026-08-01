@@ -4,7 +4,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
   title: 'Mandol',
-  tagline: 'An In-Memory Semantic Memory Runtime for Agent Retrieval Systems',
+  tagline: 'An In-Process Semantic Memory Runtime for Agent Retrieval Systems',
   favicon: 'img/favicon.svg',
 
   // future: {

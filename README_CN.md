@@ -1,6 +1,6 @@
 # Mandol
 
-> Mandol：一种面向长对话的智能体内存记忆系统
+> Mandol：一种面向长期对话的凝聚式智能体记忆系统
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)

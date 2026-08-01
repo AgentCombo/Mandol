@@ -4,7 +4,13 @@ import { translations, type Locale } from '@site/src/translations';
 import { copyText } from '@site/src/utils/copyText';
 
 const codeSnippets: Record<string, string> = {
-  install: `# Base source environment
+  install: `# Published package
+python -m pip install mandol
+
+# Reproducible package pin
+python -m pip install "mandol==0.1.0"
+
+# Base source environment
 uv sync
 
 # Development and documentation environment

@@ -1,8 +1,29 @@
 Installation
 ============
 
-Mandol currently targets Python ``>=3.12,<3.13``. Use ``uv`` from the repository
-root so the environment is resolved from ``pyproject.toml`` and ``uv.lock``.
+Mandol ``0.1.0`` targets Python ``>=3.12,<3.13`` and Linux.
+
+Published package
+-----------------
+
+Install the current release from PyPI. Use the explicit pin when the package
+version must remain reproducible.
+
+.. code-block:: bash
+
+   python -m pip install mandol
+   python -m pip install "mandol==0.1.0"
+
+The package is an early public research release rather than a production
+service, and its API may evolve during the ``0.x`` series. Exact reproduction
+of the paper tables requires the frozen ``paper-repro`` source checkout and
+its benchmark-specific instructions.
+
+Source environments
+-------------------
+
+Use ``uv`` from the repository root so the source environment is resolved from
+``pyproject.toml`` and ``uv.lock``.
 
 Recommended development environment
 -----------------------------------

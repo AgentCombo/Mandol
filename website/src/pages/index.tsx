@@ -60,8 +60,8 @@ export default function Home(): ReactNode {
     <Layout
       title={
         locale === 'zh-Hans'
-          ? 'Mandol — 面向智能体检索系统的内存语义记忆运行时'
-          : 'Mandol — An In-Memory Semantic Memory Runtime for Agent Retrieval Systems'
+          ? 'Mandol — 面向智能体检索系统的进程内语义记忆运行时'
+          : 'Mandol — An In-Process Semantic Memory Runtime for Agent Retrieval Systems'
       }
       description={
         locale === 'zh-Hans'

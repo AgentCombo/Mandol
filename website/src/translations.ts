@@ -71,11 +71,11 @@ export interface Translations {
 
 const en: Translations = {
   heroBadgeDocs: 'Documentation',
-  heroTitle_sub1: 'An In-Memory Semantic Memory Runtime',
+  heroTitle_sub1: 'An In-Process Semantic Memory Runtime',
   heroTitle_sub2: 'for Agent Retrieval Systems',
   heroDescription:
     'Current Mandol exposes MemoryUnit, SemanticMap, SemanticGraph, MultiRetriever, and three-tower retrieval components from the src/mandol package.',
-  heroPipInstall: 'uv sync',
+  heroPipInstall: 'python -m pip install mandol',
   heroGetStarted: 'Get Started',
   heroViewOnGitHub: 'View on GitHub',
   highlightLoCoMo: 'Python Runtime',
@@ -85,7 +85,7 @@ const en: Translations = {
 
   whatIsTitle: 'What is Mandol?',
   whatIsDesc1:
-    'Mandol is an in-memory semantic memory package for agent retrieval experiments. Its current public API is organized around MemoryUnit records, MemorySpace namespaces, SemanticMap vector and sparse indexes, and SemanticGraph relationships.',
+    'Mandol is an in-process semantic memory package for agent retrieval experiments. Its indexes and graph topology remain resident, with optional RocksDB-backed paging for cold MemoryUnit payloads.',
   whatIsDesc2:
     'Retrieval is handled through MultiRetriever for BM25, SPLADE, cosine search, graph expansion, score fusion, and reranker orchestration. Current development is on main; exact reproduction of the published experiments uses the frozen paper-repro branch.',
 
@@ -126,7 +126,7 @@ const en: Translations = {
     'Mandol achieves 88.40% overall on LongMemEval with 2.3k tokens. Reproduction requires the cleaned dataset plus generated hierarchical, episodic, and entity-relation graph artifacts before running task_eval.',
 
   quickStartTitle: 'Quick Start',
-  quickStartSubtitle: 'Build the uv environment, add MemoryUnit records, search with MultiRetriever, then persist the graph',
+  quickStartSubtitle: 'Install the package or source environment, add MemoryUnit records, search with MultiRetriever, then persist the graph',
   quickStartTab1: 'Environment',
   quickStartTab2: 'Add Units',
   quickStartTab3: 'Search',
@@ -153,10 +153,10 @@ const en: Translations = {
 const zhHans: Translations = {
   heroBadgeDocs: '文档',
   heroTitle_sub1: '面向智能体检索系统的',
-  heroTitle_sub2: '内存语义记忆运行时',
+  heroTitle_sub2: '进程内语义记忆运行时',
   heroDescription:
     '当前 Mandol 从 src/mandol 暴露 MemoryUnit、SemanticMap、SemanticGraph、MultiRetriever 与三塔检索组件。',
-  heroPipInstall: 'uv sync',
+  heroPipInstall: 'python -m pip install mandol',
   heroGetStarted: '快速开始',
   heroViewOnGitHub: 'GitHub 仓库',
   highlightLoCoMo: 'Python 运行时',
@@ -166,7 +166,7 @@ const zhHans: Translations = {
 
   whatIsTitle: '什么是 Mandol？',
   whatIsDesc1:
-    'Mandol 是一个面向智能体检索实验的内存语义记忆包。当前公开 API 围绕 MemoryUnit 记录、MemorySpace 命名空间、SemanticMap 向量/稀疏索引和 SemanticGraph 关系图组织。',
+    'Mandol 是一个面向智能体检索实验的进程内语义记忆包。索引与图拓扑保持常驻，冷 MemoryUnit payload 可选择通过 RocksDB-backed 换页管理。',
   whatIsDesc2:
     '检索由 MultiRetriever 负责，覆盖 BM25、SPLADE、余弦搜索、图扩展、分数融合和 reranker 编排。当前开发位于 main；精确复现已发表实验时应使用冻结的 paper-repro 分支。',
 
@@ -207,7 +207,7 @@ const zhHans: Translations = {
     'Mandol 在 LongMemEval 上以 2.3k tokens 达到 88.40% 的总体正确率。复现时需要先准备 cleaned 数据集，并生成 hierarchical、episodic 与 entity-relation 三类图产物后再运行 task_eval。',
 
   quickStartTitle: '快速开始',
-  quickStartSubtitle: '构建 uv 环境，添加 MemoryUnit，用 MultiRetriever 检索，再持久化图快照',
+  quickStartSubtitle: '安装发布包或源码环境，添加 MemoryUnit，用 MultiRetriever 检索，再持久化图快照',
   quickStartTab1: '环境',
   quickStartTab2: '添加单元',
   quickStartTab3: '检索',

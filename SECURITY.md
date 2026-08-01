@@ -28,7 +28,7 @@ disclosure for confirmed issues.
 
 | Version or branch | Support status |
 | --- | --- |
-| `main` | Best-effort fixes for the active development branch |
+| `0.1.0` / `main` | Best-effort fixes for the current public release and active development branch |
 | `0.1.0a1` / `paper-repro` | Best-effort fixes that preserve artifact behavior |
 | Earlier snapshots | Unsupported |
 
