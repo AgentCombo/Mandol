@@ -24,7 +24,7 @@ from __future__ import annotations
 from importlib import import_module
 import sys
 
-__version__ = "0.1.0a2"
+__version__ = "0.1.0"
 __author__ = "Mandol Team"
 __license__ = "Apache-2.0"
 

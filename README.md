@@ -7,15 +7,16 @@
 [![Homepage](https://img.shields.io/badge/Homepage-agentcombo.github.io%2FMandol-blue)](https://agentcombo.github.io/Mandol)
 [![Current Docs](https://img.shields.io/badge/Current_Docs-agentcombo.github.io%2FMandol%2Fdocs-green)](https://agentcombo.github.io/Mandol/docs)
 [![Paper](https://img.shields.io/badge/arXiv-2606.29778-b31b1b.svg)](https://arxiv.org/abs/2606.29778)
-[![PyPI](https://img.shields.io/badge/PyPI-0.1.0a2-blue)](https://pypi.org/project/mandol/0.1.0a2/)
+[![Artifact](https://img.shields.io/badge/Artifact-0.1.0-blue)](https://github.com/AgentCombo/Mandol/tree/paper-repro)
 
 [English](README.md) | [Chinese](README_CN.md)
 
 > [!IMPORTANT]
 > This branch is frozen for exact reproduction of the experiments reported in
-> the Mandol paper. Use the commands, model roles, datasets, and benchmark
-> settings documented in this checkout for paper comparisons. Current runtime
-> development and the online documentation continue on
+> the Mandol paper. Its package version is `0.1.0`; ongoing development with
+> the same package version continues on `main`. Use the commands, model roles,
+> datasets, and benchmark settings documented in this checkout for paper
+> comparisons. Current runtime development and the online documentation are on
 > [`main`](https://github.com/AgentCombo/Mandol/tree/main).
 
 ![Mandol Overview](README.assets/Mandol-overview-v2.png)
@@ -123,14 +124,20 @@ uv pip install --force-reinstall dist/mandol-*.whl
 uv run python -c "from mandol import MemoryUnit, SemanticGraph, SemanticMap; print('ok')"
 ```
 
-Mandol is published on PyPI. The current public alpha release is
-[`mandol==0.1.0a2`](https://pypi.org/project/mandol/0.1.0a2/):
+This frozen source checkout reports package version `0.1.0`. The same version
+number is used by the maintained `main` release, so the branch or dedicated Git
+tag identifies the paper artifact. For exact reproduction, install from this
+checkout with `uv sync` or use the `v0.1.0-paper-repro` tag.
+
+The command below installs the public `main` distribution from PyPI, not this
+frozen branch, and is intended for current application development:
 
 ```bash
-python -m pip install mandol==0.1.0a2
+python -m pip install "mandol==0.1.0"
 ```
 
-Pinning the version is recommended for this alpha artifact release.
+Do not substitute that PyPI distribution for the source checkout when
+reproducing paper results.
 
 The benchmark directories are repository artifacts, not part of the runtime
 package. Use the source checkout when reproducing paper results.

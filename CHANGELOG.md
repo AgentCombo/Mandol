@@ -7,8 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-08-02
+
 ### Changed
 
+- Finalized the frozen paper artifact's Python package version as `0.1.0`
+  without changing its experiment behavior or publishing another PyPI file.
 - Aligned root development commands, environment documentation, and release
   metadata with the current `src/mandol` package and paper artifact layout.
 - Updated GitHub Actions for Python 3.12 and `uv`, and separated maintained
@@ -40,4 +44,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   benchmark reproduction.
 
 [Unreleased]: https://github.com/AgentCombo/Mandol/compare/v0.1.0-paper-repro...paper-repro
+[0.1.0]: https://github.com/AgentCombo/Mandol/compare/v0.1.0a2-paper-repro...v0.1.0-paper-repro
 [0.1.0a1]: https://pypi.org/project/mandol/0.1.0a1/

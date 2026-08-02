@@ -6,6 +6,10 @@ experiments reported in the Mandol paper. Its public surface is based on
 ``MemoryUnit``, ``MemorySpace``, ``SemanticMap``, ``SemanticGraph``,
 ``MultiRetriever`` and the retrieval-facing subpackages in this branch.
 
+This frozen artifact's package version is ``0.1.0``. Ongoing development also
+uses package version ``0.1.0`` on ``main``; select this artifact by the
+``paper-repro`` branch or its dedicated ``v0.1.0-paper-repro`` tag.
+
 Current runtime development and the hosted documentation at
 https://agentcombo.github.io/Mandol/docs/ are generated from ``main``. Do not
 substitute main-branch commands or defaults when reproducing the paper tables.

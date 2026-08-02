@@ -1,7 +1,8 @@
 # LongMemEval Reproduction Guide
 
-> This guide belongs to the frozen `paper-repro` branch. Current runtime
-> development continues on `main`; use this checkout for paper comparisons.
+> This guide belongs to the frozen `paper-repro` artifact, whose package
+> version is `0.1.0`. Current runtime development continues on `main`; use the
+> `paper-repro` branch or `v0.1.0-paper-repro` tag for paper comparisons.
 
 This guide documents the LongMemEval reproduction path used for the paper
 numbers in this repository. Run commands from the repository root unless noted

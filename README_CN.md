@@ -7,14 +7,15 @@
 [![Homepage](https://img.shields.io/badge/Homepage-agentcombo.github.io%2FMandol-blue)](https://agentcombo.github.io/Mandol)
 [![当前文档](https://img.shields.io/badge/Current_Docs-agentcombo.github.io%2FMandol%2Fdocs-green)](https://agentcombo.github.io/Mandol/docs)
 [![Paper](https://img.shields.io/badge/arXiv-2606.29778-b31b1b.svg)](https://arxiv.org/abs/2606.29778)
-[![PyPI](https://img.shields.io/badge/PyPI-0.1.0a2-blue)](https://pypi.org/project/mandol/0.1.0a2/)
+[![Artifact](https://img.shields.io/badge/Artifact-0.1.0-blue)](https://github.com/AgentCombo/Mandol/tree/paper-repro)
 
 [English](README.md) | [中文](README_CN.md)
 
 > [!IMPORTANT]
-> 本分支冻结用于精确复现 Mandol 论文中报告的实验。进行论文对比时，请以当前
-> checkout 中记录的命令、模型角色、数据集和 benchmark 设置为准。当前运行时开发
-> 和在线文档继续由 [`main`](https://github.com/AgentCombo/Mandol/tree/main) 维护。
+> 本分支是与 Mandol 论文实验对应的冻结复现版本，包版本为 `0.1.0`；使用相同
+> 包版本的后续持续开发位于 `main` 分支。进行论文对比时，请以当前 checkout 中
+> 记录的命令、模型角色、数据集和 benchmark 设置为准。当前运行时开发和在线文档
+> 由 [`main`](https://github.com/AgentCombo/Mandol/tree/main) 维护。
 
 ![Mandol Overview](README.assets/Mandol-overview-v2.png)
 
@@ -98,14 +99,18 @@ uv pip install --force-reinstall dist/mandol-*.whl
 uv run python -c "from mandol import MemoryUnit, SemanticGraph, SemanticMap; print('ok')"
 ```
 
-Mandol 已正式发布到 PyPI。当前公开 alpha 版本是
-[`mandol==0.1.0a2`](https://pypi.org/project/mandol/0.1.0a2/)：
+本冻结源码 checkout 的包版本为 `0.1.0`。持续维护的 `main` 发行版使用相同的
+版本号，因此论文 artifact 必须通过分支或专用 Git tag 区分。精确复现时，请在
+当前 checkout 中执行 `uv sync`，或使用 `v0.1.0-paper-repro` tag。
+
+以下命令安装的是 PyPI 上由 `main` 构建的公开发行版，而不是本冻结分支；它适合
+当前应用开发：
 
 ```bash
-python -m pip install mandol==0.1.0a2
+python -m pip install "mandol==0.1.0"
 ```
 
-建议在当前 alpha artifact 阶段固定版本安装，避免安装到 PyPI 上的其他历史版本。
+复现论文结果时，不要用该 PyPI 发行版替代源码 checkout。
 
 benchmark 目录是论文 artifact 的一部分，不属于运行时包本体。复现论文结果时请使用源码 checkout。
 

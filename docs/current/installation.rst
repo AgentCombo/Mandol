@@ -48,7 +48,9 @@ Use a light import check first. It does not instantiate embedding models.
 
    uv run python -c "import mandol; print(mandol.__version__)"
 
-The expected package version in this checkout is ``0.1.0a2``.
+The expected package version in this checkout is ``0.1.0``. The PyPI
+distribution with the same package version is built from ``main``; use this
+``paper-repro`` checkout for the frozen experiment artifact.
 
 Important dependency note
 -------------------------

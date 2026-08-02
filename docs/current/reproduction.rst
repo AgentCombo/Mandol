@@ -6,6 +6,11 @@ results. Run reproduction commands from the repository root and keep the model
 roles, dataset splits, routing policies and evaluation settings documented in
 the benchmark-specific guides.
 
+The package version encoded by this artifact is ``0.1.0``. The maintained
+``main`` branch uses the same Python package version but is a separate code
+line; use the ``paper-repro`` branch or ``v0.1.0-paper-repro`` tag for exact
+paper reproduction.
+
 Accuracy workflows
 ------------------
 
