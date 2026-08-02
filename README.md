@@ -55,7 +55,7 @@ Mandol is a native in-memory hierarchical memory system for LLM agents such as l
 2. **In-Memory Semantic Data Structures** — Combines *SemanticMap* and *SemanticGraph* to natively fuse key-value, vector, and graph stores into a unified hybrid retrieval interface, eliminating cross-database I/O overhead.
 3. **Smart Quantitative Retrieval** — A query-adaptive routing mechanism with two-stage denoising, conflict resolution, and token-constrained context generation — all operating without invoking LLMs during retrieval.
 
-On the LoCoMo and LongMemEval long-term conversation benchmarks, Mandol achieves state-of-the-art accuracy of 92.21% and 88.40%, respectively. Compared to representative agent memory systems, Mandol delivers a 5.4× retrieval speedup and a 4.8× insertion speedup under 10 QPS concurrent load, while sustaining low latency on consumer-grade hardware. These results validate the system's effectiveness, efficiency, and stability in complex long-conversation scenarios.
+On the LoCoMo and LongMemEval long-term conversation benchmarks, Mandol achieves state-of-the-art accuracy of 92.21% and 88.40%, respectively. Under the server comparison setting, Mandol delivers a 5.4× retrieval speedup and a 4.8× insertion speedup over the strongest non-Mandol baseline by mean latency, with Search and Add both measured at 10 QPS. These results validate the system's effectiveness, efficiency, and stability in complex long-conversation scenarios.
 
 **System-level comparison of agent memory systems:**
 
@@ -173,6 +173,29 @@ Mandol achieves the highest Overall accuracy on LoCoMo under both backbone setti
 </table>
 
 Mandol achieves the highest Overall accuracy on LongMemEval under both backbone settings.
+
+### Retrieval and Insertion Latency
+
+All latency values are reported in milliseconds. The server comparison was measured on an NVIDIA H800 80GB at 10 QPS for both Search and Add.
+
+| System | Search P99 (ms) | Search P90 (ms) | Search Mean (ms) | Add P99 (ms) | Add P90 (ms) | Add Mean (ms) |
+|---|---:|---:|---:|---:|---:|---:|
+| MemU | 63000.7 | 60539.5 | 47554.5 | 12070.6 | 7273.1 | 5077.9 |
+| EverMemOS<sup>†</sup> | 37192.4 | 35220.4 | 20092.1 | 790.2 | 555.5 | 317.7 |
+| Mem0 | 4637.0 | 1397.0 | 1089.0 | 2841.0 | 1650.0 | 888.0 |
+| Zep | 5348.7 | 614.8 | 571.7 | 375.1 | 254.5 | 239.0 |
+| MemOS | 777.1 | 528.4 | 440.5 | 376.4 | 211.6 | 191.9 |
+| **Mandol (Ours)** | **94.8** | **88.5** | **82.2** | **67.3** | **46.9** | **39.7** |
+
+By mean latency in this server comparison, Mandol delivers a **5.4× retrieval speedup** (440.5 / 82.2) and a **4.8× insertion speedup** (191.9 / 39.7) over the strongest non-Mandol baseline.
+
+**Local deployment.** On an NVIDIA RTX 5090 Laptop 24GB, Mandol reaches 166.5 ms mean search latency at 5 QPS and 37.4 ms mean insertion latency at 10 QPS.
+
+| System | Search P99 (ms) | Search P90 (ms) | Search Mean (ms) | Add P99 (ms) | Add P90 (ms) | Add Mean (ms) |
+|---|---:|---:|---:|---:|---:|---:|
+| **Mandol (Ours)** | **211.6** | **186.8** | **166.5** | **51.6** | **42.1** | **37.4** |
+
+The local result is reported separately because its hardware and search load differ from the server comparison. <sup>†</sup> EverMemOS was reproduced using its official implementation. These results correspond to the frozen [`paper-repro`](https://github.com/AgentCombo/Mandol/tree/paper-repro) artifact.
 
 **Evaluation methodology.** Retrieval quality is measured via QA accuracy on the two benchmarks, defined as the percentage of questions whose generated answers are judged correct or semantically consistent with the ground-truth answers. Following the evaluation protocol of prior memory-system studies, GPT-4o-mini and GPT-4.1-mini serve as the answer-generation backbones, and we adopt the released LLM-based answer correctness evaluation script from EverMemOS.<br/>
 Notably, rather than using large-parameter models such as Qwen3-Embedding-4B and Qwen3-Reranker-4B, we employ lightweight alternatives — Qwen3-Embedding-0.6B for embedding and bge-reranker-v2-m3 for reranking.

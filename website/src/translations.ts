@@ -40,6 +40,30 @@ export interface Translations {
   benchmarkLongmemTitle: string;
   benchmarkLocomoNote: string;
   benchmarkLongmemNote: string;
+  benchmarkLatencyTitle: string;
+  benchmarkLatencySubtitle: string;
+  benchmarkServerTitle: string;
+  benchmarkServerEnvironment: string;
+  benchmarkMetricSearch: string;
+  benchmarkMetricAdd: string;
+  benchmarkMetricRetrievalSpeedup: string;
+  benchmarkMetricInsertionSpeedup: string;
+  benchmarkMetricServerContext: string;
+  benchmarkMetricBaselineContext: string;
+  benchmarkSystem: string;
+  benchmarkSearch: string;
+  benchmarkAdd: string;
+  benchmarkMean: string;
+  benchmarkOurs: string;
+  benchmarkLocalEyebrow: string;
+  benchmarkLocalTitle: string;
+  benchmarkLocalDescription: string;
+  benchmarkLocalSeparate: string;
+  benchmarkLatencyConditions: string;
+  benchmarkLatencyEvermemNote: string;
+  benchmarkLatencySourcePrefix: string;
+  benchmarkLatencySourceLink: string;
+  benchmarkLatencySourceSuffix: string;
 
   // Quick Start
   quickStartTitle: string;
@@ -124,6 +148,34 @@ const en: Translations = {
     'Mandol achieves 92.21% overall on LoCoMo with only 1.9k tokens. Paper rows use generated three-tower graphs with router + quantification; Qwen/DeepSeek build and deduplicate memories, while GPT-4.1-mini/GPT-4o-mini are used for task evaluation and judging.',
   benchmarkLongmemNote:
     'Mandol achieves 88.40% overall on LongMemEval with 2.3k tokens. Reproduction requires the cleaned dataset plus generated hierarchical, episodic, and entity-relation graph artifacts before running task_eval.',
+  benchmarkLatencyTitle: 'Retrieval and Insertion Latency',
+  benchmarkLatencySubtitle:
+    'Complete tail and mean latency results, with server and local deployments reported separately',
+  benchmarkServerTitle: 'Server Deployment',
+  benchmarkServerEnvironment: 'NVIDIA H800 80GB · Search 10 QPS · Add 10 QPS',
+  benchmarkMetricSearch: 'Mean Search Latency',
+  benchmarkMetricAdd: 'Mean Add Latency',
+  benchmarkMetricRetrievalSpeedup: 'Retrieval Speedup',
+  benchmarkMetricInsertionSpeedup: 'Insertion Speedup',
+  benchmarkMetricServerContext: 'H800 · 10 QPS',
+  benchmarkMetricBaselineContext: 'server mean · vs. best non-Mandol baseline',
+  benchmarkSystem: 'System',
+  benchmarkSearch: 'Search',
+  benchmarkAdd: 'Add',
+  benchmarkMean: 'Mean',
+  benchmarkOurs: 'Ours',
+  benchmarkLocalEyebrow: 'Local deployment',
+  benchmarkLocalTitle: 'Consumer Hardware',
+  benchmarkLocalDescription:
+    'On an NVIDIA RTX 5090 Laptop 24GB, Mandol records 166.5 ms mean search latency at 5 QPS and 37.4 ms mean insertion latency at 10 QPS.',
+  benchmarkLocalSeparate:
+    'This result is shown separately because the hardware and search load differ from the server comparison.',
+  benchmarkLatencyConditions:
+    'All values are milliseconds. Server measurements use an NVIDIA H800 80GB at 10 QPS for Search and Add. Local measurements use an NVIDIA RTX 5090 Laptop 24GB at 5 QPS for Search and 10 QPS for Add.',
+  benchmarkLatencyEvermemNote: '† EverMemOS was reproduced using its official implementation.',
+  benchmarkLatencySourcePrefix: 'These results correspond to the frozen',
+  benchmarkLatencySourceLink: 'paper reproduction artifact',
+  benchmarkLatencySourceSuffix: '.',
 
   quickStartTitle: 'Quick Start',
   quickStartSubtitle: 'Install the package or source environment, add MemoryUnit records, search with MultiRetriever, then persist the graph',
@@ -205,6 +257,32 @@ const zhHans: Translations = {
     'Mandol 在 LoCoMo 上以 1.9k tokens 达到 92.21% 的总体正确率。论文表格使用生成好的三塔图，并启用 router + quantification；Qwen/DeepSeek 用于记忆生成和去重，GPT-4.1-mini/GPT-4o-mini 用于 task-eval 与 judge。',
   benchmarkLongmemNote:
     'Mandol 在 LongMemEval 上以 2.3k tokens 达到 88.40% 的总体正确率。复现时需要先准备 cleaned 数据集，并生成 hierarchical、episodic 与 entity-relation 三类图产物后再运行 task_eval。',
+  benchmarkLatencyTitle: '检索与记忆写入延迟',
+  benchmarkLatencySubtitle: '完整展示尾延迟与平均延迟，服务器和本地部署分别报告',
+  benchmarkServerTitle: '服务器部署',
+  benchmarkServerEnvironment: 'NVIDIA H800 80GB · 检索 10 QPS · 写入 10 QPS',
+  benchmarkMetricSearch: '平均检索延迟',
+  benchmarkMetricAdd: '平均写入延迟',
+  benchmarkMetricRetrievalSpeedup: '检索加速',
+  benchmarkMetricInsertionSpeedup: '记忆写入加速',
+  benchmarkMetricServerContext: 'H800 · 10 QPS',
+  benchmarkMetricBaselineContext: '服务器平均延迟 · 相比最佳非 Mandol 基线',
+  benchmarkSystem: '系统',
+  benchmarkSearch: '检索',
+  benchmarkAdd: '写入',
+  benchmarkMean: '平均值',
+  benchmarkOurs: '本系统',
+  benchmarkLocalEyebrow: '本地部署',
+  benchmarkLocalTitle: '消费级硬件',
+  benchmarkLocalDescription:
+    '在 NVIDIA RTX 5090 Laptop 24GB 上，Mandol 在 5 QPS 检索负载下的平均延迟为 166.5 ms，在 10 QPS 写入负载下的平均延迟为 37.4 ms。',
+  benchmarkLocalSeparate: '由于硬件和检索负载与服务器横向对比不同，该结果单独展示，不参与服务器系统排名。',
+  benchmarkLatencyConditions:
+    '所有数值单位均为毫秒。服务器实验使用 NVIDIA H800 80GB，检索和写入均为 10 QPS；本地实验使用 NVIDIA RTX 5090 Laptop 24GB，检索为 5 QPS，写入为 10 QPS。',
+  benchmarkLatencyEvermemNote: '† EverMemOS 使用其官方实现复现。',
+  benchmarkLatencySourcePrefix: '以上数据对应冻结的',
+  benchmarkLatencySourceLink: '论文复现 artifact',
+  benchmarkLatencySourceSuffix: '。',
 
   quickStartTitle: '快速开始',
   quickStartSubtitle: '安装发布包或源码环境，添加 MemoryUnit，用 MultiRetriever 检索，再持久化图快照',
